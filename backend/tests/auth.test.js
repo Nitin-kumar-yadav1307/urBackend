@@ -10,6 +10,17 @@ if (!JWT_SECRET) {
 }
 
 
+jest.mock('ioredis', () => {
+    return jest.fn().mockImplementation(() => ({
+        on: jest.fn(),
+        quit: jest.fn().mockResolvedValue('OK'),
+        status: 'ready',
+        set: jest.fn().mockResolvedValue('OK'),
+        get: jest.fn().mockResolvedValue(null),
+        del: jest.fn().mockResolvedValue(1),
+    }));
+});
+
 jest.mock('resend', () => {
     return {
         Resend: jest.fn().mockImplementation(() => ({
