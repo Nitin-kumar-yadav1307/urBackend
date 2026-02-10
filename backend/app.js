@@ -2,7 +2,10 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const validateEnv = require('./utils/validateEnv');
-validateEnv();
+
+if (process.env.NODE_ENV !== 'test') {
+    validateEnv();
+}
 
 const express = require('express')
 const mongoose = require('mongoose')

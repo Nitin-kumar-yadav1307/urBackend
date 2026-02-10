@@ -18,7 +18,7 @@ function hashApiKey(apikey) {
     // scrypt hashing: fast but brute focre resistant
     const salt = process.env.API_KEY_SALT;
 
-    // generate a derived key of 64 bytes
+    // derived key of 64 bytes
     return crypto.scryptSync(apikey, salt, 64).toString('hex');
 }
 
