@@ -19,6 +19,7 @@ module.exports.checkSchema = async (req, res) => {
 
         res.status(200).json({ message: "Schema exists", collection: collectionConfig });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -26,10 +27,8 @@ module.exports.checkSchema = async (req, res) => {
 module.exports.createSchema = async (req, res) => {
     try {
         const { name, fields } = createSchemaApiKeySchema.parse(req.body);
-        let project = req.project; // From verifyApiKey
+        let project = req.project;
 
-        // Need the full document to call .save(), req.project from cache might be a lean object.
-        // It's safer to fetch the mongoose model instance to modify it.
         const projectId = project._id;
         const fullProject = await Project.findById(projectId);
 
@@ -40,9 +39,7 @@ module.exports.createSchema = async (req, res) => {
 
         if (!fullProject.jwtSecret) fullProject.jwtSecret = uuidv4();
 
-        // Convert the incoming API payload (name, type, required) into the UrBackend schema format (key, type, required)
         const transformedFields = (fields || []).map(f => {
-            // Capitalize first letter of type mapping "string" -> "String" requirement
             const mappedType = f.type.charAt(0).toUpperCase() + f.type.slice(1).toLowerCase();
             return {
                 key: f.name,
@@ -57,8 +54,7 @@ module.exports.createSchema = async (req, res) => {
         // Clear redis cache
         await deleteProjectById(projectId.toString());
         await setProjectById(projectId.toString(), fullProject);
-        await deleteProjectByApiKeyCache(fullProject.apiKey); // In case it was cached by hashed key
-        // NOTE: req.hashedApiKey is available from middleware if we strictly want that.
+        await deleteProjectByApiKeyCache(fullProject.apiKey); 
         if (req.hashedApiKey) {
             await deleteProjectByApiKeyCache(req.hashedApiKey);
         }
@@ -70,6 +66,7 @@ module.exports.createSchema = async (req, res) => {
         res.status(201).json({ message: "Schema created successfully", project: projectObj });
     } catch (err) {
         if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };

@@ -40,7 +40,6 @@ module.exports.insertData = async (req, res) => {
             }
         }
 
-        // Prevnt NoSQL injection
         const safeData = sanitize(cleanData);
 
         let docSize = 0;
@@ -66,6 +65,7 @@ module.exports.insertData = async (req, res) => {
         console.timeEnd("insert data")
         res.status(201).json(result);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -92,6 +92,7 @@ module.exports.getAllData = async (req, res) => {
         console.timeEnd("getall")
         res.json(data);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -116,6 +117,7 @@ module.exports.getSingleDoc = async (req, res) => {
 
         res.json(doc);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -135,12 +137,12 @@ module.exports.updateSingleData = async (req, res) => {
         const connection = await getConnection(project._id);
         const Model = getCompiledModel(connection, collectionConfig, project._id, project.resources.db.isExternal);
 
-        // Strict Schema Validation
+        // Schma Validation
         const schemaRules = collectionConfig.model;
         const updateData = {};
         for (const key in incomingData) {
             const fieldRule = schemaRules.find(f => f.key === key);
-            if (!fieldRule) continue; // Unknown fields ko ignore karo
+            if (!fieldRule) continue; 
 
             const value = incomingData[key];
             if (fieldRule.type === 'Number' && typeof value !== 'number') return res.status(400).json({ error: `Field '${key}' must be a Number.` });
@@ -157,6 +159,7 @@ module.exports.updateSingleData = async (req, res) => {
 
         res.json({ message: "Updated", data: result });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };
@@ -195,6 +198,7 @@ module.exports.deleteSingleDoc = async (req, res) => {
 
         res.json({ message: "Document deleted", id });
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: err.message });
     }
 };
