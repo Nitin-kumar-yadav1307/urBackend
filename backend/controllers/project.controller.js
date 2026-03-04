@@ -700,13 +700,17 @@ module.exports.updateProject = async (req, res) => {
 module.exports.updateAllowedDomains = async (req, res) => {
     try {
         const { domains } = req.body;
-        if (!Array.isArray(domains)) {
+        if (!Array.isArray(domains) || !domains.every(d => typeof d === 'string')) {
             return res.status(400).json({ error: "domains must be an array of strings." });
         }
 
+        const cleanedDomains = domains
+            .map(d => d.trim())
+            .filter(d => d.length > 0);
+
         const project = await Project.findOneAndUpdate(
             { _id: req.params.projectId, owner: req.user._id },
-            { $set: { allowedDomains: domains } },
+            { $set: { allowedDomains: cleanedDomains } },
             { new: true }
         );
 

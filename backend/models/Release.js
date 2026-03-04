@@ -17,7 +17,7 @@ const ReleaseSchema = new mongoose.Schema({
     },
     publishedBy: {
         type: String,
-        default: 'yashpouranik124@gmail.com'
+        required: true
     }
 }, { timestamps: true });
 

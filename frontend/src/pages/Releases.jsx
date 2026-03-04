@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL } from '../config';
+import { API_URL, ADMIN_EMAIL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { Rocket, Clock, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function Releases() {
     const [releases, setReleases] = useState([]);
@@ -11,7 +13,7 @@ export default function Releases() {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const isAdmin = user?.email === 'yashpouranik124@gmail.com';
+    const isAdmin = user?.email === ADMIN_EMAIL;
 
     useEffect(() => {
         const fetchReleases = async () => {
@@ -90,10 +92,11 @@ export default function Releases() {
 
                             <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '15px' }}>{release.title}</h2>
                             
-                            <div 
-                                style={{ color: 'var(--color-text-muted)', lineHeight: '1.7', fontSize: '1.05rem' }}
-                                dangerouslySetInnerHTML={{ __html: release.content.replace(/\n/g, '<br>') }}
-                            />
+                            <div className="markdown-content">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                    {release.content}
+                                </ReactMarkdown>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -110,6 +113,78 @@ export default function Releases() {
                 }
                 @keyframes spin {
                     to { transform: rotate(360deg); }
+                }
+                
+                .markdown-content {
+                    color: var(--color-text-muted);
+                    line-height: 1.7;
+                    font-size: 1.05rem;
+                }
+                .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+                    color: #fff;
+                    margin-top: 24px;
+                    margin-bottom: 16px;
+                    font-weight: 600;
+                }
+                .markdown-content h1 { font-size: 1.8rem; }
+                .markdown-content h2 { font-size: 1.5rem; }
+                .markdown-content h3 { font-size: 1.25rem; }
+                
+                .markdown-content p {
+                    margin-bottom: 16px;
+                }
+                
+                .markdown-content ul, .markdown-content ol {
+                    padding-left: 20px;
+                    margin-bottom: 16px;
+                }
+                
+                .markdown-content li {
+                    margin-bottom: 8px;
+                }
+                
+                .markdown-content code {
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-family: monospace;
+                    font-size: 0.9em;
+                }
+                
+                .markdown-content pre {
+                    background: #1e1e1e;
+                    padding: 16px;
+                    border-radius: 8px;
+                    overflow-x: auto;
+                    margin-bottom: 16px;
+                    border: 1px solid var(--color-border);
+                }
+                
+                .markdown-content pre code {
+                    background: transparent;
+                    padding: 0;
+                }
+                
+                .markdown-content blockquote {
+                    border-left: 4px solid var(--color-primary);
+                    padding-left: 16px;
+                    margin: 0 0 16px 0;
+                    font-style: italic;
+                    color: rgba(255, 255, 255, 0.7);
+                }
+
+                .markdown-content table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 16px;
+                }
+                .markdown-content th, .markdown-content td {
+                    border: 1px solid var(--color-border);
+                    padding: 8px 12px;
+                    text-align: left;
+                }
+                .markdown-content th {
+                    background: rgba(255, 255, 255, 0.05);
                 }
             `}</style>
         </div>

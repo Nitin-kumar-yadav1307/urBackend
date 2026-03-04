@@ -908,7 +908,7 @@ function AllowedDomainsForm({ project, projectId, token, onProjectUpdate }) {
   const handleUpdate = async (updatedDomains) => {
     setLoading(true);
     try {
-      const res = await axios.patch(
+      await axios.patch(
         `${API_URL}/api/projects/${projectId}/allowed-domains`,
         { domains: updatedDomains },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -1045,6 +1045,7 @@ function AllowedDomainsForm({ project, projectId, token, onProjectUpdate }) {
                 <button
                   onClick={() => removeDomain(domain)}
                   disabled={loading}
+                  aria-label="Remove domain"
                   style={{
                     background: "transparent",
                     border: "none",

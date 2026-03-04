@@ -2,7 +2,7 @@ const Release = require("../models/Release");
 const Developer = require("../models/Developer");
 const { emailQueue } = require("../queues/emailQueue");
 
-const ADMIN_EMAIL = 'yashpouranik124@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
 // GET ALL RELEASES
 exports.getAllReleases = async (req, res) => {
@@ -29,7 +29,12 @@ exports.createRelease = async (req, res) => {
             return res.status(400).json({ error: "Missing version, title, or content" });
         }
 
-        const newRelease = new Release({ version, title, content });
+        const newRelease = new Release({ 
+            version, 
+            title, 
+            content,
+            publishedBy: req.user.email
+        });
         await newRelease.save();
 
         // 1. Fetch all verified developers
@@ -37,14 +42,14 @@ exports.createRelease = async (req, res) => {
         const emails = developers.map(dev => dev.email);
 
         // 2. Queue emails
-        emails.forEach(email => {
+        await Promise.all(emails.map(email => 
             emailQueue.add('release-email', {
                 email,
                 version,
                 title,
                 content
-            });
-        });
+            })
+        ));
 
         res.status(201).json({ 
             message: "Release published! Emails queued.", 

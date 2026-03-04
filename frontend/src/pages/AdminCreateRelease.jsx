@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { API_URL } from '../config';
+import { API_URL, ADMIN_EMAIL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -16,7 +16,7 @@ export default function AdminCreateRelease() {
         content: ''
     });
 
-    const isAdmin = user?.email === 'yashpouranik124@gmail.com';
+    const isAdmin = user?.email === ADMIN_EMAIL;
 
     useEffect(() => {
         if (!isAdmin) {

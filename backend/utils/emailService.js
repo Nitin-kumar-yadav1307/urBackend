@@ -49,15 +49,31 @@ async function sendOtp(email, otp, { subject = "Verify your urBackend account", 
             replyTo: 'urbackend@apps.bitbros.in',
         });
 
-        if (error) console.error("[Resend Error]", error);
-        return { data, error };
+        if (error) {
+            console.error("[Resend Error]", error);
+            throw new Error(error.message || "Failed to send email");
+        }
+        return { data };
     } catch (error) {
         console.error("[Email Service Error]", error);
-        return { error };
+        throw error;
     }
 }
 
+const escapeHtml = (unsafe) => {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+};
+
 async function sendReleaseEmail(email, { version, title, content }) {
+    const sVersion = escapeHtml(version);
+    const sTitle = escapeHtml(title);
+    const sContent = escapeHtml(content);
+
     try {
         const htmlContent = `
             <!DOCTYPE html>
@@ -78,9 +94,9 @@ async function sendReleaseEmail(email, { version, title, content }) {
             <body>
                 <div class="container">
                     <div class="logo">urBackend</div>
-                    <div class="badge">New Release ${version}</div>
-                    <h1>${title}</h1>
-                    <div class="content">${content}</div>
+                    <div class="badge">New Release ${sVersion}</div>
+                    <h1>${sTitle}</h1>
+                    <div class="content">${sContent}</div>
                     <a href="https://urbackend.bitbros.in/releases" class="cta">Read the full changelog</a>
                     <div class="footer">
                         <p>You're receiving this because you're a registered developer on urBackend.</p>
@@ -99,11 +115,14 @@ async function sendReleaseEmail(email, { version, title, content }) {
             replyTo: 'urbackend@apps.bitbros.in',
         });
 
-        if (error) console.error("[Resend Error]", error);
-        return { data, error };
+        if (error) {
+            console.error("[Resend Error]", error);
+            throw new Error(error.message || "Failed to send release email");
+        }
+        return { data };
     } catch (error) {
         console.error("[Release Email Error]", error);
-        return { error };
+        throw error;
     }
 }
 

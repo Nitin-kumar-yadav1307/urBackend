@@ -77,7 +77,7 @@ module.exports = async (req, res, next) => {
                     const isAllowed = allowedDomains.some(domain => {
                         if (domain.startsWith('*.')) {
                             const baseDomain = domain.substring(2);
-                            return originUrl.endsWith(baseDomain);
+                            return originUrl === baseDomain || originUrl.endsWith('.' + baseDomain);
                         }
                         return originUrl === domain;
                     });

@@ -17,7 +17,7 @@ function ProjectDetails() {
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
     const [newKey, setNewKey] = useState(null);
-    const [isRegenerating, setIsRegenerating] = useState(false);
+    const [isRegenerating, setIsRegenerating] = useState(null); // 'publishable', 'secret', or null
 
     useEffect(() => {
         const fetchProject = async () => {
@@ -38,7 +38,7 @@ function ProjectDetails() {
     const handleRegenerateKey = async (keyType) => {
         if (!window.confirm(`Are you sure you want to roll your ${keyType} key? The old key will stop working immediately.`)) return;
 
-        setIsRegenerating(true);
+        setIsRegenerating(keyType);
         try {
             const res = await axios.patch(`${API_URL}/api/projects/${projectId}/regenerate-key`, { keyType }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -48,7 +48,7 @@ function ProjectDetails() {
         } catch {
             toast.error("Failed to regenerate key");
         } finally {
-            setIsRegenerating(false);
+            setIsRegenerating(null);
         }
     };
 
@@ -170,8 +170,8 @@ function ProjectDetails() {
                                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 500 }}>
                                     Publishable API Key
                                 </label>
-                                <button onClick={() => handleRegenerateKey('publishable')} disabled={isRegenerating} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <RefreshCw size={12} className={isRegenerating ? "spin" : ""} /> Roll Key
+                                <button onClick={() => handleRegenerateKey('publishable')} disabled={!!isRegenerating} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <RefreshCw size={12} className={isRegenerating === 'publishable' ? "spin" : ""} /> Roll Key
                                 </button>
                             </div>
                             <div className="input-group" style={{ display: 'flex', background: 'var(--color-bg-input)', borderRadius: '6px', border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: '8px' }}>
@@ -186,8 +186,8 @@ function ProjectDetails() {
                                 <label style={{ display: 'block', fontSize: '0.85rem', color: '#ef4444', fontWeight: 500 }}>
                                     Secret API Key
                                 </label>
-                                <button onClick={() => handleRegenerateKey('secret')} disabled={isRegenerating} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <RefreshCw size={12} className={isRegenerating ? "spin" : ""} /> Roll Key
+                                <button onClick={() => handleRegenerateKey('secret')} disabled={!!isRegenerating} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <RefreshCw size={12} className={isRegenerating === 'secret' ? "spin" : ""} /> Roll Key
                                 </button>
                             </div>
                             <div className="input-group" style={{ display: 'flex', background: 'var(--color-bg-input)', borderRadius: '6px', border: '1px solid var(--color-border)', overflow: 'hidden', marginBottom: '12px' }}>
