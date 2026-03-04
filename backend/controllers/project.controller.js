@@ -378,8 +378,6 @@ module.exports.getData = async (req, res) => {
 
         const data = await features.query.lean();
 
-        const data = await features.query.lean();
-
         res.json(data);
     } catch (err) {
         res.status(500).json({ error: err.message });
