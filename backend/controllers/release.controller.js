@@ -4,7 +4,7 @@ const { emailQueue } = require("../queues/emailQueue");
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
 
-// GET ALL RELEASES
+// GET FOR - ALL RELEASES
 exports.getAllReleases = async (req, res) => {
     try {
         const releases = await Release.find().sort({ createdAt: -1 });
@@ -15,12 +15,11 @@ exports.getAllReleases = async (req, res) => {
     }
 };
 
-// CREATE RELEASE (Admin Only)
+// POST FOR - CREATE RELEASE
 exports.createRelease = async (req, res) => {
     try {
         const { version, title, content } = req.body;
 
-        // Verify Admin
         if (req.user.email !== ADMIN_EMAIL) {
             return res.status(403).json({ error: "Access denied. Admin only." });
         }
@@ -36,12 +35,10 @@ exports.createRelease = async (req, res) => {
             publishedBy: req.user.email
         });
         await newRelease.save();
-
-        // 1. Fetch all verified developers
-        const developers = await Developer.find({ isVerified: true }, 'email');
-        const emails = developers.map(dev => dev.email);
-
-        // 2. Queue emails
+        const developers = await Developer.find({ isVerified: true })
+            .select("email")
+            .lean();
+        const emails = developers.map(({ email }) => email);
         await Promise.all(emails.map(email => 
             emailQueue.add('release-email', {
                 email,

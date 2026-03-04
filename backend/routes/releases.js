@@ -9,14 +9,14 @@ const getAllReleasesLimiter = RateLimit({
   max: 1000, 
 });
 
-// GET ALL RELEASES (Public)
+// GET FOR - ALL RELEASES (Public)
 router.get('/', getAllReleasesLimiter, getAllReleases);
 
 const createReleaseLimiter = RateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5 , 
 });
-// CREATE RELEASE (Admin Only)
-router.post('/', createReleaseLimiter, createRelease);
+// POST FOR - CREATE RELEASE
+router.post('/', createReleaseLimiter, authorization, createRelease);
 
 module.exports = router;

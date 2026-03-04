@@ -65,13 +65,22 @@ module.exports = async (req, res, next) => {
                 }
 
                 try {
-                    const originUrl = new URL(origin).origin; 
+                    const parsedOrigin = new URL(origin);
+                    const originUrl = parsedOrigin.origin; 
+                    const originHostname = parsedOrigin.hostname;
+
                     const isAllowed = allowedDomains.some(domain => {
-                        if (domain.startsWith('*.')) {
-                            const baseDomain = domain.substring(2);
-                            return originUrl === baseDomain || originUrl.endsWith('.' + baseDomain);
+                        let cleanDomain = domain.trim();
+                        if (cleanDomain.endsWith('/')) {
+                            cleanDomain = cleanDomain.slice(0, -1);
                         }
-                        return originUrl === domain;
+
+                        if (cleanDomain.startsWith('*.')) {
+                            const baseDomain = cleanDomain.substring(2);
+                            return originHostname === baseDomain || originHostname.endsWith('.' + baseDomain);
+                        }
+
+                        return originUrl === cleanDomain || originHostname === cleanDomain;
                     });
 
                     if (!isAllowed) {

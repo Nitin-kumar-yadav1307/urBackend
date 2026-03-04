@@ -924,15 +924,28 @@ function AllowedDomainsForm({ project, projectId, token, onProjectUpdate }) {
   };
 
   const addDomain = () => {
-    const domain = newDomain.trim();
+    let domain = newDomain.trim();
     if (!domain) return;
     
-    // basic validation
+    // basic cleanup
+    if (domain !== "*" && domain.endsWith("/")) {
+      domain = domain.slice(0, -1);
+    }
+
     if (domains.includes(domain)) {
       return toast.error("Domain already added");
     }
 
-    const updated = [...domains, domain];
+    let updated;
+    if (domain === "*") {
+      // If user adds '*', it overrides everything else
+      updated = ["*"];
+    } else {
+      // If user adds a specific domain, ensure '*' is removed
+      updated = domains.filter((d) => d !== "*");
+      updated.push(domain);
+    }
+
     handleUpdate(updated);
     setNewDomain("");
   };
