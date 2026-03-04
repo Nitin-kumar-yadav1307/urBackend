@@ -5,17 +5,54 @@ const bcrypt = require("bcryptjs");
 const z = require("zod");
 const jwt = require("jsonwebtoken");
 const sendOtp = require("../utils/emailService");
+const crypto = require("crypto");
 const {
     loginSchema,
     changePasswordSchema,
     deleteAccountSchema,
     onlyEmailSchema,
-    resetPasswordSchema
+    resetPasswordSchema,
+    verifyOtpSchema
 } = require("../utils/input.validation");
 
 const JWT_EXPIRES_IN = '7d';
 const OTP_MAX_ATTEMPTS = 5;
 
+// HELPER: Generate, hash, and store OTP
+async function createAndStoreOtp(userId) {
+    const otp = crypto.randomInt(100000, 1000000).toString();
+    
+    // Delete any existing OTP for this user
+    await otpSchema.deleteOne({ userId });
+
+    // Hash OTP before storing
+    const salt = await bcrypt.genSalt(10);
+    const hashedOtp = await bcrypt.hash(otp, salt);
+
+    await new otpSchema({ userId, otp: hashedOtp }).save();
+    return otp;
+}
+
+// HELPER: Validate OTP with attempt tracking
+async function validateOtp(userId, passedOtp) {
+    const otpDoc = await otpSchema.findOne({ userId });
+    if (!otpDoc) throw { status: 400, message: "No OTP found. Please request a new one." };
+
+    if (otpDoc.attempts >= OTP_MAX_ATTEMPTS) {
+        await otpDoc.deleteOne();
+        throw { status: 429, message: "Too many incorrect attempts. Please request a new OTP." };
+    }
+
+    const isMatch = await bcrypt.compare(passedOtp.toString(), otpDoc.otp);
+    if (!isMatch) {
+        otpDoc.attempts += 1;
+        await otpDoc.save();
+        const remaining = OTP_MAX_ATTEMPTS - otpDoc.attempts;
+        throw { status: 400, message: `Incorrect OTP. ${remaining} attempt(s) remaining.` };
+    }
+
+    return otpDoc;
+}
 
 module.exports.register = async (req, res) => {
     try {
@@ -118,26 +155,18 @@ module.exports.deleteAccount = async (req, res) => {
 module.exports.sendOtp = async (req, res) => {
     try {
         const { email } = onlyEmailSchema.parse(req.body);
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         const existingUser = await Developer.findOne({ email });
         if (!existingUser) return res.status(400).json({ error: "User not found" });
 
         if (existingUser.isVerified) return res.status(400).json({ error: "User already verified" });
 
-        // Delete any existing OTP for this user
-        await otpSchema.deleteOne({ userId: existingUser._id });
-
-        // FIX 2: Hash OTP before storing
-        const salt = await bcrypt.genSalt(10);
-        const hashedOtp = await bcrypt.hash(otp, salt);
-
-        const newOtp = new otpSchema({ userId: existingUser._id, otp: hashedOtp });
-        await newOtp.save();
+        const otp = await createAndStoreOtp(existingUser._id);
 
         await sendOtp(email, otp); // Send raw OTP to user's email
         res.json({ message: "OTP sent successfully" });
     } catch (err) {
+        if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
         console.error(err);
         res.status(500).json({ error: "Internal Server Error" });
     }
@@ -146,29 +175,12 @@ module.exports.sendOtp = async (req, res) => {
 
 module.exports.verifyOtp = async (req, res) => {
     try {
-        const { email } = onlyEmailSchema.parse(req.body);
-        const { otp } = req.body;
+        const { email, otp } = verifyOtpSchema.parse(req.body);
 
         const existingUser = await Developer.findOne({ email });
         if (!existingUser) return res.status(400).json({ error: "User not found" });
 
-        const otpDoc = await otpSchema.findOne({ userId: existingUser._id });
-        if (!otpDoc) return res.status(400).json({ error: "No OTP found. Please request a new one." });
-
-        // FIX 4: OTP attempt tracking
-        if (otpDoc.attempts >= OTP_MAX_ATTEMPTS) {
-            await otpDoc.deleteOne();
-            return res.status(429).json({ error: "Too many incorrect attempts. Please request a new OTP." });
-        }
-
-        // FIX 2: Compare against bcrypt hash
-        const isMatch = await bcrypt.compare(otp.toString(), otpDoc.otp);
-        if (!isMatch) {
-            otpDoc.attempts += 1;
-            await otpDoc.save();
-            const remaining = OTP_MAX_ATTEMPTS - otpDoc.attempts;
-            return res.status(400).json({ error: `Incorrect OTP. ${remaining} attempt(s) remaining.` });
-        }
+        const otpDoc = await validateOtp(existingUser._id, otp);
 
         await otpDoc.deleteOne();
         existingUser.isVerified = true;
@@ -183,6 +195,8 @@ module.exports.verifyOtp = async (req, res) => {
 
         res.status(200).json({ message: "OTP verified successfully", token });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
         console.error(err);
         res.status(500).json({ error: "Internal Server Error" });
     }
@@ -198,20 +212,12 @@ module.exports.forgotPassword = async (req, res) => {
         // Return same message regardless of whether email exists (prevents user enumeration)
         if (!dev) return res.status(200).json({ message: "If this email is registered, an OTP has been sent." });
 
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-        // Delete any existing OTP
-        await otpSchema.deleteOne({ userId: dev._id });
-
-        // Hash OTP before storing
-        const salt = await bcrypt.genSalt(10);
-        const hashedOtp = await bcrypt.hash(otp, salt);
-
-        await new otpSchema({ userId: dev._id, otp: hashedOtp }).save();
+        const otp = await createAndStoreOtp(dev._id);
 
         await sendOtp(email, otp, { subject: "Password Reset OTP — urBackend" });
         res.status(200).json({ message: "If this email is registered, an OTP has been sent." });
     } catch (err) {
+        if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
         console.error(err);
         res.status(500).json({ error: "Internal Server Error" });
     }
@@ -226,22 +232,7 @@ module.exports.resetPassword = async (req, res) => {
         const dev = await Developer.findOne({ email });
         if (!dev) return res.status(400).json({ error: "User not found" });
 
-        const otpDoc = await otpSchema.findOne({ userId: dev._id });
-        if (!otpDoc) return res.status(400).json({ error: "No OTP found. Please request a new one." });
-
-        // Attempt tracking
-        if (otpDoc.attempts >= OTP_MAX_ATTEMPTS) {
-            await otpDoc.deleteOne();
-            return res.status(429).json({ error: "Too many incorrect attempts. Please request a new OTP." });
-        }
-
-        const isMatch = await bcrypt.compare(otp.toString(), otpDoc.otp);
-        if (!isMatch) {
-            otpDoc.attempts += 1;
-            await otpDoc.save();
-            const remaining = OTP_MAX_ATTEMPTS - otpDoc.attempts;
-            return res.status(400).json({ error: `Incorrect OTP. ${remaining} attempt(s) remaining.` });
-        }
+        const otpDoc = await validateOtp(dev._id, otp);
 
         // OTP matched — update password
         await otpDoc.deleteOne();
@@ -251,6 +242,7 @@ module.exports.resetPassword = async (req, res) => {
 
         res.status(200).json({ message: "Password reset successfully. Please log in with your new password." });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
         if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
         console.error(err);
         res.status(500).json({ error: "Internal Server Error" });

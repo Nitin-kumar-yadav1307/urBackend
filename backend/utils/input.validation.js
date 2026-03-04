@@ -38,9 +38,14 @@ module.exports.onlyEmailSchema = z.object({
     email: z.string().email("Invalid email format")
 });
 
+module.exports.verifyOtpSchema = z.object({
+    email: z.string().email("Invalid email format"),
+    otp: z.string().length(6, "OTP must be 6 digits")
+});
+
 module.exports.resetPasswordSchema = z.object({
     email: z.string().email("Invalid email format"),
-    otp: z.string().min(6, "OTP is required"),
+    otp: z.string().length(6, "OTP must be 6 digits"),
     newPassword: z.string().min(6, "Password must be at least 6 characters").max(100, "Password is too long.")
 });
 
