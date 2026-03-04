@@ -16,6 +16,9 @@ app.set('trust proxy', 1);
 const GC = require('./utils/GC');
 const { getPublicIp } = require('./utils/network');
 
+// Initialize Queue Workers
+require('./queues/emailQueue');
+
 // Middleware
 app.use(cors());
 app.use(express.json());
