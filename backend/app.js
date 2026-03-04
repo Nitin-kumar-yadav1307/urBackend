@@ -37,7 +37,7 @@ const { authLimiter } = require('./middleware/auth_limiter');
 
 const adminWhitelist = ['https://urbackend.bitbros.in'];
 
-// to allow localhost in developmentt
+// DEV LOCALHOST
 if (process.env.NODE_ENV === 'development') {
     adminWhitelist.push('http://localhost:5173');
 }
@@ -49,8 +49,6 @@ const adminCorsOptions = {
         const allowed = !origin || adminWhitelist.includes(origin);
 
         const end = process.hrtime.bigint();
-        console.log("Pure CORS check time:",
-            Number(end - start) / 1e6, "ms");
 
         if (allowed) {
             callback(null, true);
@@ -68,7 +66,7 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 
-// rate limiter and loggerr IMPORTS 
+// LOGGING
 const { limiter, logger } = require('./middleware/api_usage');
 
 // Route Imports
@@ -116,8 +114,7 @@ app.use((err, req, res, next) => {
         message: err.message
     });
 });
-//  DB and server initialization
-// (Only connect if NOT in Test Mode)
+// INITIALIZATION
 if (process.env.NODE_ENV !== 'test') {
 
     const PORT = process.env.PORT || 1234;
@@ -150,7 +147,7 @@ if (process.env.NODE_ENV !== 'test') {
         console.log(`Server running on port ${PORT}`);
     });
 
-    // handle gracefll shutdwn
+    // SHUTDOWN
     const gracefulShutdown = async () => {
         console.log('🛑 SIGTERM/SIGINT received. Shutting down gracefully...');
 

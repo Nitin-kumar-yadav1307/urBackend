@@ -28,13 +28,13 @@ const isExternalStorage = (project) =>
 
 module.exports.createProject = async (req, res) => {
     try {
-        // Validation Applied
+        // POST FOR - PROJECT CREATION
         const { name, description } = createProjectSchema.parse(req.body);
 
         // --- PROJECT LIMIT CHECK ---
         const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
         
-        // Fetch current developer to get dynamic maxProjects limit
+        // GET MAX PROJECTS
         const dev = await Developer.findById(req.user._id);
         const MAX_PROJECTS = dev?.maxProjects || 3;
 
@@ -131,7 +131,7 @@ module.exports.regenerateApiKey = async (req, res) => {
             .select('publishableKey secretKey');
         if (!oldApiProj) return res.status(404).json({ error: "Project not found." });
         
-        // Clear caches for both keys to be safe
+        // CLEAR CACHE
         await deleteProjectByApiKeyCache(oldApiProj.publishableKey);
         await deleteProjectByApiKeyCache(oldApiProj.secretKey);
 
@@ -155,7 +155,7 @@ module.exports.regenerateApiKey = async (req, res) => {
 };
 
 
-//function to validate monguri
+// VALIDATE URI
 const isSafeUri = (uri) => {
     try {
         const parsed = new URL(uri);
@@ -171,17 +171,16 @@ module.exports.updateExternalConfig = async (req, res) => {
     try {
         const { projectId } = req.params;
 
-        // 1. Zod Validation
+        // POST FOR - EXTERNAL CONFIG
         const validatedData = updateExternalConfigSchema.parse(req.body);
         const { dbUri, storageUrl, storageKey, storageProvider } = validatedData;
 
         const updateData = {};
 
-        // 2. Database URI Check & Encryption
+        // DB CONFIG
         if (dbUri) {
             if (!isSafeUri(dbUri)) return res.status(400).json({ error: "DB URI is pointing to a restricted host (localhost/internal)." });
 
-            // Naye model structure ke hisaab se save karein
             updateData['resources.db.config'] = encrypt(JSON.stringify({ dbUri }));
             updateData['resources.db.isExternal'] = true;
 
@@ -207,7 +206,7 @@ module.exports.updateExternalConfig = async (req, res) => {
             // -------------------------
         }
 
-        // 3. Storage Config Encryption
+        // STORAGE CONFIG
         if (storageUrl && storageKey) {
             const storageConfig = {
                 storageUrl,
@@ -228,7 +227,6 @@ module.exports.updateExternalConfig = async (req, res) => {
 
         res.status(200).json({ message: "External configuration updated successfully." });
     } catch (err) {
-        // Zod Error handling ko safe banayein
         if (err.name === 'ZodError') {
             return res.status(400).json({
                 error: err.errors?.[0]?.message || err.issues?.[0]?.message || "Validation failed"
@@ -304,7 +302,7 @@ module.exports.createCollection = async (req, res) => {
         await setProjectById(projectId, project);
         await deleteProjectByApiKeyCache(project.publishableKey);
         await deleteProjectByApiKeyCache(project.secretKey);
-        // Safe Response
+        // RESPONSE
         const projectObj = project.toObject();
         delete projectObj.publishableKey;
         delete projectObj.secretKey;
@@ -380,10 +378,7 @@ module.exports.getData = async (req, res) => {
 
         const data = await features.query.lean();
 
-        //        let data = [];
-        // if (collectionsList.length > 0) {
-        //     data = await mongoose.connection.db.collection(finalCollectionName).find({}).limit(50).toArray();
-        // }
+        const data = await features.query.lean();
 
         res.json(data);
     } catch (err) {
@@ -426,7 +421,7 @@ module.exports.insertData = async (req, res) => {
             project.databaseUsed = (project.databaseUsed || 0) + docSize;
         }
         await project.save();
-        console.timeEnd("insert data")
+        await project.save();
 
         res.json(result);
     } catch (err) {
@@ -494,14 +489,13 @@ module.exports.editRow = async (req, res) => {
 
         const oldSize = Buffer.byteLength(JSON.stringify(docToEdit.toObject()));
 
-        // Apply updates
         docToEdit.set(req.body);
 
         const newSize = Buffer.byteLength(JSON.stringify(docToEdit.toObject()));
         const sizeDiff = newSize - oldSize;
 
         if (!project.resources.db.isExternal) {
-            const limit = project.databaseLimit || 500 * 1024 * 1024; // Default 500MB if not set
+            const limit = project.databaseLimit || 500 * 1024 * 1024;
             const currentUsed = project.databaseUsed || 0;
 
             if (currentUsed + sizeDiff > limit) {
@@ -602,7 +596,6 @@ module.exports.uploadFile = async (req, res) => {
 
         res.json({ success: true, path });
     } catch (err) {
-        console.log("upload file ke catch me hu");
         res.status(500).json({ error: err });
     }
 };
@@ -735,8 +728,6 @@ module.exports.updateAllowedDomains = async (req, res) => {
         );
 
         if (!project) return res.status(404).json({ error: "Project not found or access denied." });
-
-        // Update the cache so the verifyApiKey middleware gets the fresh domains immediately
         await deleteProjectById(project._id.toString());
         await setProjectById(project._id.toString(), project);
         await deleteProjectByApiKeyCache(project.publishableKey);
@@ -764,8 +755,6 @@ module.exports.deleteProject = async (req, res) => {
         if (!project) {
             return res.status(404).json({ error: "Project not found or access denied." });
         }
-
-        // collections WILL exist now
         for (const col of project.collections) {
             const collectionName = `${project._id}_${col.name}`;
             try {
@@ -777,7 +766,7 @@ module.exports.deleteProject = async (req, res) => {
             await mongoose.connection.db.dropCollection(`${project._id}_users`);
         } catch (e) { }
 
-        // DELETE ALL FILES (BYOS SAFE)
+        // DELETE FILES
         const supabase = await getStorage(project);
         const bucket = getBucket(project);
 

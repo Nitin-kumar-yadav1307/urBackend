@@ -16,12 +16,9 @@ module.exports = async (req, res, next) => {
         const keyField = isSecret ? 'secretKey' : 'publishableKey';
         const hashedApi = hashApiKey(apiKey);
 
-        console.time("get project by api key cache")
         let project = await getProjectByApiKeyCache(hashedApi);
-        console.timeEnd("get project by api key cache")
 
         if (!project) {
-            console.time("get project by api key from db")
             project = await Project.findOne({ [keyField]: hashedApi })
                 .select(`
                     owner
@@ -36,7 +33,6 @@ module.exports = async (req, res, next) => {
                 `)
                 .populate('owner', 'isVerified')
                 .lean();
-            console.timeEnd("get project by api key from db")
 
             if (!project) {
                 return res.status(401).json({
@@ -48,20 +44,16 @@ module.exports = async (req, res, next) => {
             await setProjectByApiKeyCache(hashedApi, project);
         }
 
-        console.time("checking if owner is verified")
         if (!project.owner.isVerified) {
             return res.status(401).json({
                 error: 'Owner not verified',
                 fix: 'Verify your account on https://urbackend.bitbros.in/dashboard'
             });
         }
-        console.timeEnd("checking if owner is verified")
 
-        console.time("setting defaults")
         if (!project.resources) project.resources = {};
         if (!project.resources.db) project.resources.db = { isExternal: false };
         if (!project.resources.storage) project.resources.storage = { isExternal: false };
-        console.timeEnd("setting defaults")
 
         if (!isSecret) {
             let allowedDomains = project.allowedDomains || ['*'];
@@ -91,11 +83,9 @@ module.exports = async (req, res, next) => {
             }
         }
 
-        console.time("setting project and hashed api key")
         req.project = project;
         req.hashedApiKey = hashedApi;
         req.keyRole = isSecret ? 'secret' : 'publishable';
-        console.timeEnd("setting project and hashed api key")
         next();
     } catch (err) {
         res.status(500).json({ error: err.message });
