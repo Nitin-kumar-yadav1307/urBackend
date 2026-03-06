@@ -110,7 +110,7 @@ export default function Auth() {
                             { headers: { Authorization: `Bearer ${token}` } }
                         );
                         setUsers(usersRes.data);
-                    } catch (e) {
+                    } catch {
                          // If users collection doesn't exist yet but auth is enabled, just show empty
                          setUsers([ ]);
                     }
@@ -145,7 +145,7 @@ export default function Auth() {
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setUsers(usersRes.data);
-            } catch (e) {
+            } catch {
                  setUsers([]);
             }
 
@@ -210,9 +210,10 @@ export default function Auth() {
             );
             setEditingUser(res.data);
             // Convert everything except core fields to form data
-            const { _id, email, password, emailVerified, createdAt, updatedAt, ...customFields } = res.data;
+            const customFields = { ...res.data };
+            ['_id', 'email', 'password', 'emailVerified', 'createdAt', 'updatedAt'].forEach(key => delete customFields[key]);
             setEditFormData(customFields);
-        } catch (err) {
+        } catch {
             toast.error("Failed to fetch user details");
         }
     };
