@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -316,14 +316,31 @@ function cleanFieldsForApi(fields) {
 function CreateCollection() {
     const { projectId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { token, user } = useAuth();
 
-    const [name, setName] = useState('');
-    const [fields, setFields] = useState([
-        { ...createEmptyField(), key: 'username', type: 'String', required: true },
-        { ...createEmptyField(), key: 'email', type: 'String', required: true },
-        { ...createEmptyField(), key: 'password', type: 'String', required: true },
-    ]);
+    const queryParams = new URLSearchParams(location.search);
+    const initialName = queryParams.get('name') || '';
+
+    const [name, setName] = useState(initialName);
+
+    // Default fields for a new collection
+    // If it's a "users" collection, we provide the essential Auth fields
+    const getInitialFields = () => {
+        if (initialName === 'users') {
+            return [
+                { ...createEmptyField(), key: 'email', type: 'String', required: true },
+                { ...createEmptyField(), key: 'password', type: 'String', required: true },
+                { ...createEmptyField(), key: 'username', type: 'String', required: false },
+                { ...createEmptyField(), key: 'emailVerified', type: 'Boolean', required: false },
+            ];
+        }
+        return [
+            { ...createEmptyField(), key: 'name', type: 'String', required: true }
+        ];
+    };
+
+    const [fields, setFields] = useState(getInitialFields());
     const [loading, setLoading] = useState(false);
     const [collections, setCollections] = useState([]);
 

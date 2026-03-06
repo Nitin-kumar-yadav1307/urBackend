@@ -26,8 +26,11 @@ const {
     deleteExternalDbConfig,
     deleteExternalStorageConfig,
     analytics,
-    updateAllowedDomains
+    updateAllowedDomains,
+    toggleAuth
 } = require("../controllers/project.controller")
+
+const { createAdminUser, resetPassword, getUserDetails, updateAdminUser } = require('../controllers/userAuth.controller');
 
 const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB Limit
 
@@ -97,5 +100,14 @@ router.delete('/:projectId/storage/files', authMiddleware, deleteAllFiles);
 
 // ANALYTICS
 router.get('/:projectId/analytics', authMiddleware, analytics);
+
+// TOGGLE AUTH
+router.patch('/:projectId/auth/toggle', authMiddleware, verifyEmail, toggleAuth);
+
+// ADMIN AUTH
+router.post('/:projectId/admin/users', authMiddleware, createAdminUser);
+router.patch('/:projectId/admin/users/:userId/password', authMiddleware, resetPassword);
+router.get('/:projectId/admin/users/:userId', authMiddleware, getUserDetails);
+router.put('/:projectId/admin/users/:userId', authMiddleware, updateAdminUser);
 
 module.exports = router;

@@ -18,6 +18,7 @@ const { getPublicIp } = require('./utils/network');
 
 // Initialize Queue Workers
 require('./queues/emailQueue');
+require('./queues/authEmailQueue');
 
 // Middleware (We apply admin options globally except where overridden via dynamic handling)
 app.use(express.json());

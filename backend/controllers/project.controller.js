@@ -95,20 +95,33 @@ module.exports.getAllProject = async (req, res) => {
 
 module.exports.getSingleProject = async (req, res) => {
     try {
-        let project;
-        project = await getProjectById(req.params.projectId);
-        let projectObj;
-        if (!project) {
-            project = await Project.findOne({ _id: req.params.projectId, owner: req.user._id }).select('-publishableKey -secretKey -jwtSecret');
+        let projectObj = await getProjectById(req.params.projectId);
+        
+        if (!projectObj) {
+            const project = await Project.findOne({ _id: req.params.projectId, owner: req.user._id }).select('-publishableKey -secretKey -jwtSecret');
             if (!project) return res.status(404).json({ error: "Project not found." });
             projectObj = project.toObject();
-            await setProjectById(req.params.projectId, project);
+            await setProjectById(req.params.projectId, projectObj);
         }
 
-        projectObj = project;
+        // Just to be safe, we remove sensitive fields again even if from cache
         delete projectObj.publishableKey;
         delete projectObj.secretKey;
         delete projectObj.jwtSecret;
+
+        // SANITIZE COLLECTION MODELS: Remove "password" from "users" collection schema
+        if (projectObj.collections && Array.isArray(projectObj.collections)) {
+            projectObj.collections = projectObj.collections.map(col => {
+                if (col.name === 'users' && col.model) {
+                    return {
+                        ...col,
+                        model: col.model.filter(m => m.key !== 'password')
+                    };
+                }
+                return col;
+            });
+        }
+        
         res.json(projectObj);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -371,7 +384,12 @@ module.exports.getData = async (req, res) => {
 
         // const collectionsList = await mongoose.connection.db.listCollections({ name: finalCollectionName }).toArray();
 
-        const features = new QueryEngine(model.find(), req.query)
+        const query = model.find();
+        if (collectionName === 'users') {
+            query.select('-password');
+        }
+
+        const features = new QueryEngine(query, req.query)
             .filter()
             .sort()
             .paginate();
@@ -390,6 +408,10 @@ module.exports.insertData = async (req, res) => {
         const { projectId, collectionName } = req.params;
         const project = await Project.findOne({ _id: projectId, owner: req.user._id });
         if (!project) return res.status(404).json({ error: "Project not found." });
+
+        if (collectionName === 'users') {
+            return res.status(400).json({ error: "Direct inserts into 'users' collection are not allowed. Please use the Auth signup or admin endpoints." });
+        }
 
         const finalCollectionName = `${project._id}_${collectionName}`;
         const incomingData = req.body;
@@ -480,6 +502,14 @@ module.exports.editRow = async (req, res) => {
         const connection = await getConnection(projectId);
         const Model = getCompiledModel(connection, collectionConfig, projectId, project.resources.db.isExternal);
 
+        if (collectionName === 'users') {
+            delete req.body.password;
+            // Also ensure it's not and nested or sneaky
+            Object.keys(req.body).forEach(key => {
+                if (key.toLowerCase().includes('password')) delete req.body[key];
+            });
+        }
+
         const docToEdit = await Model.findById(id);
         if (!docToEdit) {
             return res.status(404).json({ error: "Document not found." });
@@ -505,8 +535,12 @@ module.exports.editRow = async (req, res) => {
         }
 
         const updatedDoc = await docToEdit.save();
+        const responseData = updatedDoc.toObject();
+        if (collectionName === 'users') {
+            delete responseData.password;
+        }
 
-        res.json({ success: true, message: "Document edited successfully", data: updatedDoc });
+        res.json({ success: true, message: "Document edited successfully", data: responseData });
 
     } catch (err) {
         console.error("Edit Error:", err);
@@ -754,35 +788,41 @@ module.exports.deleteProject = async (req, res) => {
         if (!project) {
             return res.status(404).json({ error: "Project not found or access denied." });
         }
-        for (const col of project.collections) {
-            const collectionName = `${project._id}_${col.name}`;
+
+        // DROP COLLECTIONS: Only for internal databases
+        if (!project.resources.db.isExternal) {
+            for (const col of project.collections) {
+                const collectionName = `${project._id}_${col.name}`;
+                try {
+                    await mongoose.connection.db.dropCollection(collectionName);
+                } catch (e) { }
+            }
+
             try {
-                await mongoose.connection.db.dropCollection(collectionName);
+                await mongoose.connection.db.dropCollection(`${project._id}_users`);
             } catch (e) { }
         }
 
-        try {
-            await mongoose.connection.db.dropCollection(`${project._id}_users`);
-        } catch (e) { }
+        // DELETE: Only for internal Infraa
+        if (!isExternalStorage(project)) {
+            const supabase = await getStorage(project);
+            const bucket = getBucket(project);
 
-        // DELETE FILES
-        const supabase = await getStorage(project);
-        const bucket = getBucket(project);
+            let hasMoreFiles = true;
 
-        let hasMoreFiles = true;
+            while (hasMoreFiles) {
+                const { data: files, error } = await supabase.storage
+                    .from(bucket)
+                    .list(projectId, { limit: 100 });
 
-        while (hasMoreFiles) {
-            const { data: files, error } = await supabase.storage
-                .from(bucket)
-                .list(projectId, { limit: 100 });
+                if (error) throw error;
 
-            if (error) throw error;
-
-            if (files && files.length > 0) {
-                const paths = files.map(f => `${projectId}/${f.name}`);
-                await supabase.storage.from(bucket).remove(paths);
-            } else {
-                hasMoreFiles = false;
+                if (files && files.length > 0) {
+                    const paths = files.map(f => `${projectId}/${f.name}`);
+                    await supabase.storage.from(bucket).remove(paths);
+                } else {
+                    hasMoreFiles = false;
+                }
             }
         }
 
@@ -824,6 +864,30 @@ module.exports.analytics = async (req, res) => {
             totalRequests,
             logs,
             chartData
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+}
+
+module.exports.toggleAuth = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+        const { enable } = req.body; // true or false
+
+        // Ensure user owns project
+        const project = await Project.findOne({ _id: projectId, owner: req.user._id });
+        if (!project) return res.status(404).json({ error: "Project not found" });
+
+        project.isAuthEnabled = !!enable;
+
+        await project.save();
+        await deleteProjectById(project._id); // Clear cache so frontend gets updated isAuthEnabled
+
+        res.json({ 
+            message: `Authentication ${project.isAuthEnabled ? 'enabled' : 'disabled'} successfully`, 
+            isAuthEnabled: project.isAuthEnabled,
+            project: project
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
