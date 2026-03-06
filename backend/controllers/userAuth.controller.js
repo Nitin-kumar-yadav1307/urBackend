@@ -9,12 +9,7 @@ const { loginSchema, signupSchema, userSignupSchema, resetPasswordSchema, onlyEm
 const { getConnection } = require('../utils/connection.manager');
 const { getCompiledModel } = require('../utils/injectModel');
 
-// FUNCTION - GET AUTH COLLECTION
-async function getAuthCollection(project) {
-    const connection = await getConnection(project._id);
-    const collectionName = project.resources?.db?.isExternal ? "users" : `${project._id}_users`;
-    return connection.db.collection(collectionName);
-}
+// No longer using getAuthCollection, using getCompiledModel directly in handlers
 
 // POST REQ FOR SIGNUP
 module.exports.signup = async (req, res) => {
@@ -23,9 +18,14 @@ module.exports.signup = async (req, res) => {
 
         const { email, password, username, ...otherData } = userSignupSchema.parse(req.body);
 
-        const collection = await getAuthCollection(project);
+        // Get Mongoose Model
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-        const existingUser = await collection.findOne({ email });
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+
+        const existingUser = await Model.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ error: "User already exists with this email." });
         }
@@ -44,18 +44,8 @@ module.exports.signup = async (req, res) => {
             createdAt: new Date()
         };
 
-        // Validate against Mongoose Model
-        const usersColConfig = project.collections.find(c => c.name === 'users');
-        if (usersColConfig) {
-            const connection = await getConnection(project._id);
-            const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
-            const validationError = new Model(newUserPayload).validateSync();
-            if (validationError) {
-                return res.status(400).json({ error: validationError.message });
-            }
-        }
-
-        const result = await collection.insertOne(newUserPayload);
+        // Model.create handles validation and default values
+        const result = await Model.create(newUserPayload);
 
         await redis.set(`project:${project._id}:otp:verification:${email}`, otp, 'EX', 300);
 
@@ -67,7 +57,7 @@ module.exports.signup = async (req, res) => {
         });
 
         const token = jwt.sign(
-            { userId: result.insertedId, projectId: project._id },
+            { userId: result._id, projectId: project._id },
             project.jwtSecret,
             { expiresIn: '7d' }
         );
@@ -75,7 +65,7 @@ module.exports.signup = async (req, res) => {
         res.status(201).json({
             message: "User registered successfully. Please verify your email.",
             token: token,
-            userId: result.insertedId
+            userId: result._id
         });
 
     } catch (err) {
@@ -93,9 +83,13 @@ module.exports.login = async (req, res) => {
         const project = req.project;
         const { email, password } = loginSchema.parse(req.body);
 
-        const collection = await getAuthCollection(project);
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-        const user = await collection.findOne({ email });
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+
+        const user = await Model.findOne({ email });
         if (!user) return res.status(400).json({ error: "Invalid email or password" });
 
         const validPass = await bcrypt.compare(password, user.password);
@@ -127,12 +121,16 @@ module.exports.me = async (req, res) => {
 
         try {
             const decoded = jwt.verify(token, project.jwtSecret);
-            const collection = await getAuthCollection(project);
+            const usersColConfig = project.collections.find(c => c.name === 'users');
+            if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-            const user = await collection.findOne(
+            const connection = await getConnection(project._id);
+            const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+
+            const user = await Model.findOne(
                 { _id: new mongoose.Types.ObjectId(decoded.userId) },
-                { projection: { password: 0 } }
-            );
+                { password: 0 }
+            ).lean();
 
             if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -150,16 +148,19 @@ module.exports.me = async (req, res) => {
 // POST REQ FOR ADMIN CREATE USER
 module.exports.createAdminUser = async (req, res) => {
     try {
-        const { projectId } = req.params;
-        const project = await Project.findOne({ _id: projectId, owner: req.user._id });
-        if (!project) return res.status(404).json({ error: "Project not found or access denied." });
+        const project = req.project;
 
         const parsedData = userSignupSchema.parse(req.body);
         const { email, password, username, ...otherData } = parsedData;
 
-        const collection = await getAuthCollection(project);
+        // Get Mongoose Model
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-        const existingUser = await collection.findOne({ email });
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+
+        const existingUser = await Model.findOne({ email });
         if (existingUser) {
             return res.status(400).json({ error: "User already exists with this email." });
         }
@@ -176,22 +177,11 @@ module.exports.createAdminUser = async (req, res) => {
             createdAt: new Date()
         };
 
-        // Validate against Mongoose Model
-        const usersColConfig = project.collections.find(c => c.name === 'users');
-        if (usersColConfig) {
-            const connection = await getConnection(project._id);
-            const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
-            const validationError = new Model(newUserPayload).validateSync();
-            if (validationError) {
-                return res.status(400).json({ error: validationError.message });
-            }
-        }
-
-        const result = await collection.insertOne(newUserPayload);
+        const result = await Model.create(newUserPayload);
 
         res.status(201).json({
             message: "User created successfully",
-            user: { _id: result.insertedId, email, username, createdAt: newUserPayload.createdAt }
+            user: { _id: result._id, email, username, createdAt: newUserPayload.createdAt }
         });
 
     } catch (err) {
@@ -206,9 +196,8 @@ module.exports.createAdminUser = async (req, res) => {
 // PATCH REQ FOR ADMIN RESET PASSWORD
 module.exports.resetPassword = async (req, res) => {
     try {
-        const { projectId, userId } = req.params;
-        const project = await Project.findOne({ _id: projectId, owner: req.user._id });
-        if (!project) return res.status(404).json({ error: "Project not found or access denied." });
+        const project = req.project;
+        const { userId } = req.params;
 
         const { newPassword } = req.body;
 
@@ -216,12 +205,16 @@ module.exports.resetPassword = async (req, res) => {
             return res.status(400).json({ error: "Password must be at least 6 characters" });
         }
 
-        const collection = await getAuthCollection(project);
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
+
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        const result = await collection.updateOne(
+        const result = await Model.updateOne(
             { _id: new mongoose.Types.ObjectId(userId) },
             { $set: { password: hashedPassword } }
         );
@@ -250,9 +243,13 @@ module.exports.verifyEmail = async (req, res) => {
             return res.status(400).json({ error: "Invalid or expired OTP" });
         }
 
-        const collection = await getAuthCollection(project);
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-        const result = await collection.updateOne(
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+
+        const result = await Model.updateOne(
             { email },
             { $set: { emailVerified: true } }
         );
@@ -274,9 +271,13 @@ module.exports.requestPasswordReset = async (req, res) => {
         const project = req.project;
         const { email } = onlyEmailSchema.parse(req.body);
 
-        const collection = await getAuthCollection(project);
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
+
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
         
-        const user = await collection.findOne({ email });
+        const user = await Model.findOne({ email });
         if (!user) {
             return res.json({ message: "If that email exists, a reset code has been sent." });
         }
@@ -380,9 +381,13 @@ module.exports.changePasswordUser = async (req, res) => {
 
         const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
 
-        const collection = await getAuthCollection(project);
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-        const user = await collection.findOne({ _id: new mongoose.Types.ObjectId(decoded.userId) });
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
+
+        const user = await Model.findOne({ _id: new mongoose.Types.ObjectId(decoded.userId) });
         if (!user) return res.status(404).json({ error: "User not found" });
 
         const validPass = await bcrypt.compare(currentPassword, user.password);
@@ -391,7 +396,7 @@ module.exports.changePasswordUser = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-        await collection.updateOne(
+        await Model.updateOne(
             { _id: new mongoose.Types.ObjectId(decoded.userId) },
             { $set: { password: hashedPassword } }
         );
@@ -407,19 +412,22 @@ module.exports.changePasswordUser = async (req, res) => {
 // FUNCTION - GET USER DETAILS (ADMIN)
 module.exports.getUserDetails = async (req, res) => {
     try {
-        const { projectId, userId } = req.params;
+        const project = req.project;
+        const { userId } = req.params;
 
-        const project = await Project.findOne({ _id: projectId, owner: req.user._id });
-        if (!project) return res.status(404).json({ error: "Project not found or access denied." });
+        const usersColConfig = project.collections.find(c => c.name === 'users');
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-        const collection = await getAuthCollection(project);
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
 
-        const user = await collection.findOne({ _id: new mongoose.Types.ObjectId(userId) });
+        const user = await Model.findOne(
+            { _id: new mongoose.Types.ObjectId(userId) },
+            { password: 0 }
+        ).lean();
         if (!user) return res.status(404).json({ error: "User not found" });
 
-        const { password, ...safeUser } = user;
-
-        res.json(safeUser);
+        res.json(user);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -428,34 +436,26 @@ module.exports.getUserDetails = async (req, res) => {
 // PUT REQ FOR UPDATE ADMIN USER
 module.exports.updateAdminUser = async (req, res) => {
     try {
-        const { projectId, userId } = req.params;
+        const project = req.project;
+        const { userId } = req.params;
         const updateData = req.body;
-
-        const project = await Project.findOne({ _id: projectId, owner: req.user._id });
-        if (!project) return res.status(404).json({ error: "Project not found or access denied." });
 
         delete updateData.password;
         delete updateData._id;
 
         const sanitizedUpdateData = sanitize(updateData);
 
-        // Validate against Mongoose Model
+        // Get Mongoose Model
         const usersColConfig = project.collections.find(c => c.name === 'users');
-        if (usersColConfig) {
-            const connection = await getConnection(project._id);
-            const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
-            // We use { validateModifiedOnly: true } for updates
-            const validationError = new Model(sanitizedUpdateData).validateSync({ validateModifiedOnly: true });
-            if (validationError) {
-                return res.status(400).json({ error: validationError.message });
-            }
-        }
+        if (!usersColConfig) return res.status(404).json({ error: "Auth collection not found" });
 
-        const collection = await getAuthCollection(project);
+        const connection = await getConnection(project._id);
+        const Model = getCompiledModel(connection, usersColConfig, project._id, project.resources.db.isExternal);
 
-        const result = await collection.updateOne(
+        const result = await Model.updateOne(
             { _id: new mongoose.Types.ObjectId(userId) },
-            { $set: sanitizedUpdateData }
+            { $set: sanitizedUpdateData },
+            { runValidators: true }
         );
 
         if (result.matchedCount === 0) {
