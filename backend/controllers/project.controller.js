@@ -900,25 +900,12 @@ module.exports.toggleAuth = async (req, res) => {
         if (!project) return res.status(404).json({ error: "Project not found" });
 
         if (enable) {
-            let usersCol = project.collections.find(c => c.name === 'users');
-            if (!usersCol) {
-                usersCol = {
-                    name: 'users',
-                    model: [
-                        { key: 'email', type: 'String', required: true },
-                        { key: 'username', type: 'String', required: false },
-                        { key: 'password', type: 'String', required: true },
-                        { key: 'emailVerified', type: 'Boolean', required: false }
-                    ]
-                };
-                project.collections.push(usersCol);
-            } else {
-                if (!validateUsersSchema(usersCol.model)) {
-                    return res.status(422).json({ 
-                        error: "Invalid Users Schema",
-                        message: "The 'users' collection must have required 'email' and 'password' string fields. Please fix the schema before enabling Auth." 
-                    });
-                }
+            const usersCol = project.collections.find(c => c.name === 'users');
+            if (usersCol && !validateUsersSchema(usersCol.model)) {
+                return res.status(422).json({ 
+                    error: "Invalid Users Schema",
+                    message: "The 'users' collection must have required 'email' and 'password' string fields. Please fix the schema before enabling Auth." 
+                });
             }
         }
 

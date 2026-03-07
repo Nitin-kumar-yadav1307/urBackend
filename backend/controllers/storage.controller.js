@@ -1,5 +1,6 @@
 const { getStorage } = require("../utils/storage.manager");
 const { randomUUID } = require("crypto");
+const Project = require("../models/Project");
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -50,8 +51,10 @@ module.exports.uploadFile = async (req, res) => {
         if (uploadError) throw uploadError;
 
         if (!external) {
-            project.storageUsed += file.size;
-            await project.save();
+            await Project.updateOne(
+                { _id: project._id },
+                { $inc: { storageUsed: file.size } }
+            );
         }
 
         const { data: publicUrlData } = supabase.storage
@@ -117,11 +120,10 @@ module.exports.deleteFile = async (req, res) => {
         if (deleteError) throw deleteError;
 
         if (!external && fileSize > 0) {
-            project.storageUsed = Math.max(
-                0,
-                project.storageUsed - fileSize
+            await Project.updateOne(
+                { _id: project._id },
+                { $inc: { storageUsed: -fileSize } }
             );
-            await project.save();
         }
 
         return res.json({ message: "File deleted successfully" });
@@ -173,15 +175,17 @@ module.exports.deleteAllFiles = async (req, res) => {
         }
 
         // Reset usage only for internal storage
-        if (!isExternalStorage(project)) {
-            project.storageUsed = 0;
-            await project.save();
+        if (!isExternal(project)) {
+            await Project.updateOne(
+                { _id: project._id },
+                { $set: { storageUsed: 0 } }
+            );
         }
 
         res.json({
             success: true,
             deleted: deletedCount,
-            provider: isExternalStorage(project) ? "external" : "internal"
+            provider: isExternal(project) ? "external" : "internal"
         });
 
     } catch (err) {
