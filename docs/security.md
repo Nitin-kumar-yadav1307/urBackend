@@ -19,7 +19,7 @@ We use two distinct types of API keys to prevent accidental data leaks:
 ## Protection Mechanisms
 
 ### 1. NoSQL Injection Prevention
-Our API automatically sanitizes all incoming JSON to remove NoSQL operators (keys starting with `$`). This prevents attackers from bypassing checks using techniques like `{"$gt": ""}`.
+Our API sanitizes top-level incoming JSON keys that start with `$`. Nested objects should still be validated carefully until recursive sanitization is added.
 
 ### 2. Rate Limiting
 To prevent DDoS attacks and brute-force attempts:
