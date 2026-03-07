@@ -4,6 +4,8 @@
 
 urBackend is built for speed and developer freedom. Whether you're using our managed infrastructure or **Bringing Your Own MongoDB**, the setup experience is designed to be seamless.
 
+## 1. Create a Project
+
 Head over to the [urBackend Dashboard](https://urbackend.bitbros.in) and create a new project. You'll instantly receive two keys:
 
 - **Publishable Key (`pk_live_...`)**: Used for frontend requests (Read-Only).
