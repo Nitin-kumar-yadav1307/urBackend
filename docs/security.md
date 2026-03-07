@@ -24,7 +24,7 @@ Our API sanitizes top-level incoming JSON keys that start with `$`. Nested objec
 ### 2. Rate Limiting
 To prevent DDoS attacks and brute-force attempts:
 - **Global API**: Limited to **100 requests per 15 minutes** per IP.
-- **Auth Endpoints**: Strictly monitored for repeated failed login attempts.
+- **Auth Endpoints**: Protected by a stricter per-IP request limit.
 
 ### 3. Domain Whitelisting
 In your dashboard, you can restrict API access to specific domains. When enabled, urBackend will reject any request that doesn't originate from your allowed list.
