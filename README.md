@@ -75,6 +75,14 @@ graph LR
 Explore our [Architecture Diagram](ARCHITECTURE_DIAGRAM.md) to understand the system design, core components, and data flow in detail.
 
 ---
+
+## 🏠 Self-Hosting
+
+Want to run your own instance? Follow the step-by-step guide to deploy urBackend to **Render** (backend) and **Vercel** (frontend) using free-tier services — no Docker required.
+
+👉 **[DEPLOYMENT.md](DEPLOYMENT.md)**
+
+---
 ## 🤝 Community
 
 Join hundreds of developers building faster without the backend headaches.
