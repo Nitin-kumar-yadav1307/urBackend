@@ -1,0 +1,22 @@
+const express = require('express');
+const router = express.Router();
+const authorization = require('../middlewares/authMiddleware');
+const { getAllReleases, createRelease } = require('../controllers/release.controller');
+const RateLimit = require('express-rate-limit');
+
+const getAllReleasesLimiter = RateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000, 
+});
+
+// GET FOR - ALL RELEASES (Public)
+router.get('/', getAllReleasesLimiter, getAllReleases);
+
+const createReleaseLimiter = RateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5 , 
+});
+// POST FOR - CREATE RELEASE
+router.post('/', createReleaseLimiter, authorization, createRelease);
+
+module.exports = router;

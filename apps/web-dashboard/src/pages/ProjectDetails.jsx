@@ -26,8 +26,9 @@ function ProjectDetails() {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setProject(res.data);
-            } catch {
+            } catch (err){
                 toast.error("Failed to load project details");
+                console.error(err)
             } finally {
                 setLoading(false);
             }

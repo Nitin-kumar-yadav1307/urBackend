@@ -141,27 +141,7 @@ if (process.env.NODE_ENV !== 'test') {
 
     const PORT = process.env.PORT || 1234;
 
-    const connectDB = async () => {
-        try {
-            await mongoose.connect(process.env.MONGO_URL);
-            console.log("✅ MongoDB Connected");
-        } catch (err) {
-            console.error("❌ MongoDB Connection Error:", err);
-            // Retry logic
-            setTimeout(connectDB, 5000);
-        }
-    };
-
-    // Runtime Errors
-    mongoose.connection.on('error', (err) => {
-        console.error("🔥 MongoDB Runtime Error:", err);
-    });
-
-    // Auto-Reconnect
-    mongoose.connection.on('disconnected', () => {
-        console.warn("⚠️ MongoDB Disconnected. Retrying...");
-        connectDB();
-    });
+    const { connectDB } = require('../../../packages/common/src/config/db');
 
     // Start DB & Server
     connectDB();
