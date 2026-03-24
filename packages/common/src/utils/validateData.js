@@ -61,13 +61,15 @@ function validateField(value, field) {
 // Validate incoming data against schema rules
 // Returns { error } or { cleanData }
 function validateData(incomingData, schemaRules) {
-    const cleanData = {};
+    const cleanData = { ...incomingData }; // Start with all data
     for (const field of schemaRules) {
         const value = incomingData[field.key];
 
         const error = validateField(value, field);
         if (error) return { error };
 
+        // Ensure defined fields are present if required (handled by validateField)
+        // cleanData already has it, but we can be explicit
         if (value !== undefined) {
             cleanData[field.key] = value;
         }
@@ -77,10 +79,10 @@ function validateData(incomingData, schemaRules) {
 
 // Validate partial update data (non-required fields can be missing)
 function validateUpdateData(incomingData, schemaRules) {
-    const updateData = {};
+    const updateData = { ...incomingData }; // Start with all data
     for (const key in incomingData) {
         const fieldRule = schemaRules.find(f => f.key === key);
-        if (!fieldRule) continue;
+        if (!fieldRule) continue; // Allow extra fields
 
         const value = incomingData[key];
         // For updates, don't enforce 'required' — only validate type

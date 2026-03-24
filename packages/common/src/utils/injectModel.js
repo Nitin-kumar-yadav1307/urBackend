@@ -64,7 +64,7 @@ function buildMongooseSchema(fieldsArray) {
     fieldsArray.forEach(field => {
         schemaDef[field.key] = buildFieldDef(field);
     });
-    return new mongoose.Schema(schemaDef, { timestamps: true });
+    return new mongoose.Schema(schemaDef, { timestamps: true, strict: false });
 }
 
 
