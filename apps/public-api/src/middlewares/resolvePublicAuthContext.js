@@ -13,7 +13,7 @@ module.exports = (req, res, next) => {
         return next();
     }
 
-    const token = authHeader.replace(/^bearer\s+/i, '');
+    const token = authHeader.replace(/^bearer\s+/i, '').trim();
     if (!token) return next();
 
     try {
