@@ -66,17 +66,17 @@ const sendTokenResponse = async (user, statusCode, res) => {
 async function createAndStoreOtp(userId) {
     const otp = crypto.randomInt(100000, 1000000).toString();
     
-    await otpSchema.deleteOne({ userId });
+    await Otp.deleteOne({ userId });
 
     const salt = await bcrypt.genSalt(10);
     const hashedOtp = await bcrypt.hash(otp, salt);
 
-    await new otpSchema({ userId, otp: hashedOtp }).save();
+    await new Otp({ userId, otp: hashedOtp }).save();
     return otp;
 }
 
 async function validateOtp(userId, passedOtp) {
-    const otpDoc = await otpSchema.findOne({ userId });
+    const otpDoc = await Otp.findOne({ userId });
     if (!otpDoc) throw { status: 400, message: "No OTP found. Please request a new one." };
 
     if (otpDoc.attempts >= OTP_MAX_ATTEMPTS) {

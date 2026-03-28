@@ -7,8 +7,11 @@ module.exports = function (req, res, next) {
     // Fallback to Authorization header (For CLI/API)
     if (!token) {
         const authHeader = req.header('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.split(' ')[1];
+        if (authHeader) {
+            const parts = authHeader.trim().split(/\s+/);
+            if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+                token = parts[1];
+            }
         }
     }
 
