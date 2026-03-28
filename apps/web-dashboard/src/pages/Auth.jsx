@@ -142,6 +142,15 @@ export default function Auth() {
 
     const usersCollection = project?.collections?.find(c => c.name === 'users');
     const hasUserCollection = !!usersCollection;
+    const normalizedUsersFields = (usersCollection?.model || []).map((f) => ({
+        key: String(f?.key || '').replace(/\uFEFF/g, '').trim().toLowerCase(),
+        type: String(f?.type || '').trim().toLowerCase(),
+        required: f?.required === true
+    }));
+    const hasHiddenPasswordField = !normalizedUsersFields.some((f) => f.key === 'password');
+    const hasRequiredUsersSchema =
+        normalizedUsersFields.some((f) => f.key === 'email' && f.type === 'string' && f.required) &&
+        (hasHiddenPasswordField || normalizedUsersFields.some((f) => f.key === 'password' && f.type === 'string' && f.required));
 
     const getApiErrorMessage = (err, fallback) => {
         const data = err?.response?.data;
@@ -208,6 +217,10 @@ export default function Auth() {
         } finally {
             setIsEnabling(false);
         }
+    };
+
+    const goToUsersSchemaPreset = () => {
+        navigate(`/project/${projectId}/create-collection?name=users&preset=auth-users`);
     };
 
 // POST REQ FOR ADD USER (ADMIN)
@@ -394,6 +407,34 @@ export default function Auth() {
                 </div>
             )}
 
+            {project?.isAuthEnabled && hasUserCollection && !hasRequiredUsersSchema && (
+                <div style={{
+                    background: 'rgba(255, 189, 46, 0.1)',
+                    border: '1px solid rgba(255, 189, 46, 0.2)',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    marginBottom: '2rem',
+                    display: 'flex',
+                    gap: '1rem',
+                    alignItems: 'center'
+                }}>
+                    <AlertCircle color="#FFBD2E" size={24} style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                        <h4 style={{ color: '#FFBD2E', margin: '0 0 5px 0', fontSize: '1rem', fontWeight: 600 }}>Users Schema Needs Required Fields</h4>
+                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+                            Your <strong>"users"</strong> collection exists, but Auth needs <code>email</code> and <code>password</code> as required <code>String</code> fields.
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                            onClick={goToUsersSchemaPreset}
+                        >
+                            Open Prefilled Users Schema
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Users Table or Enable UI */}
             {!project?.isAuthEnabled ? (
                 <div className="card" style={{ padding: '6rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
@@ -404,6 +445,15 @@ export default function Auth() {
                     <p style={{ maxWidth: '400px', margin: '0 auto 2rem auto', color: 'var(--color-text-muted)', lineHeight: '1.6' }}>
                         Activate the built-in authentication system to manage users, handle signups, and securely generate JWT tokens via your API.
                     </p>
+                    {!hasUserCollection && (
+                        <button
+                            className="btn btn-secondary"
+                            onClick={goToUsersSchemaPreset}
+                            style={{ padding: '10px 20px', fontSize: '0.9rem', marginBottom: '0.85rem' }}
+                        >
+                            Setup Users Schema (Prefilled)
+                        </button>
+                    )}
                     <button 
                         className="btn btn-primary" 
                         onClick={handleEnableAuth} 

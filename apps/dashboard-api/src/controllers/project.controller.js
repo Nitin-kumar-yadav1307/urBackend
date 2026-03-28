@@ -19,11 +19,30 @@ const { v4: uuidv4 } = require('uuid');
 const { getPublicIp } = require("@urbackend/common");
 
 const normalizeFieldKey = (key) => String(key || '').replace(/\uFEFF/g, '').trim();
+const normalizeFieldType = (type) => String(type || '').trim().toLowerCase();
+const isRequiredField = (required) => (
+    required === true ||
+    required === 1 ||
+    String(required).trim().toLowerCase() === 'true' ||
+    String(required).trim() === '1'
+);
+
+const toPlainObject = (value) => {
+    if (!value || typeof value !== 'object') return value;
+    if (typeof value.toObject === 'function') {
+        return value.toObject({ depopulate: true });
+    }
+    if (value._doc && typeof value._doc === 'object') {
+        return { ...value._doc };
+    }
+    return value;
+};
 
 const sanitizeSchemaFields = (schema = []) => {
     if (!Array.isArray(schema)) return [];
     return schema
-        .map((field) => {
+        .map((rawField) => {
+            const field = toPlainObject(rawField);
             if (!field || typeof field !== 'object') return null;
             const normalizedKey = normalizeFieldKey(field.key);
             if (!normalizedKey) return null;
@@ -46,8 +65,16 @@ const sanitizeSchemaFields = (schema = []) => {
 const validateUsersSchema = (schema) => {
     if (!Array.isArray(schema)) return false;
     const sanitizedSchema = sanitizeSchemaFields(schema);
-    const hasEmail = sanitizedSchema.find(f => f.key === 'email' && f.type === 'String' && f.required);
-    const hasPassword = sanitizedSchema.find(f => f.key === 'password' && f.type === 'String' && f.required);
+    const hasEmail = sanitizedSchema.find((f) =>
+        normalizeFieldKey(f.key).toLowerCase() === 'email' &&
+        normalizeFieldType(f.type) === 'string' &&
+        isRequiredField(f.required)
+    );
+    const hasPassword = sanitizedSchema.find((f) =>
+        normalizeFieldKey(f.key).toLowerCase() === 'password' &&
+        normalizeFieldType(f.type) === 'string' &&
+        isRequiredField(f.required)
+    );
     return !!(hasEmail && hasPassword);
 };
 
@@ -956,6 +983,7 @@ module.exports.toggleAuth = async (req, res) => {
         // Ensure user owns project
         const project = await Project.findOne({ _id: projectId, owner: req.user._id });
         if (!project) return res.status(404).json({ error: "Project not found" });
+        // console.log(project)
 
         if (enable) {
             const usersCol = project.collections.find(c => c.name === 'users');

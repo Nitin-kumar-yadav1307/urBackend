@@ -334,13 +334,14 @@ function CreateCollection() {
 
     const queryParams = new URLSearchParams(location.search);
     const initialName = queryParams.get('name')?.trim().toLowerCase() || '';
+    const preset = queryParams.get('preset')?.trim().toLowerCase() || '';
 
     const [name, setName] = useState(initialName === 'users' ? 'users' : initialName);
 
     // Default fields for a new collection
     // If it's a "users" collection, we provide the essential Auth fields
     const getInitialFields = () => {
-        if (initialName === 'users') {
+        if (initialName === 'users' || preset === 'auth-users') {
             return [
                 { ...createEmptyField(), key: 'email', type: 'String', required: true, locked: true },
                 { ...createEmptyField(), key: 'password', type: 'String', required: true, locked: true },
