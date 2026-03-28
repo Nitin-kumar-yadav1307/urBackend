@@ -59,6 +59,7 @@ const res = await fetch('https://api.urbackend.bitbros.in/api/data/products', {
 ```
 
 By default, publishable keys are read-focused. Write operations require a secret key unless you enable collection-level RLS (owner-write-only), in which case publishable writes also require `Authorization: Bearer <user_jwt>`.
+For user accounts, use `/api/userAuth/*`; direct `/api/data/users*` access is blocked.
 
 ---
 

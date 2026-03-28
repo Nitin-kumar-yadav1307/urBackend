@@ -9,6 +9,10 @@ All database endpoints follow the pattern:
 
 Replace `:collectionName` with the name of your collection (e.g., `posts`, `comments`, `inventory`).
 
+> [!IMPORTANT]
+> The `users` collection is managed through `/api/userAuth/*` endpoints.
+> Direct users access via `/api/data/users*` is blocked.
+
 ## 1. Create a Document
 
 **Endpoint**: `POST /api/data/:collectionName`
@@ -21,6 +25,7 @@ If you enable **RLS (owner-write-only)** for a collection from the dashboard, pu
 - `Authorization: Bearer <user_jwt>`
 
 Under RLS, writes are permitted only for documents owned by the authenticated user (based on configured `ownerField`).
+If the `ownerField` is missing in a `POST` payload, urBackend can auto-fill it from the authenticated user id.
 
 ```javascript
 await fetch('https://api.ub.bitbros.in/api/data/posts', {

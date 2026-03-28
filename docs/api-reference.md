@@ -5,6 +5,11 @@
 | **Auth** | `POST` | `/api/userAuth/signup` | Register a new user |
 | **Auth** | `POST` | `/api/userAuth/login` | Log in and get JWT |
 | **Auth** | `GET` | `/api/userAuth/me` | Get current user profile |
+| **Auth** | `POST` | `/api/userAuth/verify-email` | Verify user email with OTP |
+| **Auth** | `POST` | `/api/userAuth/request-password-reset` | Request password reset OTP |
+| **Auth** | `POST` | `/api/userAuth/reset-password` | Reset user password with OTP |
+| **Auth** | `PUT` | `/api/userAuth/update-profile` | Update current user profile |
+| **Auth** | `PUT` | `/api/userAuth/change-password` | Change current user password |
 | **Data** | `GET` | `/api/data/:collectionName` | Get all documents in collection |
 | **Data** | `GET` | `/api/data/:collectionName/:id` | Get document by ID |
 | **Data** | `POST` | `/api/data/:collectionName` | Insert new document |
@@ -23,3 +28,9 @@
 - `403 Forbidden`: Resource limit (Quota) exceeded or blocked by RLS policy.
 - `404 Not Found`: Collection, document, or file does not exist.
 - `500 Server Error`: Unexpected problem on our end.
+
+## Key Behavior Notes
+
+- `pk_live` can always perform read requests on `/api/data/*`.
+- `pk_live` write requests on `/api/data/*` require collection-level RLS + user Bearer token.
+- `users` collection operations are routed through `/api/userAuth/*`; `/api/data/users*` is blocked.

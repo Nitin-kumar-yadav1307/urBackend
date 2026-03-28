@@ -70,3 +70,62 @@ await fetch('https://api.ub.bitbros.in/api/userAuth/me', {
 
 - **JWT Expiration**: Tokens expire after **7 days**. Ensure your frontend handles token refresh or re-login logic.
 - **Passwords**: Passwords are automatically hashed using **Bcrypt** before being stored. Even project owners cannot see raw user passwords.
+
+## How this relates to RLS and `pk_live`
+
+- `userAuth` endpoints (`/api/userAuth/*`) are the official way to create/login/manage end users.
+- The generic data API for users (`/api/data/users*`) is protected and should not be used for user management.
+- With `pk_live`, write access to non-users collections is:
+  - blocked by default,
+  - allowed only when collection-level RLS is enabled,
+  - and requires `Authorization: Bearer <user_jwt>`.
+
+## RLS Quick Test (2 minutes)
+
+Use this checklist to quickly verify collection-level RLS behavior on any non-`users` collection (example: `posts` with owner field `userId`).
+
+### 1) `pk_live` + no token => write should fail
+
+```bash
+curl -X POST "https://api.ub.bitbros.in/api/data/posts" ^
+  -H "Content-Type: application/json" ^
+  -H "x-api-key: pk_live_xxx" ^
+  -d "{\"content\":\"hello\"}"
+```
+
+Expected: `401/403` when RLS write auth is required.
+
+### 2) `pk_live` + user token + no `userId` => write should pass, owner auto-injected
+
+```bash
+curl -X POST "https://api.ub.bitbros.in/api/data/posts" ^
+  -H "Content-Type: application/json" ^
+  -H "x-api-key: pk_live_xxx" ^
+  -H "Authorization: Bearer USER_JWT" ^
+  -d "{\"content\":\"my first post\"}"
+```
+
+Expected: success (`200/201`) and response includes `userId` set to the authenticated user.
+
+### 3) `pk_live` + user token + different `userId` => write should fail
+
+```bash
+curl -X POST "https://api.ub.bitbros.in/api/data/posts" ^
+  -H "Content-Type: application/json" ^
+  -H "x-api-key: pk_live_xxx" ^
+  -H "Authorization: Bearer USER_JWT" ^
+  -d "{\"content\":\"blocked write\",\"userId\":\"SOMEONE_ELSE_ID\"}"
+```
+
+Expected: `403 Forbidden`.
+
+### 4) `sk_live` (server side) => bypass allowed
+
+```bash
+curl -X POST "https://api.ub.bitbros.in/api/data/posts" ^
+  -H "Content-Type: application/json" ^
+  -H "x-api-key: sk_live_xxx" ^
+  -d "{\"content\":\"server insert\",\"userId\":\"any_valid_user_id\"}"
+```
+
+Expected: success (`200/201`) from trusted backend context.

@@ -22,6 +22,8 @@ To get started, navigate to the **Database** tab in your dashboard and click **"
 > **⚠️ Note**: Write operations (POST, PUT, PATCH, DELETE) require your **Secret Key** by default and should be performed from a secure backend environment.
 >
 > If you enable collection-level **RLS** in the dashboard, publishable-key writes are allowed with `Authorization: Bearer <user_jwt>`, but only for the authenticated owner.
+>
+> The `users` collection is a special case and should be accessed via `/api/userAuth/*`, not `/api/data/users*`.
 
 
 ### Example: Storing a Product
