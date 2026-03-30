@@ -57,7 +57,7 @@ function createS3Adapter(config) {
                     },
                     list: async (folder, options = {}) => {
                         try {
-                            const prefix = folder.endsWith('/') ? folder : folder + '/';
+                            const prefix = folder ? (folder.endsWith('/') ? folder : folder + '/') : '';
                             let actualPrefix = prefix;
                             if (options.search) {
                                 actualPrefix = prefix + options.search;
@@ -102,6 +102,7 @@ async function getStorage(project) {
 
     const key = project._id.toString();
 
+    // CACHE - REUSE EXISTING CLIENT
     if (storageRegistry.has(key)) {
         const entry = storageRegistry.get(key);
         entry.lastUsed = Date.now();
@@ -110,6 +111,7 @@ async function getStorage(project) {
 
     let client;
 
+    // STORAGE - INTERNAL SUPABASE
     if (!project.resources?.storage?.isExternal) {
         client = defaultSupabase;
     } else {
@@ -138,6 +140,7 @@ async function getStorage(project) {
         }
     }
 
+    // REGISTRY - REGISTER CLIENT FOR POOLING
     storageRegistry.set(key, {
         client,
         lastUsed: Date.now(),

@@ -148,7 +148,7 @@ module.exports.updateExternalConfigSchema = z.object({
     storageKey: emptyToUndefined,
     storageProvider: z.enum(['supabase', 's3', 'cloudflare_r2']).optional(),
     
-    // AWS S3 / Cloudflare R2 specific fields
+    // SCHEMA - AWS S3 / CLOUDFLARE R2 FIELDS
     s3AccessKeyId: emptyToUndefined,
     s3SecretAccessKey: emptyToUndefined,
     s3Region: emptyToUndefined,
@@ -168,8 +168,8 @@ module.exports.updateExternalConfigSchema = z.object({
         if (!data.s3AccessKeyId || !data.s3SecretAccessKey || !data.s3Endpoint || !data.s3Bucket) return false;
     }
     
-    // Valid if we are updating DB URI alone, or valid storage config
-    return !!(data.dbUri || data.storageProvider);
+    // VALIDATION - REQUIRE DB URI OR STORAGE CONFIG
+    return !!(data.dbUri || data.storageProvider || (data.storageUrl && data.storageKey));
 }, {
     message: "Provide either a DB URI or a complete Storage config for the selected provider."
 });

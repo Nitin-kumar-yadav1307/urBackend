@@ -346,7 +346,7 @@ module.exports.updateExternalConfig = async (req, res) => {
                 updateData['resources.storage.isExternal'] = true;
             }
         } else if (storageUrl && storageKey) {
-            // Fallback for older clients sending only url and key without provider
+            // CONFIG - FALLBACK FOR LEGACY CLIENTS
             const storageConfig = {
                 storageProvider: 'supabase',
                 storageUrl,
