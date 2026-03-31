@@ -278,7 +278,11 @@ module.exports.updateExternalConfig = async (req, res) => {
 
         // POST FOR - EXTERNAL CONFIG
         const validatedData = updateExternalConfigSchema.parse(req.body);
-        const { dbUri, storageUrl, storageKey, storageProvider } = validatedData;
+        const { 
+            dbUri, 
+            storageUrl, storageKey, storageProvider,
+            s3AccessKeyId, s3SecretAccessKey, s3Region, s3Endpoint, s3Bucket, publicUrlHost
+        } = validatedData;
 
         const updateData = {};
 
@@ -312,11 +316,45 @@ module.exports.updateExternalConfig = async (req, res) => {
         }
 
         // STORAGE CONFIG
-        if (storageUrl && storageKey) {
+        if (storageProvider) {
+            let storageConfig = {};
+            
+            if (storageProvider === 'supabase') {
+                if (storageUrl && storageKey) {
+                    storageConfig = { storageProvider, storageUrl, storageKey };
+                }
+            } else if (storageProvider === 's3' || storageProvider === 'cloudflare_r2') {
+                if (s3AccessKeyId && s3SecretAccessKey && s3Bucket) {
+                    storageConfig = {
+                        storageProvider,
+                        accessKeyId: s3AccessKeyId,
+                        secretAccessKey: s3SecretAccessKey,
+                        bucket: s3Bucket,
+                        publicUrlHost
+                    };
+                    if (storageProvider === 's3') {
+                        storageConfig.region = s3Region;
+                    } else if (storageProvider === 'cloudflare_r2') {
+                        storageConfig.endpoint = s3Endpoint;
+                        storageConfig.region = 'auto';
+                    }
+                }
+            }
+
+            if (Object.keys(storageConfig).length > 0) {
+                updateData['resources.storage.config'] = encrypt(JSON.stringify(storageConfig));
+                updateData['resources.storage.isExternal'] = true;
+            } else {
+                return res.status(400).json({ 
+                    error: `Incomplete configuration for storage provider: ${storageProvider}. Please ensure all required keys for ${storageProvider === 'supabase' ? 'Supabase' : 'S3/R2'} are provided.` 
+                });
+            }
+        } else if (storageUrl && storageKey) {
+            // CONFIG - FALLBACK FOR LEGACY CLIENTS
             const storageConfig = {
+                storageProvider: 'supabase',
                 storageUrl,
-                storageKey,
-                storageProvider: storageProvider || 'supabase'
+                storageKey
             };
             updateData['resources.storage.config'] = encrypt(JSON.stringify(storageConfig));
             updateData['resources.storage.isExternal'] = true;
@@ -329,6 +367,9 @@ module.exports.updateExternalConfig = async (req, res) => {
         );
 
         if (!project) return res.status(404).json({ error: "Project not found or access denied." });
+
+        // CACHE - INVALIDATE STORAGE CLIENT
+        storageRegistry.delete(projectId.toString());
 
         res.status(200).json({ message: "External configuration updated successfully." });
     } catch (err) {
@@ -376,6 +417,8 @@ module.exports.deleteExternalStorageConfig = async (req, res) => {
         project.resources.storage.isExternal = false;
         project.resources.storage.config = null;
 
+        // CACHE - INVALIDATE
+        storageRegistry.delete(projectId.toString());
         await deleteProjectById(projectId);
         await setProjectById(projectId, project);
         await project.save();

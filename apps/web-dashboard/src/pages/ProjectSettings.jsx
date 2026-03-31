@@ -571,12 +571,20 @@ function DatabaseConfigForm({ project, projectId, onProjectUpdate }) {
   );
 }
 
+const INITIAL_STORAGE_CONFIG = {
+  storageProvider: "supabase",
+  storageUrl: "",
+  storageKey: "",
+  s3AccessKeyId: "",
+  s3SecretAccessKey: "",
+  s3Region: "",
+  s3Endpoint: "",
+  s3Bucket: "",
+  publicUrlHost: "",
+};
+
 function StorageConfigForm({ project, projectId, onProjectUpdate }) {
-  const [config, setConfig] = useState({
-    storageUrl: "",
-    storageKey: "",
-    storageProvider: "supabase",
-  });
+  const [config, setConfig] = useState(INITIAL_STORAGE_CONFIG);
   const [loading, setLoading] = useState(false);
   const isConfigured = project?.resources?.storage?.isExternal || false;
   const [showForm, setShowForm] = useState(!isConfigured);
@@ -587,12 +595,42 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
     setShowForm(!configured);
   }, [project]);
 
+  useEffect(() => {
+    // RESET - CLEAR OTHER PROVIDER FIELDS ON CHANGE
+    if (config.storageProvider === "supabase") {
+      setConfig(prev => ({
+        ...prev,
+        s3AccessKeyId: "",
+        s3SecretAccessKey: "",
+        s3Region: "",
+        s3Endpoint: "",
+        s3Bucket: "",
+        publicUrlHost: "",
+      }));
+    } else if (config.storageProvider === "s3" || config.storageProvider === "cloudflare_r2") {
+      setConfig(prev => ({
+        ...prev,
+        storageUrl: "",
+        storageKey: "",
+      }));
+    }
+  }, [config.storageProvider]);
+
   const handleChange = (e) =>
     setConfig({ ...config, [e.target.name]: e.target.value });
 
   const handleUpdate = async () => {
-    if (!config.storageUrl || !config.storageKey)
-      return toast.error("URL and Key are required");
+    if (config.storageProvider === "supabase") {
+      if (!config.storageUrl || !config.storageKey) return toast.error("URL and Key are required");
+    } else if (config.storageProvider === "s3") {
+      if (!config.s3AccessKeyId || !config.s3SecretAccessKey || !config.s3Region || !config.s3Bucket) {
+         return toast.error("S3 keys, region, and bucket are required");
+      }
+    } else if (config.storageProvider === "cloudflare_r2") {
+      if (!config.s3AccessKeyId || !config.s3SecretAccessKey || !config.s3Endpoint || !config.s3Bucket || !config.publicUrlHost) {
+         return toast.error("R2 keys, endpoint, bucket, and publicUrlHost are required");
+      }
+    }
 
     setLoading(true);
     try {
@@ -602,11 +640,7 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
       );
       toast.success("Storage configuration updated!");
       setShowForm(false);
-      setConfig({
-        storageUrl: "",
-        storageKey: "",
-        storageProvider: "supabase",
-      });
+      setConfig(INITIAL_STORAGE_CONFIG);
     } catch (err) {
       toast.error(
         err.response?.data?.error || "Failed to update Storage config"
@@ -617,11 +651,11 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
   };
 
   const handleRemove = async () => {
-    // Replaced window.confirm with modal state trigger
     setShowRemoveModal(true);
   };
 
   const executeRemove = async () => {
+    setLoading(true);
     try {
       await api.delete(
         `/api/projects/${projectId}/byod-config/storage`,
@@ -638,11 +672,7 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
           storage: { ...prev.resources.storage, isExternal: false }
         }
       }));
-      setConfig({
-        storageUrl: "",
-        storageKey: "",
-        storageProvider: "supabase",
-      });
+      setConfig(INITIAL_STORAGE_CONFIG);
       setShowForm(true);
 
     } catch (err) {
@@ -697,7 +727,7 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
             marginTop: "5px",
           }}
         >
-          Connect your own S3-compatible storage.
+          Connect your own Supabase, S3, or Cloudflare R2 storage.
         </p>
       </div>
 
@@ -751,74 +781,8 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
         </div>
       ) : (
         <div style={{ marginTop: "1rem", display: "grid", gap: "1.5rem" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "1.5rem",
-            }}
-          >
-            <div className="form-group">
-              <label
-                className="form-label"
-                style={{
-                  marginBottom: "8px",
-                  display: "block",
-                  fontSize: "0.9rem",
-                }}
-              >
-                Storage URL
-              </label>
-              <input
-                type="text"
-                name="storageUrl"
-                className="input-field"
-                value={config.storageUrl}
-                onChange={handleChange}
-                placeholder="https://..."
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "var(--color-bg-input)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              />
-            </div>
-            <div className="form-group">
-              <label
-                className="form-label"
-                style={{
-                  marginBottom: "8px",
-                  display: "block",
-                  fontSize: "0.9rem",
-                }}
-              >
-                Provider
-              </label>
-              <select
-                name="storageProvider"
-                className="input-field"
-                value={config.storageProvider}
-                onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "var(--color-bg-input)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "8px",
-                  color: "#fff",
-                }}
-              >
-                <option value="supabase">Supabase</option>
-                <option value="aws" disabled>
-                  AWS S3 (Coming Soon)
-                </option>
-              </select>
-            </div>
-          </div>
-          <div className="form-group">
+          
+          <div className="form-group" style={{ maxWidth: "300px" }}>
             <label
               className="form-label"
               style={{
@@ -827,15 +791,13 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
                 fontSize: "0.9rem",
               }}
             >
-              Storage Key / Service Role
+              Storage Provider
             </label>
-            <input
-              type="password"
-              name="storageKey"
+            <select
+              name="storageProvider"
               className="input-field"
-              value={config.storageKey}
+              value={config.storageProvider}
               onChange={handleChange}
-              placeholder="Key..."
               style={{
                 width: "100%",
                 padding: "12px",
@@ -843,16 +805,224 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
                 color: "#fff",
-                fontFamily: "monospace",
               }}
-            />
+            >
+              <option value="supabase">Supabase</option>
+              <option value="s3">AWS S3</option>
+              <option value="cloudflare_r2">Cloudflare R2</option>
+            </select>
           </div>
+
+          <div
+            style={{
+              padding: "1.5rem",
+              background: "rgba(255,255,255,0.02)",
+              borderRadius: "8px",
+              border: "1px solid var(--color-border)",
+              display: "grid",
+              gap: "1.2rem"
+            }}
+          >
+            {config.storageProvider === "supabase" && (
+              <>
+                <div className="form-group">
+                  <label className="form-label" style={{ marginBottom: "8px", display: "block", fontSize: "0.9rem" }}>
+                    Supabase Project URL
+                  </label>
+                  <input
+                    type="text"
+                    name="storageUrl"
+                    className="input-field"
+                    value={config.storageUrl}
+                    onChange={handleChange}
+                    placeholder="https://abc.supabase.co"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      background: "var(--color-bg-input)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "8px",
+                      color: "#fff",
+                    }}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ marginBottom: "8px", display: "block", fontSize: "0.9rem" }}>
+                    Service Role Key
+                  </label>
+                  <input
+                    type="password"
+                    name="storageKey"
+                    className="input-field"
+                    value={config.storageKey}
+                    onChange={handleChange}
+                    placeholder="eyJhb..."
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      background: "var(--color-bg-input)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "8px",
+                      color: "#fff",
+                      fontFamily: "monospace",
+                    }}
+                  />
+                </div>
+              </>
+            )}
+
+            {(config.storageProvider === "s3" || config.storageProvider === "cloudflare_r2") && (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.2rem", alignItems: "start" }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ marginBottom: "8px", display: "block", fontSize: "0.9rem" }}>
+                      Bucket Name
+                    </label>
+                    <input
+                      type="text"
+                      name="s3Bucket"
+                      className="input-field"
+                      value={config.s3Bucket}
+                      onChange={handleChange}
+                      placeholder="my-assets"
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        background: "var(--color-bg-input)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                      }}
+                    />
+                  </div>
+                  {config.storageProvider === "s3" ? (
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: "8px", display: "block", fontSize: "0.9rem" }}>
+                        Region
+                      </label>
+                      <input
+                        type="text"
+                        name="s3Region"
+                        className="input-field"
+                        value={config.s3Region}
+                        onChange={handleChange}
+                        placeholder="ap-south-1"
+                        style={{
+                          width: "100%",
+                          padding: "12px",
+                          background: "var(--color-bg-input)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: "8px",
+                          color: "#fff",
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="form-group">
+                      <label className="form-label" style={{ marginBottom: "8px", display: "block", fontSize: "0.9rem" }}>
+                        S3 API Endpoint
+                      </label>
+                      <input
+                        type="text"
+                        name="s3Endpoint"
+                        className="input-field"
+                        value={config.s3Endpoint}
+                        onChange={handleChange}
+                        placeholder="https://<account_id>.r2.cloudflarestorage.com"
+                        style={{
+                          width: "100%",
+                          padding: "12px",
+                          background: "var(--color-bg-input)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: "8px",
+                          color: "#fff",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.2rem" }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ marginBottom: "8px", display: "block", fontSize: "0.9rem" }}>
+                      Access Key ID
+                    </label>
+                    <input
+                      type="text"
+                      name="s3AccessKeyId"
+                      className="input-field"
+                      value={config.s3AccessKeyId}
+                      onChange={handleChange}
+                      placeholder="AKIA..."
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        background: "var(--color-bg-input)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        fontFamily: "monospace",
+                      }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ marginBottom: "8px", display: "block", fontSize: "0.9rem" }}>
+                      Secret Access Key
+                    </label>
+                    <input
+                      type="password"
+                      name="s3SecretAccessKey"
+                      className="input-field"
+                      value={config.s3SecretAccessKey}
+                      onChange={handleChange}
+                      placeholder="wJalr..."
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        background: "var(--color-bg-input)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        fontFamily: "monospace",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ marginBottom: "4px", display: "block", fontSize: "0.9rem" }}>
+                    Public URL Host / CDN Domain <span style={{ color: "var(--color-text-muted)", fontSize: "0.8rem" }}>{config.storageProvider === "cloudflare_r2" ? "(Required for R2)" : "(Optional)"}</span>
+                  </label>
+                  <span style={{ display: "block", marginBottom: "8px", fontSize: "0.8rem", color: "var(--color-text-muted)" }}>
+                    If you use a custom domain or CDN (e.g. CloudFront, R2 Dev Domain), enter it here.
+                  </span>
+                  <input
+                    type="text"
+                    name="publicUrlHost"
+                    className="input-field"
+                    value={config.publicUrlHost}
+                    onChange={handleChange}
+                    placeholder="https://cdn.my-company.com"
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      background: "var(--color-bg-input)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "8px",
+                      color: "#fff",
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
           <div
             style={{
               display: "flex",
               justifyContent: "flex-end",
               gap: "12px",
-              marginTop: "1rem",
+              marginTop: "0.5rem",
             }}
           >
             {isConfigured && (
