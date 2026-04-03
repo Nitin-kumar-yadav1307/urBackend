@@ -1,94 +1,101 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 // Encryption schema ko reuse karne ke liye alag se define kiya
-const resourceConfigSchema = new mongoose.Schema({
+const resourceConfigSchema = new mongoose.Schema(
+  {
     encrypted: { type: String, select: false },
     iv: { type: String, select: false },
-    tag: { type: String, select: false }
-}, { _id: false });
+    tag: { type: String, select: false },
+  },
+  { _id: false },
+);
 
 const fieldSchema = new mongoose.Schema({
-    key: { type: String, required: true },
-    type: {
-        type: String,
-        required: true,
-        enum: ['String', 'Number', 'Boolean', 'Date', 'Object', 'Array', 'Ref']
-    },
-    required: { type: Boolean, default: false },
-    // For type: 'Ref' — target collection name within the same project
-    ref: { type: String },
-    // For type: 'Array' — describes each array item { type, fields? }
-    items: { type: mongoose.Schema.Types.Mixed },
+  key: { type: String, required: true },
+  type: {
+    type: String,
+    required: true,
+    enum: ["String", "Number", "Boolean", "Date", "Object", "Array", "Ref"],
+  },
+  required: { type: Boolean, default: false },
+  unique: { type: Boolean, default: false },
+  // For type: 'Ref' — target collection name within the same project
+  ref: { type: String },
+  // For type: 'Array' — describes each array item { type, fields? }
+  items: { type: mongoose.Schema.Types.Mixed },
 });
+
 // For type: 'Object' — recursive sub-fields
 fieldSchema.add({ fields: [fieldSchema] });
 
 const collectionSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    model: [fieldSchema],
-    rls: {
-        enabled: { type: Boolean, default: false },
-        mode: {
-            type: String,
-            enum: ['owner-write-only'],
-            default: 'owner-write-only'
-        },
-        ownerField: { type: String, default: 'userId' },
-        requireAuthForWrite: { type: Boolean, default: true }
-    }
+  name: { type: String, required: true },
+  model: [fieldSchema],
+  rls: {
+    enabled: { type: Boolean, default: false },
+    mode: {
+      type: String,
+      enum: ["owner-write-only"],
+      default: "owner-write-only",
+    },
+    ownerField: { type: String, default: "userId" },
+    requireAuthForWrite: { type: Boolean, default: true },
+  },
 });
 
-const projectSchema = new mongoose.Schema({
+const projectSchema = new mongoose.Schema(
+  {
     name: { type: String, required: true },
     description: String,
     owner: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Developer'
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Developer",
     },
     publishableKey: {
-        type: String,
-        required: true,
-        unique: true
+      type: String,
+      required: true,
+      unique: true,
     },
     secretKey: {
-        type: String,
-        required: true,
-        unique: true
+      type: String,
+      required: true,
+      unique: true,
     },
     jwtSecret: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
     isAuthEnabled: { type: Boolean, default: false },
     collections: [collectionSchema],
 
     allowedDomains: {
-        type: [String],
-        default: ['*']
+      type: [String],
+      default: ["*"],
     },
 
     // STORAGE LIMITS (Files)
     storageUsed: { type: Number, default: 0 },
-    storageLimit: { type: Number, default: 20 * 1024 * 1024 }, // 20MB default
+    storageLimit: { type: Number, default: 20 * 1024 * 1024 },
 
     // DATABASE LIMITS (JSON Docs)
     databaseUsed: { type: Number, default: 0 },
-    databaseLimit: { type: Number, default: 20 * 1024 * 1024 }, // 20MB default
+    databaseLimit: { type: Number, default: 20 * 1024 * 1024 },
 
     // Granular Resources Structure
     resources: {
-        db: {
-            isExternal: { type: Boolean, default: false },
-            config: { type: resourceConfigSchema, default: null }
-        },
-        storage: {
-            isExternal: { type: Boolean, default: false },
-            config: { type: resourceConfigSchema, default: null }
-        }
-    }
-}, { timestamps: true });
+      db: {
+        isExternal: { type: Boolean, default: false },
+        config: { type: resourceConfigSchema, default: null },
+      },
+      storage: {
+        isExternal: { type: Boolean, default: false },
+        config: { type: resourceConfigSchema, default: null },
+      },
+    },
+  },
+  { timestamps: true },
+);
 
 projectSchema.index({ owner: 1 });
 
-
-module.exports = mongoose.model('Project', projectSchema);
+module.exports = mongoose.model("Project", projectSchema);
