@@ -5,6 +5,9 @@ const { getConnection } = require("@urbackend/common");
 const { getCompiledModel } = require("@urbackend/common");
 const { QueryEngine } = require("@urbackend/common");
 const { validateData, validateUpdateData } = require("@urbackend/common");
+const { performance } = require('perf_hooks');
+
+const isDebug = process.env.DEBUG === 'true';
 
 // Validate MongoDB ObjectId
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -16,7 +19,8 @@ const isDuplicateKeyError = (err) => {
 // INSERT DATA
 module.exports.insertData = async (req, res) => {
   try {
-    console.time("insert data");
+    let start;
+    if (isDebug) start = performance.now();
     const { collectionName } = req.params;
     const project = req.project;
 
@@ -60,7 +64,7 @@ module.exports.insertData = async (req, res) => {
       );
     }
 
-    console.timeEnd("insert data");
+    if (isDebug) console.log(`[DEBUG] insert data took ${(performance.now() - start).toFixed(2)}ms`);
     res.status(201).json(result);
   } catch (err) {
     console.error(err);
@@ -79,7 +83,8 @@ module.exports.insertData = async (req, res) => {
 // GET ALL DATA
 module.exports.getAllData = async (req, res) => {
   try {
-    console.time("getall");
+    let start;
+    if (isDebug) start = performance.now();
     const { collectionName } = req.params;
     const project = req.project;
 
@@ -103,7 +108,7 @@ module.exports.getAllData = async (req, res) => {
       .paginate();
 
     const data = await features.query.lean();
-    console.timeEnd("getall");
+    if (isDebug) console.log(`[DEBUG] getall took ${(performance.now() - start).toFixed(2)}ms`);
     res.json(data);
   } catch (err) {
     console.error(err);

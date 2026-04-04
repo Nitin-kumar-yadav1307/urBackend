@@ -99,7 +99,7 @@ module.exports.deleteFile = async (req, res) => {
         const external = isProjectStorageExternal(project);
         const bucket = getBucket(project);
 
-        if (!path.startsWith(`${project._id}/`)) {
+        if (!path.startsWith(`${project._id}/`) || path.split('/').includes('..')) {
             return res.status(403).json({ error: "Access denied." });
         }
 

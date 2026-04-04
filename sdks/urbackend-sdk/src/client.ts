@@ -10,14 +10,16 @@ export class UrBackendClient {
   private _auth?: AuthModule;
   private _db?: DatabaseModule;
   private _storage?: StorageModule;
+  private headers: Record<string, string>;
 
   constructor(config: UrBackendConfig) {
     this.apiKey = config.apiKey;
-    this.baseUrl = config.baseUrl || 'https://api.urbackend.bitbros.in';
+    this.baseUrl = config.baseUrl || 'https://api.ub.bitbros.in';
+    this.headers = config.headers || {};
 
     if (typeof window !== 'undefined') {
       console.warn(
-        '⚠️ urbackend-sdk: Avoid exposing your API key in client-side code. This can lead to unauthorized access to your account and data.',
+        '⚠️ urbackend-sdk: Avoid exposing your SK-API key in client-side code(instead use pk_live key). This can lead to unauthorized access to your account and data.',
       );
     }
   }
@@ -54,9 +56,8 @@ export class UrBackendClient {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       'x-api-key': this.apiKey,
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Origin': 'https://urbackend.bitbros.in',
-      'Referer': 'https://urbackend.bitbros.in/',
+      'User-Agent': `urbackend-sdk-js/0.1.1`,
+      ...this.headers,
     };
 
     if (options.token) {

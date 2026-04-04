@@ -1,6 +1,7 @@
 export interface UrBackendConfig {
   apiKey: string;
   baseUrl?: string;
+  headers?: Record<string, string>;
 }
 
 export interface RequestOptions {
