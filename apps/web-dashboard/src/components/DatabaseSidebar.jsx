@@ -30,18 +30,18 @@ export default function DatabaseSidebar({
                 <div className="sidebar-actions">
                     <button
                         className="btn-icon hide-desktop"
-	    				aria-label="Hide Desktop"
+                        aria-label="Close sidebar"
                         onClick={() => setIsSidebarOpen(false)}
                     >
-                        <X size={18} />
+                        <X size={18} aria-hidden="true" />
                     </button>
                     <button
                         className="btn-icon add-col-btn"
-	    				aria-label="Create New Collection"
+                        aria-label="Create new database collection"
                         onClick={() => navigate(`/project/${projectId}/create-collection`)}
                         title="New Collection"
                     >
-                        <Plus size={18} />
+                        <Plus size={18} aria-hidden="true" />
                     </button>
                 </div>
             </div>
@@ -52,7 +52,7 @@ export default function DatabaseSidebar({
                         <p>No collections yet.</p>
                         <button
                             className="btn btn-secondary btn-sm"
-							aria-label="Create New Collection"
+                            aria-label="Create your first collection"
                             onClick={() =>
                                 navigate(`/project/${projectId}/create-collection`)
                             }
@@ -75,7 +75,7 @@ export default function DatabaseSidebar({
                             <div className="flex items-center gap-2 ml-auto" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
                                 <button
                                     className="btn-icon delete-btn"
-			    	    			aria-label="Delete Collection"
+                                    aria-label="Delete Collection"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         if (onRequestDelete) onRequestDelete(c);

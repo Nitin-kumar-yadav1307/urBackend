@@ -181,28 +181,28 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                             className="btn-icon"
                             onClick={() => onView(info.row.original)}
                             onPointerDown={e => e.stopPropagation()}
-						   	aria-label="View Details"
+                            aria-label="View Details"
                             title="View Details"
                         >
-                            <Eye size={15} />
+                            <Eye size={15} aria-hidden="true" />
                         </button>
                         <button
                             className="btn-icon"
                             onClick={() => onEdit(info.row.original)}
                             onPointerDown={e => e.stopPropagation()}
-		    				aria-label="Edit Column"
+                            aria-label="Edit Record"
                             title="Edit"
                         >
-                            <Pencil size={15} />
+                            <Pencil size={15} aria-hidden="true" />
                         </button>
                         <button
                             className="btn-icon danger-hover"
                             onClick={() => onDelete(info.row.original._id)}
                             onPointerDown={e => e.stopPropagation()}
-			    			aria-label="Delete Column"
+                            aria-label="Delete Record"
                             title="Delete"
                         >
-                            <Trash2 size={15} />
+                            <Trash2 size={15} aria-hidden="true" />
                         </button>
                     </div>
                 ),
@@ -364,7 +364,7 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                 <div style={{ position: 'relative' }}>
                     <button
                         className="btn btn-secondary btn-sm"
-						aria-label="Show Column Menu"
+                        aria-label={showColumnMenu ? "Close column menu" : "Open column menu"}
                         onClick={() => setShowColumnMenu(!showColumnMenu)}
                         style={{
                             display: 'flex',
@@ -375,7 +375,7 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                             background: showColumnMenu ? 'rgba(255,255,255,0.08)' : 'transparent'
                         }}
                     >
-                        <Settings2 size={14} />
+                        <Settings2 size={14} aria-hidden="true" />
                         COLUMNS
                     </button>
    {showColumnMenu && (
@@ -560,6 +560,7 @@ export default function CollectionTable({ data, activeCollection, onDelete, onVi
                         value={scrollState.scrollLeft}
                         onChange={handleSliderChange}
                         onInput={handleSliderChange}
+                        aria-label="Scroll table horizontally"
                         style={{ width: '100%', cursor: 'ew-resize' }}
                         className="column-slider"
                     />

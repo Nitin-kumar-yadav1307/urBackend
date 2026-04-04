@@ -23,11 +23,12 @@ export default function RecordList({ data, activeCollection, onView }) {
                         <div
                             key={record._id}
                             className="record-card glass-panel"
+                            aria-label={`View details for record ${record._id}`}
                             onClick={() => onView(record)}
                         >
                             <div className="record-main-info">
                                 <div className="record-header">
-                                    <span className="record-index">#{index + 1}</span>
+                                    <span className="record-index" aria-hidden="true">#{index + 1}</span>
                                     <span className="record-id font-mono">{record._id.substring(0, 8)}...</span>
                                 </div>
 
@@ -47,9 +48,9 @@ export default function RecordList({ data, activeCollection, onView }) {
                                 </div>
                             </div>
 
-                            <div className="record-actions">
+                            <div className="record-actions" aria-hidden="true">
                                 <button className="btn-icon">
-                                    <ArrowRight size={18} />
+                                    <ArrowRight size={18} aria-hidden="true" />
                                 </button>
                             </div>
                         </div>
