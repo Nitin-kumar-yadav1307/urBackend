@@ -156,7 +156,7 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                     ))}
                 </select>
 
-                {/* Required checkbox */}
+                {/* Required Checkbox */}
                 <div style={{ width: '24px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
                     <input
                         type="checkbox"
@@ -172,7 +172,7 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                     />
                 </div>
 
-                {/* Unique checkbox */}
+                {/* Unique Checkbox */}
                 <div style={{ width: '24px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
                     {depth === 1 && PRIMITIVE_TYPES.includes(field.type) ? (
                         <input
@@ -192,7 +192,7 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                     )}
                 </div>
 
-                {/* Delete button */}
+                {/* Delete Button */}
                 <button
                     type="button"
                     onClick={() => onRemove(index)}
@@ -210,7 +210,7 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                 </button>
             </div>
 
-            {/* Ref — collection picker */}
+            {/* Ref — Collection Picker */}
             {field.type === 'Ref' && (
                 <div style={{ marginLeft: '26px', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
