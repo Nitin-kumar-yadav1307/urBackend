@@ -188,7 +188,7 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                             }}
                         />
                     ) : (
-                        <div />
+                        <div aria-hidden="true" />
                     )}
                 </div>
 
