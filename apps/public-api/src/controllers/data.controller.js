@@ -102,8 +102,15 @@ module.exports.getAllData = async (req, res) => {
       project.resources.db.isExternal,
     );
 
+    const baseFilter = req.rlsFilter && typeof req.rlsFilter === 'object' ? req.rlsFilter : {};
     const features = new QueryEngine(Model.find(), req.query)
-      .filter()
+      .filter();
+
+    if (Object.keys(baseFilter).length > 0) {
+      features.query = features.query.and([baseFilter]);
+    }
+
+    features
       .sort()
       .paginate();
 
@@ -140,7 +147,8 @@ module.exports.getSingleDoc = async (req, res) => {
       project.resources.db.isExternal,
     );
 
-    const doc = await Model.findById(id).lean();
+    const baseFilter = req.rlsFilter && typeof req.rlsFilter === 'object' ? req.rlsFilter : {};
+    const doc = await Model.findOne({ $and: [{ _id: id }, baseFilter] }).lean();
     if (!doc) return res.status(404).json({ error: "Document not found." });
 
     res.json(doc);

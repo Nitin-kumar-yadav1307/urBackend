@@ -31,7 +31,9 @@ module.exports = async (req, res, next) => {
             });
         }
 
-        if ((rls.mode || 'owner-write-only') !== 'owner-write-only') {
+        const modeRaw = rls.mode || 'public-read';
+        const allowedModes = new Set(['public-read', 'private', 'owner-write-only']);
+        if (!allowedModes.has(modeRaw)) {
             return res.status(403).json({ error: 'Unsupported RLS mode' });
         }
 

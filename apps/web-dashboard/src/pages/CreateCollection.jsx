@@ -16,7 +16,7 @@ const ALL_TYPES = [...PRIMITIVE_TYPES, 'Object', 'Array', 'Ref'];
 const ARRAY_ITEM_TYPES = [...PRIMITIVE_TYPES, 'Object', 'Ref'];
 
 function createEmptyField() {
-    return { _id: nextFieldId(), key: '', type: 'String', required: false };
+    return { _id: nextFieldId(), key: '', type: 'String', required: false, unique: false };
 }
 
 // FUNCTION - FIELD ROW COMPONENT
@@ -34,10 +34,13 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
             delete updated.ref;
             if (value === 'Object') {
                 updated.fields = [createEmptyField()];
+                updated.unique = false;
             } else if (value === 'Array') {
                 updated.items = { type: 'String' };
+                updated.unique = false;
             } else if (value === 'Ref') {
                 updated.ref = '';
+                updated.unique = false;
             }
         }
         onChange(index, updated);
@@ -153,20 +156,43 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                     ))}
                 </select>
 
-                {/* Required checkbox */}
-                <input
-                    type="checkbox"
-                    checked={field.required}
-                    disabled={field.locked}
-                    onChange={(e) => handleChange('required', e.target.checked)}
-                    style={{
-                        accentColor: 'var(--color-primary)',
-                        transform: 'scale(1.1)', cursor: field.locked ? 'not-allowed' : 'pointer', flexShrink: 0,
-                        opacity: field.locked ? 0.6 : 1
-                    }}
-                />
+                {/* Required Checkbox */}
+                <div style={{ width: '24px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+                    <input
+                        type="checkbox"
+                        aria-label="required"
+                        checked={field.required}
+                        disabled={field.locked}
+                        onChange={(e) => handleChange('required', e.target.checked)}
+                        style={{
+                            accentColor: 'var(--color-primary)',
+                            transform: 'scale(1.1)', cursor: field.locked ? 'not-allowed' : 'pointer',
+                            opacity: field.locked ? 0.6 : 1
+                        }}
+                    />
+                </div>
 
-                {/* Delete button */}
+                {/* Unique Checkbox */}
+                <div style={{ width: '24px', flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+                    {depth === 1 && PRIMITIVE_TYPES.includes(field.type) ? (
+                        <input
+                            type="checkbox"
+                            aria-label="unique"
+                            checked={!!field.unique}
+                            disabled={field.locked}
+                            onChange={(e) => handleChange('unique', e.target.checked)}
+                            style={{
+                                accentColor: 'var(--color-primary)',
+                                transform: 'scale(1.1)', cursor: field.locked ? 'not-allowed' : 'pointer',
+                                opacity: field.locked ? 0.6 : 1
+                            }}
+                        />
+                    ) : (
+                        <div aria-hidden="true" />
+                    )}
+                </div>
+
+                {/* Delete Button */}
                 <button
                     type="button"
                     onClick={() => onRemove(index)}
@@ -184,7 +210,7 @@ function FieldRow({ field, index, depth, collections, onChange, onRemove }) {
                 </button>
             </div>
 
-            {/* Ref — collection picker */}
+            {/* Ref — Collection Picker */}
             {field.type === 'Ref' && (
                 <div style={{ marginLeft: '26px', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
@@ -481,6 +507,7 @@ function CreateCollection() {
                         <span style={{ flex: 2 }}>NAME</span>
                         <span style={{ flex: 1 }}>TYPE</span>
                         <span style={{ width: '24px', textAlign: 'center' }}>REQ</span>
+                        <span style={{ width: '24px', textAlign: 'center' }}>UNIQ</span>
                         <span style={{ width: '30px' }}></span>
                     </div>
 

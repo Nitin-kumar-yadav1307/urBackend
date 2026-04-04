@@ -140,7 +140,7 @@ This demo is now **PK-first** and aligned with the latest public APIs:
 For each writable collection (`posts`, `comments`, `likes`, `follows`, `profiles`):
 
 - `enabled: true`
-- `mode: owner-write-only`
+- `mode: public-read`
 - `ownerField: userId`
 - `requireAuthForWrite: true`
 

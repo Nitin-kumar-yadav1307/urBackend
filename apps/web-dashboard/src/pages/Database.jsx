@@ -59,6 +59,7 @@ export default function Database() {
   });
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [rlsEnabled, setRlsEnabled] = useState(false);
+  const [rlsMode, setRlsMode] = useState("public-read");
   const [rlsOwnerField, setRlsOwnerField] = useState("userId");
   const [isSavingRls, setIsSavingRls] = useState(false);
   const [isRlsDialogOpen, setIsRlsDialogOpen] = useState(false);
@@ -109,13 +110,14 @@ export default function Database() {
           } else {
             derivedOwnerField = schemaKeys[0] || '';
           }
+          const resolvedMode = c.rls?.mode === 'owner-write-only' ? 'public-read' : (c.rls?.mode || 'public-read');
           return {
             ...c,
-            rls: c.rls || {
-              enabled: false,
-              mode: "owner-write-only",
-              ownerField: derivedOwnerField,
-              requireAuthForWrite: true
+            rls: {
+              enabled: typeof c.rls?.enabled === 'boolean' ? c.rls.enabled : false,
+              mode: resolvedMode,
+              ownerField: c.rls?.ownerField || derivedOwnerField,
+              requireAuthForWrite: typeof c.rls?.requireAuthForWrite === 'boolean' ? c.rls.requireAuthForWrite : true
             }
           };
         });
@@ -191,7 +193,11 @@ export default function Database() {
     const fallbackOwner = activeCollection.name === 'users'
       ? '_id'
       : (modelKeys.includes('userId') ? 'userId' : (modelKeys.includes('ownerId') ? 'ownerId' : 'userId'));
+    const resolvedMode = activeCollection?.rls?.mode === 'owner-write-only'
+      ? 'public-read'
+      : (activeCollection?.rls?.mode || 'public-read');
     setRlsEnabled(!!activeCollection?.rls?.enabled);
+    setRlsMode(resolvedMode);
     setRlsOwnerField(activeCollection?.rls?.ownerField || fallbackOwner);
   }, [activeCollection]);
 
@@ -203,7 +209,7 @@ export default function Database() {
         `/api/projects/${projectId}/collections/${activeCollection.name}/rls`,
         {
           enabled: rlsEnabled,
-          mode: "owner-write-only",
+          mode: rlsMode,
           ownerField: rlsOwnerField,
           requireAuthForWrite: true
         }
@@ -211,7 +217,7 @@ export default function Database() {
 
       const updatedRls = res.data?.collection?.rls || {
         enabled: rlsEnabled,
-        mode: "owner-write-only",
+        mode: rlsMode,
         ownerField: rlsOwnerField,
         requireAuthForWrite: true
       };
@@ -766,7 +772,7 @@ export default function Database() {
             </div>
 
             <p className="rls-dialog-subtitle">
-              Collection: <strong>{activeCollection.name}</strong> | Mode: <strong>owner-write-only</strong>
+              Collection: <strong>{activeCollection.name}</strong> | Mode: <strong>{rlsMode}</strong>
             </p>
 
             <label className="rls-checkbox-row">
@@ -776,8 +782,29 @@ export default function Database() {
                 onChange={(e) => setRlsEnabled(e.target.checked)}
                 style={{ accentColor: "var(--color-primary)" }}
               />
-              <span>Enable RLS for publishable-key writes</span>
+              <span>Enable RLS access rules for publishable-key requests</span>
             </label>
+            <p className="rls-help-text">
+              {rlsMode === "private"
+                ? "When enabled, publishable-key access is restricted to the owner for both reads and writes."
+                : "When enabled, publishable-key writes are restricted to the owner. Reads remain available according to the selected access mode."}
+            </p>
+
+            <div className="rls-owner-field-group">
+              <label htmlFor="rls-mode">Access Mode</label>
+              <select
+                id="rls-mode"
+                value={rlsMode}
+                onChange={(e) => setRlsMode(e.target.value)}
+                className="form-input"
+              >
+                <option value="public-read">public-read (anyone reads, owner writes)</option>
+                <option value="private">private (owner reads and writes)</option>
+              </select>
+              <p className="rls-help-text">
+                Use <strong>public-read</strong> for posts/blogs that should be readable by anyone. Use <strong>private</strong> for personal settings and user-owned data.
+              </p>
+            </div>
 
             <div className="rls-owner-field-group">
               <label htmlFor="rls-owner-field">Owner Field</label>

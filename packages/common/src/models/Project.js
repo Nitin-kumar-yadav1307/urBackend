@@ -35,8 +35,8 @@ const collectionSchema = new mongoose.Schema({
     enabled: { type: Boolean, default: false },
     mode: {
       type: String,
-      enum: ["owner-write-only"],
-      default: "owner-write-only",
+      enum: ["public-read", "private", "owner-write-only"],
+      default: "public-read",
     },
     ownerField: { type: String, default: "userId" },
     requireAuthForWrite: { type: Boolean, default: true },

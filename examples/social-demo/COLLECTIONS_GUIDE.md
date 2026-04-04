@@ -63,7 +63,7 @@ createdAt           | Date    | No       | Date.now
 
 **RLS settings for `posts` (required):**
 - enabled: `true`
-- mode: `owner-write-only`
+- mode: `public-read`
 - ownerField: `userId`
 - requireAuthForWrite: `true`
 
@@ -93,7 +93,7 @@ updatedAt           | Date    | No       | No     | Date.now
 
 **RLS settings for `profiles` (required):**
 - enabled: `true`
-- mode: `owner-write-only`
+- mode: `public-read`
 - ownerField: `userId`
 - requireAuthForWrite: `true`
 
@@ -119,7 +119,7 @@ createdAt           | Date    | No       | Date.now
 
 **RLS settings for `comments` (required):**
 - enabled: `true`
-- mode: `owner-write-only`
+- mode: `public-read`
 - ownerField: `userId`
 - requireAuthForWrite: `true`
 
@@ -142,7 +142,7 @@ createdAt     | Date    | No       | Date.now
 
 **RLS settings for `likes` (required):**
 - enabled: `true`
-- mode: `owner-write-only`
+- mode: `public-read`
 - ownerField: `userId`
 - requireAuthForWrite: `true`
 
@@ -164,7 +164,7 @@ createdAt     | Date    | No       | Date.now
 
 **RLS settings for `follows` (required):**
 - enabled: `true`
-- mode: `owner-write-only`
+- mode: `public-read`
 - ownerField: `userId`
 - requireAuthForWrite: `true`
 

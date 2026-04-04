@@ -3,6 +3,7 @@ const router = express.Router();
 const verifyApiKey = require('../middlewares/verifyApiKey');
 const resolvePublicAuthContext = require('../middlewares/resolvePublicAuthContext');
 const authorizeWriteOperation = require('../middlewares/authorizeWriteOperation');
+const authorizeReadOperation = require('../middlewares/authorizeReadOperation');
 const projectRateLimiter = require('../middlewares/projectRateLimiter');
 const blockUsersCollectionDataAccess = require('../middlewares/blockUsersCollectionDataAccess');
 const { insertData, getAllData, getSingleDoc, updateSingleData, deleteSingleDoc } = require("../controllers/data.controller")
@@ -13,11 +14,11 @@ router.post('/:collectionName', verifyApiKey, blockUsersCollectionDataAccess, re
 
 
 // GET REQ ALL DATA
-router.get('/:collectionName', verifyApiKey, blockUsersCollectionDataAccess, projectRateLimiter, getAllData);
+router.get('/:collectionName', verifyApiKey, blockUsersCollectionDataAccess, resolvePublicAuthContext, projectRateLimiter, authorizeReadOperation, getAllData);
 
 
 // GET REQ SINGLE DATA
-router.get('/:collectionName/:id', verifyApiKey, blockUsersCollectionDataAccess, projectRateLimiter, getSingleDoc);
+router.get('/:collectionName/:id', verifyApiKey, blockUsersCollectionDataAccess, resolvePublicAuthContext, projectRateLimiter, authorizeReadOperation, getSingleDoc);
 
 
 // DELETE REQ SINGLE DATA
