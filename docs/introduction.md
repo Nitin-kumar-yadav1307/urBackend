@@ -40,9 +40,10 @@ Every project gets two keys with different trust levels.
 
 ## Row-Level Security (RLS)
 
-RLS allows `pk_live` clients (e.g., a browser app) to write data while ensuring users can only modify their own documents.
+RLS allows `pk_live` clients (e.g., a browser app) to write data while ensuring users can only modify their own documents. It also controls read access when enabled.
 
-**RLS is configured per collection** in the Dashboard. The current mode is `owner-write-only`.
+**RLS is configured per collection** in the Dashboard. Modes:
+`public-read` (anyone reads, owner writes) and `private` (owner reads and writes). `owner-write-only` is treated as `public-read` for legacy projects.
 
 ### How RLS enforces ownership
 
@@ -53,6 +54,9 @@ When a `pk_live` request arrives for a write operation:
 3. For **inserts (POST)**: If the document body omits the owner field (e.g., `userId`), it is automatically injected. If it is present but doesn't match the JWT's `userId`, the request is rejected with `403`.
 4. For **updates/deletes (PUT/PATCH/DELETE)**: The existing document's owner field is fetched and compared against the JWT's `userId`. Mismatches return `403`.
 5. Attempts to change the owner field in a PATCH/PUT body are also rejected (`403 Owner field immutable`).
+
+For reads:
+`public-read` allows anyone to read, while `private` requires a valid user token and restricts results to the owner's documents.
 
 ### RLS behavior matrix
 

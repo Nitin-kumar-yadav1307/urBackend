@@ -26,9 +26,12 @@ Implication:
 ### 1.1 What V1 Will Support
 
 For each collection, enable an RLS mode:
-- `owner-write-only` policy:
-  - Publishable key writes are allowed only if authenticated end-user is writing their own document.
+- `public-read` policy:
+  - Anyone can read.
+  - Publishable key writes are allowed only if the authenticated end-user is writing their own document.
   - Ownership is checked by a configured field (e.g. `userId`, `ownerId`, `_id` for users collection).
+- `private` policy:
+  - Only the owner can read and write (requires a valid user token).
 
 Write ops covered in V1:
 - `POST`
@@ -37,7 +40,8 @@ Write ops covered in V1:
 - `DELETE`
 
 Read behavior in V1:
-- Keep existing behavior unchanged initially (to reduce risk).
+- `public-read` keeps existing behavior for reads.
+- `private` filters reads by owner.
 
 ### 1.2 Data Model Changes
 
@@ -47,7 +51,7 @@ Suggested shape:
 ```js
 collection.rls = {
   enabled: Boolean,
-  mode: "owner-write-only",
+  mode: "public-read",
   ownerField: "userId",
   requireAuthForWrite: true
 }
@@ -96,7 +100,7 @@ For `PUT/PATCH/DELETE`:
 In web dashboard:
 - Add collection-level RLS section:
   - Enable/disable RLS toggle.
-  - Mode selector (only `owner-write-only` in V1).
+  - Mode selector (`public-read` or `private` in V1).
   - Owner field selector (from schema fields).
   - Save config.
 
@@ -242,7 +246,7 @@ Implementation approach:
 
 ### Regression checks
 - Existing dashboard admin flows unaffected.
-- Read endpoints unaffected in V1.
+- Public-read collections keep existing read behavior.
 
 ---
 
@@ -276,7 +280,6 @@ Add request logs for denied writes with:
 
 To keep V1 low-risk:
 - No complex expression parser.
-- No read-side row filtering yet.
 - No multi-policy conflict resolution engine.
 
 ---

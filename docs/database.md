@@ -19,13 +19,16 @@ Replace `:collectionName` with the name of your collection (e.g., `posts`, `comm
 
 By default, write operations require your **secret key**.
 
-If you enable **RLS (owner-write-only)** for a collection from the dashboard, publishable-key writes are also allowed but must include a valid user token:
+If you enable **RLS** for a collection from the dashboard, publishable-key writes are also allowed but must include a valid user token:
 
 - `x-api-key: pk_live_...`
 - `Authorization: Bearer <user_jwt>`
 
 Under RLS, writes are permitted only for documents owned by the authenticated user (based on configured `ownerField`).
 If the `ownerField` is missing in a `POST` payload, urBackend can auto-fill it from the authenticated user id.
+
+RLS read modes:
+`public-read` lets anyone read, while `private` restricts reads to the owner's documents and requires a valid user token.
 
 ```javascript
 await fetch('https://api.ub.bitbros.in/api/data/posts', {

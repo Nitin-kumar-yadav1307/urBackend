@@ -92,14 +92,15 @@ Understanding which key to use—and when—prevents the most common integration
 
 ## 🛡️ Row-Level Security (RLS)
 
-RLS lets you safely allow frontend clients to write data without exposing your secret key. When enabled on a collection, `pk_live` writes are gated by user ownership.
+RLS lets you safely allow frontend clients to write data without exposing your secret key. When enabled on a collection, `pk_live` writes are gated by user ownership and reads can be scoped by mode.
 
 **How it works:**
 
-1. Enable RLS for a collection in the Dashboard (mode: `owner-write-only`).
-2. Choose the **owner field** — the document field that stores the authenticated user's ID (e.g., `userId`).
-3. The client must send a valid user JWT in the `Authorization: Bearer <token>` header.
-4. urBackend enforces that the JWT's `userId` matches the document's owner field.
+1. Enable RLS for a collection in the Dashboard and choose a mode.
+2. Use `public-read` for content anyone can view, or `private` for owner-only access. (`owner-write-only` is treated as `public-read` for legacy projects.)
+3. Choose the **owner field** — the document field that stores the authenticated user's ID (e.g., `userId`).
+4. The client must send a valid user JWT in the `Authorization: Bearer <token>` header for `pk_live` writes and for `private` reads.
+5. urBackend enforces that the JWT's `userId` matches the document's owner field.
 
 **Example — user creates a post:**
 

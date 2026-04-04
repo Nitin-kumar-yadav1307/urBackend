@@ -120,7 +120,7 @@ const getDefaultRlsForCollection = (collectionName, schema = []) => {
 
   return {
     enabled: false,
-    mode: "owner-write-only",
+    mode: "public-read",
     ownerField,
     requireAuthForWrite: true,
   };
@@ -1305,9 +1305,10 @@ module.exports.updateCollectionRls = async (req, res) => {
         const collection = project.collections.find(c => c.name === collectionName);
         if (!collection) return res.status(404).json({ error: "Collection not found" });
 
-        const validMode = mode || collection?.rls?.mode || 'owner-write-only';
-        if (validMode !== 'owner-write-only') {
-            return res.status(400).json({ error: "Unsupported RLS mode. Only 'owner-write-only' is allowed in V1." });
+        const validMode = mode || collection?.rls?.mode || 'public-read';
+        const allowedModes = new Set(['public-read', 'private', 'owner-write-only']);
+        if (!allowedModes.has(validMode)) {
+            return res.status(400).json({ error: "Unsupported RLS mode. Allowed: public-read, private, owner-write-only (legacy)." });
         }
 
         const modelKeys = (collection.model || [])
