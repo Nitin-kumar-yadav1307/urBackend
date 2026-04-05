@@ -129,6 +129,12 @@ const getDefaultRlsForCollection = (collectionName, schema = []) => {
 
 const SOCIAL_PROVIDER_KEYS = ["github", "google"];
 
+/**
+ * Sanitizes authProviders from a project document for safe API responses.
+ * Strips clientSecret fields and replaces them with a boolean hasClientSecret flag.
+ * @param {Object} authProviders - Raw authProviders from the project document
+ * @returns {Object} Sanitized providers keyed by provider name
+ */
 const sanitizeAuthProviders = (authProviders = {}) => {
   return SOCIAL_PROVIDER_KEYS.reduce((acc, provider) => {
     const config = authProviders?.[provider] || {};
@@ -1091,7 +1097,19 @@ module.exports.updateProject = async (req, res) => {
       }
       if (siteUrl) {
         try {
-          new URL(siteUrl);
+          const parsed = new URL(siteUrl);
+          if (
+            parsed.protocol !== "https:" &&
+            !(
+              parsed.protocol === "http:" &&
+              parsed.hostname === "localhost"
+            )
+          ) {
+            return res.status(400).json({
+              error:
+                "Site URL must use HTTPS (or http://localhost for local development).",
+            });
+          }
         } catch {
           return res.status(400).json({ error: "Invalid Site URL format." });
         }
@@ -1322,6 +1340,11 @@ module.exports.toggleAuth = async (req, res) => {
   }
 };
 
+/**
+ * Updates GitHub/Google OAuth provider settings for a project.
+ * Preserves existing encrypted client secrets when not provided in the update.
+ * @route PUT /api/projects/:projectId/auth-providers
+ */
 module.exports.updateAuthProviders = async (req, res) => {
   try {
     const { projectId } = req.params;

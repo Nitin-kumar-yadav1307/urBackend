@@ -331,7 +331,7 @@ console.log(data);
                                 <strong>Step 3:</strong> Paste that callback URL into the provider console, create your OAuth app, then copy the <code>Client ID</code> and <code>Client Secret</code> back into urBackend.
                             </p>
                             <p style={{ fontSize: '0.9rem', color: '#e5e5e5', marginBottom: 0 }}>
-                                <strong>Step 4:</strong> Enable the provider and save. After login, urBackend redirects users back to <code>&lt;Site URL&gt;/auth/callback</code>.
+                                <strong>Step 4:</strong> Enable the provider and save. After login, urBackend redirects users to <code>&lt;Site URL&gt;/auth/callback</code> with the access token in the URL fragment (<code>#token=...</code>) — read it from <code>window.location.hash</code> and exchange the <code>rtCode</code> query param for a refresh token via <code>POST /api/userAuth/social/exchange</code>.
                             </p>
                         </div>
                     </div>

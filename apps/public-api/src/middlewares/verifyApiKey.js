@@ -7,7 +7,7 @@ const {
 
 module.exports = async (req, res, next) => {
     try {
-        const apiKey = req.header('x-api-key');
+        const apiKey = req.header('x-api-key') || req.query.key;
         if (!apiKey) {
             return res.status(401).json({ error: 'API key not found' });
         }

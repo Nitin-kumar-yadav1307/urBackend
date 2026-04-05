@@ -66,7 +66,25 @@ module.exports.createProjectSchema = z.object({
   description: z.string().optional(),
   siteUrl: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
-    z.string().url("Invalid Site URL format").optional(),
+    z
+      .string()
+      .url("Invalid Site URL format")
+      .refine(
+        (url) => {
+          try {
+            const parsed = new URL(url);
+            return (
+              parsed.protocol === "https:" ||
+              (parsed.protocol === "http:" &&
+                parsed.hostname === "localhost")
+            );
+          } catch {
+            return false;
+          }
+        },
+        "Site URL must use HTTPS (or http://localhost for local development)",
+      )
+      .optional(),
   ),
 });
 

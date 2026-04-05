@@ -25,6 +25,10 @@ const SOCIAL_PROVIDER_KEYS = ['github', 'google'];
 const SOCIAL_STATE_TTL_SECONDS = 600;
 const SOCIAL_REFRESH_EXCHANGE_TTL_SECONDS = 60;
 
+/**
+ * Returns the public API base URL from env or defaults to localhost.
+ * @returns {string}
+ */
 const getPublicApiBaseUrl = () => {
     const configured = process.env.PUBLIC_API_URL?.trim();
     if (configured) return configured.replace(/\/$/, '');
@@ -32,15 +36,45 @@ const getPublicApiBaseUrl = () => {
     return `http://localhost:${port}`;
 };
 
+/**
+ * Returns the Redis key for OAuth state CSRF protection.
+ * @param {string} state - Random state token
+ * @returns {string}
+ */
 const getSocialStateKey = (state) => `project:auth:oauth:state:${state}`;
+
+/**
+ * Returns the Redis key for a one-time social refresh token exchange code.
+ * @param {string} rtCode - One-time exchange code
+ * @returns {string}
+ */
 const getSocialRefreshExchangeKey = (rtCode) => `project:social-auth:refresh-exchange:${rtCode}`;
+
+/**
+ * Returns the frontend OAuth callback URL for a project.
+ * Falls back to FRONTEND_URL env or localhost when siteUrl is not set.
+ * @param {Object} project - Project document
+ * @returns {string}
+ */
 const getFrontendCallbackBaseUrl = (project) => {
     const configured = String(project?.siteUrl || '').trim();
     const base = configured || process.env.FRONTEND_URL || 'http://localhost:5173';
     return `${base.replace(/\/$/, '')}/auth/callback`;
 };
+
+/**
+ * Decodes a base64url-encoded string into a Buffer.
+ * @param {string} input - Base64url encoded string
+ * @returns {Buffer}
+ */
 const toBase64UrlBuffer = (input) => Buffer.from(input.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(input.length / 4) * 4, '='), 'base64');
 
+/**
+ * Asserts that a project has auth enabled and a valid users collection schema.
+ * Throws with an appropriate statusCode on failure.
+ * @param {Object} project - Lean project document
+ * @returns {Object} The users collection config
+ */
 const assertAuthProjectReady = (project) => {
     if (!project?.isAuthEnabled) {
         const err = new Error('Authentication service is disabled');
@@ -68,6 +102,12 @@ const assertAuthProjectReady = (project) => {
     return usersCollection;
 };
 
+/**
+ * Loads and decrypts a social provider's config for a project.
+ * @param {string} projectId - Project ObjectId
+ * @param {string} provider - 'github' or 'google'
+ * @returns {Promise<{project: Object, providerConfig: Object|null}|null>}
+ */
 const getSocialProviderConfig = async (projectId, provider) => {
     const selectClause = `name resources collections jwtSecret isAuthEnabled authProviders.${provider} +authProviders.${provider}.clientSecret.encrypted +authProviders.${provider}.clientSecret.iv +authProviders.${provider}.clientSecret.tag`;
     const project = await Project.findById(projectId).select(selectClause).lean();
@@ -94,6 +134,14 @@ const getSocialProviderConfig = async (projectId, provider) => {
     };
 };
 
+/**
+ * Builds the GitHub OAuth authorization URL.
+ * @param {Object} params
+ * @param {string} params.clientId
+ * @param {string} params.redirectUri
+ * @param {string} params.state - CSRF state token
+ * @returns {string}
+ */
 const buildGithubAuthorizeUrl = ({ clientId, redirectUri, state }) => {
     const params = new URLSearchParams({
         client_id: clientId,
@@ -104,6 +152,14 @@ const buildGithubAuthorizeUrl = ({ clientId, redirectUri, state }) => {
     return `https://github.com/login/oauth/authorize?${params.toString()}`;
 };
 
+/**
+ * Builds the Google OAuth authorization URL.
+ * @param {Object} params
+ * @param {string} params.clientId
+ * @param {string} params.redirectUri
+ * @param {string} params.state - CSRF state token
+ * @returns {string}
+ */
 const buildGoogleAuthorizeUrl = ({ clientId, redirectUri, state }) => {
     const params = new URLSearchParams({
         client_id: clientId,
@@ -117,6 +173,15 @@ const buildGoogleAuthorizeUrl = ({ clientId, redirectUri, state }) => {
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 };
 
+/**
+ * Exchanges a GitHub OAuth authorization code for an access token.
+ * @param {Object} params
+ * @param {string} params.code
+ * @param {string} params.clientId
+ * @param {string} params.clientSecret
+ * @param {string} params.redirectUri
+ * @returns {Promise<{accessToken: string, tokenType: string}>}
+ */
 const exchangeGithubCodeForToken = async ({ code, clientId, clientSecret, redirectUri }) => {
     const response = await fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
@@ -143,6 +208,15 @@ const exchangeGithubCodeForToken = async ({ code, clientId, clientSecret, redire
     };
 };
 
+/**
+ * Exchanges a Google OAuth authorization code for tokens including an id_token.
+ * @param {Object} params
+ * @param {string} params.code
+ * @param {string} params.clientId
+ * @param {string} params.clientSecret
+ * @param {string} params.redirectUri
+ * @returns {Promise<Object>} Google token response including id_token
+ */
 const exchangeGoogleCodeForToken = async ({ code, clientId, clientSecret, redirectUri }) => {
     const params = new URLSearchParams({
         code,
@@ -168,6 +242,12 @@ const exchangeGoogleCodeForToken = async ({ code, clientId, clientSecret, redire
     return payload;
 };
 
+/**
+ * Fetches and normalizes the GitHub user profile using an OAuth access token.
+ * Prefers verified primary emails for account linking.
+ * @param {string} accessToken - GitHub OAuth access token
+ * @returns {Promise<{providerUserId: string, email: string, emailVerified: boolean, name: string, avatarUrl: string}>}
+ */
 const fetchGithubProfile = async (accessToken) => {
     const headers = {
         'Authorization': `Bearer ${accessToken}`,
@@ -202,6 +282,13 @@ const fetchGithubProfile = async (accessToken) => {
     };
 };
 
+/**
+ * Verifies a Google id_token using Google's public JWK keys.
+ * @param {Object} params
+ * @param {string} params.idToken - Google JWT id_token
+ * @param {string} params.clientId - OAuth client ID for audience validation
+ * @returns {Promise<Object>} Decoded JWT claims
+ */
 const verifyGoogleIdToken = async ({ idToken, clientId }) => {
     const parts = String(idToken || '').split('.');
     if (parts.length !== 3) {
@@ -254,6 +341,13 @@ const verifyGoogleIdToken = async ({ idToken, clientId }) => {
     return payload;
 };
 
+/**
+ * Fetches and normalizes the Google user profile from an id_token.
+ * @param {Object} params
+ * @param {string} params.idToken - Google JWT id_token
+ * @param {string} params.clientId - OAuth client ID
+ * @returns {Promise<{providerUserId: string, email: string, emailVerified: boolean, name: string, avatarUrl: string}>}
+ */
 const fetchGoogleProfile = async ({ idToken, clientId }) => {
     const claims = await verifyGoogleIdToken({ idToken, clientId });
     return {
@@ -283,6 +377,13 @@ const socialProviders = {
     },
 };
 
+/**
+ * Builds a new user document payload for a social-auth-created user.
+ * Generates a random hashed password to satisfy the users schema contract.
+ * @param {Object} usersColConfig - Users collection config from project
+ * @param {Object} profile - Normalized social profile
+ * @returns {Promise<Object>} User document fields
+ */
 const buildSocialAuthUserPayload = async (usersColConfig, profile) => {
     const randomPassword = crypto.randomBytes(24).toString('hex');
     const salt = await bcrypt.genSalt(10);
@@ -302,6 +403,17 @@ const buildSocialAuthUserPayload = async (usersColConfig, profile) => {
     );
 };
 
+/**
+ * Finds an existing user by provider ID or verified email, or creates a new user.
+ * Only links by email when profile.emailVerified is true to prevent account takeover.
+ * @param {Object} params
+ * @param {Object} params.project - Project document
+ * @param {Object} params.usersColConfig - Users collection config
+ * @param {Object} params.Model - Mongoose model for the users collection
+ * @param {string} params.provider - 'github' or 'google'
+ * @param {Object} params.profile - Normalized social profile
+ * @returns {Promise<{user: Object, isNewUser: boolean, linkedByEmail: boolean}>}
+ */
 const findOrCreateSocialUser = async ({ project, usersColConfig, Model, provider, profile }) => {
     const providerIdField = `${provider}Id`;
     const providerName = provider;
@@ -350,6 +462,11 @@ const findOrCreateSocialUser = async ({ project, usersColConfig, Model, provider
     return { user, isNewUser: true, linkedByEmail: false };
 };
 
+/**
+ * Loads the compiled Mongoose model for the users collection.
+ * @param {Object} project - Lean project document
+ * @returns {Promise<{usersColConfig: Object|null, Model: Object|null}>}
+ */
 const getUsersModel = async (project) => {
     const usersColConfig = project.collections.find(c => c.name === 'users');
     if (!usersColConfig) return { usersColConfig: null, Model: null };
@@ -358,11 +475,22 @@ const getUsersModel = async (project) => {
     return { usersColConfig, Model };
 };
 
+/**
+ * Checks whether a required field key exists in the users collection schema.
+ * @param {Object} usersColConfig - Users collection config
+ * @param {string} fieldKey - Field key to check
+ * @returns {boolean}
+ */
 const hasRequiredField = (usersColConfig, fieldKey) => {
     const model = usersColConfig?.model || [];
     return model.some((f) => f?.key === fieldKey && !!f?.required);
 };
 
+/**
+ * Returns the name of the email verification field in the users schema, if it exists.
+ * @param {Object} usersColConfig - Users collection config
+ * @returns {string|null}
+ */
 const getVerificationField = (usersColConfig) => {
     const modelKeys = (usersColConfig?.model || []).map((f) => f?.key);
     if (modelKeys.includes('emailVerified')) return 'emailVerified';
@@ -371,6 +499,14 @@ const getVerificationField = (usersColConfig) => {
     return null;
 };
 
+/**
+ * Builds a complete user document payload for signup, including email, username, and verified field.
+ * @param {Object} usersColConfig - Users collection config
+ * @param {Object} parsedData - Validated user input
+ * @param {string} hashedPassword - BCrypt-hashed password
+ * @param {*} verifiedValue - Value to set on the verification field, if present
+ * @returns {Object} User document fields
+ */
 const buildAuthUserPayload = (usersColConfig, parsedData, hashedPassword, verifiedValue) => {
     const { email, password: _password, username, ...otherData } = parsedData;
 
@@ -414,6 +550,12 @@ const SENSITIVE_PROFILE_KEYS = [
     'refresh'
 ];
 
+/**
+ * Strips sensitive fields (password, provider secrets) from a user document for API responses.
+ * @param {Object} userDoc - Raw user document
+ * @param {Object} usersColConfig - Users collection config
+ * @returns {Object} Sanitized user object safe for public exposure
+ */
 const sanitizePublicProfile = (userDoc, usersColConfig) => {
     const result = { _id: userDoc._id };
     const schemaKeys = (usersColConfig?.model || []).map((f) => f?.key).filter(Boolean);
@@ -432,6 +574,12 @@ const sanitizePublicProfile = (userDoc, usersColConfig) => {
     return result;
 };
 
+/**
+ * Initiates the OAuth flow for a social auth provider.
+ * Generates a CSRF state token, stores it in Redis, and redirects to the provider's auth page.
+ * Requires x-api-key header or ?key query param and auth enabled on the project.
+ * @route GET /api/userAuth/social/:provider/start
+ */
 module.exports.startSocialAuth = async (req, res) => {
     try {
         const provider = String(req.params.provider || '').trim().toLowerCase();
@@ -475,6 +623,12 @@ module.exports.startSocialAuth = async (req, res) => {
     }
 };
 
+/**
+ * Handles the OAuth provider callback. Validates state, exchanges code, resolves/creates user,
+ * issues auth tokens, and redirects to the frontend callback URL.
+ * Access token is in the URL fragment (#token=...) to avoid server log exposure.
+ * @route GET /api/userAuth/social/:provider/callback
+ */
 module.exports.handleSocialAuthCallback = async (req, res) => {
     try {
         const provider = String(req.params.provider || '').trim().toLowerCase();
@@ -574,6 +728,11 @@ module.exports.handleSocialAuthCallback = async (req, res) => {
     }
 };
 
+/**
+ * Exchanges a one-time rtCode (from social auth callback) for a refresh token.
+ * Completes the OAuth token flow initiated by handleSocialAuthCallback.
+ * @route POST /api/userAuth/social/exchange
+ */
 module.exports.exchangeSocialRefreshToken = async (req, res) => {
     try {
         const rtCode = String(req.body?.rtCode || '').trim();
