@@ -7,7 +7,10 @@ const {
 
 module.exports = async (req, res, next) => {
     try {
-        const apiKey = req.header('x-api-key');
+        // x-api-key header is preferred. For browser-navigation endpoints (e.g. social OAuth start),
+        const headerKey = req.header('x-api-key');
+
+        const apiKey = headerKey;
         if (!apiKey) {
             return res.status(401).json({ error: 'API key not found' });
         }

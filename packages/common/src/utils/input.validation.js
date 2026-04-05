@@ -64,6 +64,28 @@ module.exports.resetPasswordSchema = z.object({
 module.exports.createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
   description: z.string().optional(),
+  siteUrl: z.preprocess(
+    (val) => (val === "" || val === null ? undefined : val),
+    z
+      .string()
+      .url("Invalid Site URL format")
+      .refine(
+        (url) => {
+          try {
+            const parsed = new URL(url);
+            return (
+              parsed.protocol === "https:" ||
+              (parsed.protocol === "http:" &&
+                parsed.hostname === "localhost")
+            );
+          } catch {
+            return false;
+          }
+        },
+        "Site URL must use HTTPS (or http://localhost for local development)",
+      )
+      .optional(),
+  ),
 });
 
 const buildFieldSchemaZod = (depth = 1) => {
@@ -336,6 +358,26 @@ module.exports.updateExternalConfigSchema = z
         "Provide either a DB URI or a complete Storage config for the selected provider.",
     },
   );
+
+const socialProviderConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  clientId: emptyToUndefined,
+  clientSecret: z
+    .string()
+    .optional()
+    .refine(
+      (val) => val === undefined || val.trim().length > 0,
+      { message: "clientSecret cannot be empty when provided." },
+    ),
+});
+
+module.exports.updateAuthProvidersSchema = z.object({
+  github: socialProviderConfigSchema.optional(),
+  google: socialProviderConfigSchema.optional(),
+}).refine(
+  (data) => !!(data.github || data.google),
+  { message: "Provide at least one social auth provider config." },
+);
 
 module.exports.userSignupSchema = z.object({
   username: z
