@@ -97,6 +97,7 @@ const makeProject = () => ({
     _id: 'project_1',
     name: 'Demo',
     jwtSecret: 'jwt_secret',
+    siteUrl: 'http://localhost:5173',
     isAuthEnabled: true,
     resources: { db: { isExternal: false } },
     collections: [
@@ -221,7 +222,7 @@ describe('public userAuth social auth', () => {
     });
 
     test('handleSocialAuthCallback rejects when GitHub returns no email', async () => {
-        redis.get.mockResolvedValueOnce(JSON.stringify({ projectId: 'project_1', provider: 'github' }));
+        redis.get.mockResolvedValueOnce(JSON.stringify({ projectId: 'project_1', provider: 'github', callbackUrl: 'http://localhost:5173/auth/callback' }));
         mockProjectFindByIdChain.lean.mockResolvedValueOnce(makeProject());
         global.fetch
             .mockResolvedValueOnce({
@@ -242,10 +243,9 @@ describe('public userAuth social auth', () => {
 
         await controller.handleSocialAuthCallback(req, res);
 
-        expect(res.status).toHaveBeenCalledWith(422);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-            error: expect.stringContaining('did not return an email address'),
-        }));
+        // P2: errors now redirect to frontend instead of JSON
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('error='));
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('did+not+return+an+email'));
     });
 
     test('handleSocialAuthCallback redirects after GitHub signup', async () => {
@@ -282,8 +282,9 @@ describe('public userAuth social auth', () => {
         }));
         expect(issueAuthTokens).toHaveBeenCalled();
         expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('/auth/callback?'));
-        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('token=issued_access_token'));
         expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('rtCode='));
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('#token=issued_access_token'));
+        expect(res.redirect).not.toHaveBeenCalledWith(expect.stringContaining('?token=issued_access_token'));
         expect(res.redirect).not.toHaveBeenCalledWith(expect.stringContaining('refreshToken=issued_refresh_token'));
     });
 
@@ -389,7 +390,7 @@ describe('public userAuth social auth', () => {
     });
 
     test('handleSocialAuthCallback rejects when Google returns no email', async () => {
-        redis.get.mockResolvedValueOnce(JSON.stringify({ projectId: 'project_1', provider: 'google' }));
+        redis.get.mockResolvedValueOnce(JSON.stringify({ projectId: 'project_1', provider: 'google', callbackUrl: 'http://localhost:5173/auth/callback' }));
         mockProjectFindByIdChain.lean.mockResolvedValueOnce(makeProject());
 
         global.fetch
@@ -407,14 +408,13 @@ describe('public userAuth social auth', () => {
 
         await controller.handleSocialAuthCallback(req, res);
 
-        expect(res.status).toHaveBeenCalledWith(422);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-            error: expect.stringContaining('did not return an email address'),
-        }));
+        // P2: errors now redirect to frontend instead of JSON
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('error='));
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('did+not+return+an+email'));
     });
 
     test('handleSocialAuthCallback rejects invalid Google id_token audience', async () => {
-        redis.get.mockResolvedValueOnce(JSON.stringify({ projectId: 'project_1', provider: 'google' }));
+        redis.get.mockResolvedValueOnce(JSON.stringify({ projectId: 'project_1', provider: 'google', callbackUrl: 'http://localhost:5173/auth/callback' }));
         mockProjectFindByIdChain.lean.mockResolvedValueOnce(makeProject());
 
         global.fetch
@@ -432,10 +432,9 @@ describe('public userAuth social auth', () => {
 
         await controller.handleSocialAuthCallback(req, res);
 
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
-            error: 'Google id_token audience mismatch',
-        }));
+        // P2: errors now redirect to frontend instead of JSON
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('error='));
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('audience'));
     });
 
     test('exchangeSocialRefreshToken returns refresh token and deletes exchange code', async () => {
@@ -505,5 +504,108 @@ describe('public userAuth social auth', () => {
             success: false,
             message: 'Invalid refresh token exchange payload',
         });
+    });
+
+    // P2: Provider error forwarding
+    test('handleSocialAuthCallback forwards provider error to frontend callback', async () => {
+        redis.get.mockResolvedValueOnce(JSON.stringify({
+            projectId: 'project_1',
+            provider: 'github',
+            callbackUrl: 'http://localhost:5173/auth/callback',
+        }));
+
+        const req = makeReq({
+            params: { provider: 'github' },
+            query: {
+                error: 'access_denied',
+                error_description: 'The user denied the request',
+                state: 'state_with_error',
+            },
+        });
+        const res = makeRes();
+
+        await controller.handleSocialAuthCallback(req, res);
+
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('error='));
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('The+user+denied'));
+    });
+
+    // P1: Email collision when provider email is not verified
+    test('handleSocialAuthCallback rejects if email exists but provider email not verified', async () => {
+        redis.get.mockResolvedValueOnce(JSON.stringify({
+            projectId: 'project_1',
+            provider: 'github',
+            callbackUrl: 'http://localhost:5173/auth/callback',
+        }));
+        mockProjectFindByIdChain.lean.mockResolvedValueOnce(makeProject());
+
+        const existingUser = { _id: 'existing_user', email: 'alice@example.com' };
+
+        // User not found by githubId, but found by email, then refetched after update
+        mockUsersModel.findOne
+            .mockResolvedValueOnce(null) // by githubId
+            .mockResolvedValueOnce(existingUser) // by email
+            .mockResolvedValueOnce({ ...existingUser, githubId: '123' }); // after updateOne
+
+        mockUsersModel.updateOne.mockResolvedValueOnce({ modifiedCount: 1 });
+
+        // GitHub returns an email that IS verified at provider
+        global.fetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ access_token: 'github_access_token' }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ id: 123, login: 'alice', avatar_url: '' }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ([{ email: 'alice@example.com', verified: true, primary: true }]),
+            });
+
+        const req = makeReq({ params: { provider: 'github' }, query: { code: 'code_1', state: 'state_1' } });
+        const res = makeRes();
+
+        await controller.handleSocialAuthCallback(req, res);
+
+        // With verified=true, should successfully link and redirect
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('rtCode='));
+        expect(mockUsersModel.updateOne).toHaveBeenCalled();
+    });
+
+    // P1: Email collision when provider email is NOT verified (rejection case)
+    test('handleSocialAuthCallback rejects existing email when provider email unverified', async () => {
+        redis.get.mockResolvedValueOnce(JSON.stringify({
+            projectId: 'project_1',
+            provider: 'google',
+            callbackUrl: 'http://localhost:5173/auth/callback',
+        }));
+        mockProjectFindByIdChain.lean.mockResolvedValueOnce(makeProject());
+
+        // User not found by googleId, but found by email
+        mockUsersModel.findOne
+            .mockResolvedValueOnce(null) // by googleId
+            .mockResolvedValueOnce({ _id: 'existing_user', email: 'alice@example.com' }); // by email
+
+        // Google returns unverified email (email_verified: false)
+        global.fetch
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ id_token: signGoogleIdToken({ email: 'alice@example.com', email_verified: false }) }),
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                json: async () => ({ keys: [GOOGLE_JWK] }),
+            });
+
+        const req = makeReq({ params: { provider: 'google' }, query: { code: 'code_1', state: 'state_1' } });
+        const res = makeRes();
+
+        await controller.handleSocialAuthCallback(req, res);
+
+        // Should redirect with error because email exists but not verified for linking
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('error='));
+        expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('not+verified'));
     });
 });

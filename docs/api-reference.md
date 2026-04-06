@@ -8,6 +8,8 @@
 | **Auth** | `POST` | `/api/userAuth/logout` | Revoke current refresh session |
 | **Auth** | `GET` | `/api/userAuth/me` | Get current user profile |
 | **Auth** | `GET` | `/api/userAuth/public/:username` | Get public-safe profile by username |
+| **Auth** | `GET` | `/api/userAuth/social/:provider/start` | Start GitHub or Google social login |
+| **Auth** | `POST` | `/api/userAuth/social/exchange` | Exchange callback `rtCode` for a refresh token |
 | **Auth** | `POST` | `/api/userAuth/verify-email` | Verify user email with OTP |
 | **Auth** | `POST` | `/api/userAuth/request-password-reset` | Request password reset OTP |
 | **Auth** | `POST` | `/api/userAuth/reset-password` | Reset user password with OTP |
@@ -47,6 +49,8 @@
 - `pk_live` write requests on `/api/data/*` require collection-level RLS + user Bearer token.
 - `users` collection operations are routed through `/api/userAuth/*`; `/api/data/users*` is blocked.
 - In `userAuth` responses, `token` is a temporary backward-compatibility alias of `accessToken` and will be removed in a future release.
+- Social auth redirects place `token` in the callback URL fragment and `rtCode` in the query string.
+- `POST /api/userAuth/social/exchange` expects JSON `{ token, rtCode }` and returns `{ success, data: { refreshToken }, message }`.
 
 ## Quick Write Matrix
 

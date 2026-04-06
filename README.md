@@ -152,10 +152,42 @@ Social Auth is configured in a Supabase-style flow:
 After a successful provider login, urBackend redirects users back to:
 `<Site URL>/auth/callback`
 
+The frontend callback flow is:
+1. Read `token` from the URL fragment and `rtCode` from the query string.
+2. Call `POST /api/userAuth/social/exchange` with JSON:
+   - `token`
+   - `rtCode`
+3. Expect a standard response in the form `{ success, data, message }`.
+4. On success, store the original access token together with `data.refreshToken`.
+5. Continue into the signed-in app.
+
+Callback example:
+
+```js
+const fragment = new URLSearchParams(window.location.hash.slice(1));
+const params = new URLSearchParams(window.location.search);
+
+const token = fragment.get('token');
+const rtCode = params.get('rtCode');
+
+const response = await fetch('/api/userAuth/social/exchange', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ token, rtCode })
+});
+
+const payload = await response.json();
+// Success shape: { success: true, data: { refreshToken }, message: 'Refresh token exchanged successfully' }
+```
+
 GitHub and Google both support:
 - linking existing users by email when the provider returns a verified email matching an existing account
 - creating new users automatically when no matching account exists
 - issuing the same urBackend access and refresh tokens used by normal auth flows
+- backend-generated read-only provider callback URLs in the dashboard
+- redirecting to the project `Site URL` after provider login
 
 ---
 

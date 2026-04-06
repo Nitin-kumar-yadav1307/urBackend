@@ -9,7 +9,14 @@ export const AuthProvider = ({ children }) => {
 
   const syncProfile = async (userData) => {
     try {
+      console.log('[auth] syncProfile start', {
+        userId: userData?._id,
+        username: userData?.username,
+      });
       await dataApi.syncProfileFromUser(userData);
+      console.log('[auth] syncProfile success', {
+        userId: userData?._id,
+      });
     } catch (profileSyncError) {
       console.error('⚠️ Profile sync failed:', profileSyncError);
     }
@@ -19,10 +26,15 @@ export const AuthProvider = ({ children }) => {
   const { data: user, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
+      console.log('[auth] useQuery(me) start', { tokenPresent: !!token });
       const response = await authApi.getMe();
       // Save to localStorage for persistence
       localStorage.setItem('user', JSON.stringify(response.data));
       await syncProfile(response.data);
+      console.log('[auth] useQuery(me) success', {
+        userId: response.data?._id,
+        email: response.data?.email,
+      });
       return response.data;
     },
     enabled: !!token,
@@ -67,9 +79,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   const completeSocialAuth = async ({ accessToken, refreshToken }) => {
+    console.log('[auth] completeSocialAuth start', {
+      accessTokenPresent: !!accessToken,
+      refreshTokenPresent: !!refreshToken,
+    });
     storeTokens({ accessToken, refreshToken });
     setToken(accessToken);
-    await queryClient.invalidateQueries({ queryKey: ['me'] });
+    console.log('[auth] tokens stored, fetching /me');
+    const response = await authApi.getMe();
+    console.log('[auth] /me response received in completeSocialAuth', {
+      userId: response.data?._id,
+      email: response.data?.email,
+    });
+    localStorage.setItem('user', JSON.stringify(response.data));
+    queryClient.setQueryData(['me'], response.data);
+    console.log('[auth] query cache seeded for me');
+    syncProfile(response.data).catch((profileSyncError) => {
+      console.error('⚠️ Profile sync failed after social auth:', profileSyncError);
+    });
+    console.log('[auth] completeSocialAuth finished');
   };
 
   const value = {

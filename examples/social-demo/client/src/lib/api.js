@@ -134,7 +134,13 @@ export const authApi = {
   exchangeSocialAuth: async ({ token, rtCode }) => {
     const response = await axios.post(
       `${API_BASE_URL}${API_PREFIX}/userAuth/social/exchange`,
-      { token, rtCode }
+      { token, rtCode },
+      {
+        timeout: 15000,
+        headers: {
+          'x-api-key': PUBLIC_KEY,
+        },
+      }
     );
 
     return response.data;

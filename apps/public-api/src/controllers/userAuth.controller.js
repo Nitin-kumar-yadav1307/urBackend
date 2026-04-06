@@ -442,7 +442,15 @@ const findOrCreateSocialUser = async ({ project, usersColConfig, Model, provider
     }
 
     user = await Model.findOne({ email: profile.email });
-    if (user && profile.emailVerified) {
+    if (user) {
+        // P1: Only link if provider email is verified; reject if unverified to prevent account takeover
+        if (!profile.emailVerified) {
+            const err = new Error(`Cannot link ${providerName} account: the provider email is not verified. Please verify your email with ${providerName} first.`);
+            err.statusCode = 403;
+            err.code = 'SOCIAL_AUTH_EMAIL_NOT_VERIFIED';
+            throw err;
+        }
+
         const update = {
             $set: {
                 [providerIdField]: profile.providerUserId,
@@ -451,11 +459,9 @@ const findOrCreateSocialUser = async ({ project, usersColConfig, Model, provider
             $addToSet: { authProviders: providerName },
         };
 
-        if (profile.emailVerified) {
-            const verificationField = getVerificationField(usersColConfig);
-            if (verificationField) {
-                update.$set[verificationField] = true;
-            }
+        const verificationField = getVerificationField(usersColConfig);
+        if (verificationField) {
+            update.$set[verificationField] = true;
         }
 
         await Model.updateOne({ _id: user._id }, update);
@@ -641,6 +647,52 @@ module.exports.startSocialAuth = async (req, res) => {
  * @route GET /api/userAuth/social/:provider/callback
  */
 module.exports.handleSocialAuthCallback = async (req, res) => {
+    // Helper to redirect error to frontend instead of returning JSON
+    const redirectWithError = (callbackUrl, errorMessage) => {
+        try {
+            const url = new URL(callbackUrl);
+            url.searchParams.set('error', errorMessage);
+            return res.redirect(url.toString());
+        } catch {
+            // Fallback if URL is malformed
+            return res.status(400).json({ error: errorMessage });
+        }
+    };
+
+    // P2: Check for provider-side OAuth errors first and forward them
+    const providerError = String(req.query.error || '').trim();
+    const providerErrorDesc = String(req.query.error_description || '').trim();
+    
+    let parsedState = null;
+    let callbackUrl = null;
+
+    // Try to parse state to get callback URL (even if there's an error)
+    const state = String(req.query.state || '').trim();
+    if (state) {
+        const stateKey = getSocialStateKey(state);
+        const rawState = await redis.get(stateKey);
+        if (rawState) {
+            try {
+                parsedState = JSON.parse(rawState);
+                callbackUrl = parsedState.callbackUrl || getFrontendCallbackBaseUrl({ siteUrl: '' });
+            } catch {
+                // Ignore parse errors here
+            }
+            // Cleanup state even on error
+            await redis.del(stateKey);
+        }
+    }
+
+    // If provider returned an error, redirect it to frontend
+    if (providerError) {
+        const errorMsg = providerErrorDesc || providerError || 'OAuth provider returned an error';
+        if (callbackUrl) {
+            return redirectWithError(callbackUrl, errorMsg);
+        }
+        // No callback URL available - return JSON as fallback
+        return res.status(400).json({ error: errorMsg });
+    }
+
     try {
         const provider = String(req.params.provider || '').trim().toLowerCase();
         if (!SOCIAL_PROVIDER_KEYS.includes(provider)) {
@@ -648,36 +700,34 @@ module.exports.handleSocialAuthCallback = async (req, res) => {
         }
 
         const code = String(req.query.code || '').trim();
-        const state = String(req.query.state || '').trim();
         if (!code || !state) {
-            return res.status(400).json({ error: 'Missing code or state' });
+            const errorMsg = 'Missing code or state';
+            if (callbackUrl) return redirectWithError(callbackUrl, errorMsg);
+            return res.status(400).json({ error: errorMsg });
         }
 
-        const stateKey = getSocialStateKey(state);
-        const rawState = await redis.get(stateKey);
-        if (!rawState) {
+        if (!parsedState) {
             return res.status(400).json({ error: 'Invalid or expired OAuth state' });
         }
 
-        await redis.del(stateKey);
-
-        let parsedState;
-        try {
-            parsedState = JSON.parse(rawState);
-        } catch (parseErr) {
-            return res.status(400).json({ error: 'Invalid or expired OAuth state' });
-        }
         if (parsedState.provider !== provider || !parsedState.projectId) {
-            return res.status(400).json({ error: 'OAuth state mismatch' });
+            const errorMsg = 'OAuth state mismatch';
+            if (callbackUrl) return redirectWithError(callbackUrl, errorMsg);
+            return res.status(400).json({ error: errorMsg });
         }
+
+        // Update callbackUrl from parsed state
+        callbackUrl = parsedState.callbackUrl || callbackUrl;
 
         const { project, providerConfig } = await getSocialProviderConfig(parsedState.projectId, provider);
         if (!project || !providerConfig) {
-            return res.status(422).json({
-                error: 'Provider not configured',
-                message: `${provider} social auth is disabled or incomplete for this project.`,
-            });
+            const errorMsg = `${provider} social auth is disabled or incomplete for this project.`;
+            if (callbackUrl) return redirectWithError(callbackUrl, errorMsg);
+            return res.status(422).json({ error: 'Provider not configured', message: errorMsg });
         }
+
+        // Use project's callback URL
+        callbackUrl = parsedState.callbackUrl || getFrontendCallbackBaseUrl(project);
 
         const usersColConfig = assertAuthProjectReady(project);
         const connection = await getConnection(project._id);
@@ -719,21 +769,25 @@ module.exports.handleSocialAuthCallback = async (req, res) => {
             SOCIAL_REFRESH_EXCHANGE_TTL_SECONDS
         );
 
-        const callbackBaseUrl = parsedState.callbackUrl || getFrontendCallbackBaseUrl(project);
-        const callbackUrl = new URL(callbackBaseUrl);
-        callbackUrl.searchParams.set('token', issuedTokens.accessToken);
-        callbackUrl.searchParams.set('rtCode', rtCode);
-        callbackUrl.searchParams.set('provider', provider);
-        callbackUrl.searchParams.set('userId', String(user._id));
-        callbackUrl.searchParams.set('projectId', String(project._id));
-        callbackUrl.searchParams.set('isNewUser', String(isNewUser));
-        callbackUrl.searchParams.set('linkedByEmail', String(linkedByEmail));
+        const successUrl = new URL(callbackUrl);
+        const fragmentParams = new URLSearchParams(
+            successUrl.hash.startsWith('#') ? successUrl.hash.slice(1) : successUrl.hash
+        );
+        fragmentParams.set('token', issuedTokens.accessToken);
 
-        return res.redirect(callbackUrl.toString());
+        successUrl.searchParams.set('rtCode', rtCode);
+        successUrl.searchParams.set('provider', provider);
+        successUrl.searchParams.set('userId', String(user._id));
+        successUrl.searchParams.set('projectId', String(project._id));
+        successUrl.searchParams.set('isNewUser', String(isNewUser));
+        successUrl.searchParams.set('linkedByEmail', String(linkedByEmail));
+        successUrl.hash = fragmentParams.toString();
+
+        return res.redirect(successUrl.toString());
     } catch (err) {
-        return res.status(err.statusCode || 500).json({
-            error: err.message || 'Social authentication failed',
-        });
+        const errorMsg = err.publicMessage || err.message || 'Social authentication failed';
+        if (callbackUrl) return redirectWithError(callbackUrl, errorMsg);
+        return res.status(err.statusCode || 500).json({ error: errorMsg });
     }
 };
 

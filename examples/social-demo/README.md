@@ -12,7 +12,7 @@ A **full-featured X.com (Twitter) clone** built entirely on the **urBackend** Ba
 
 ## ✨ Features
 
-- 🔐 **Authentication** - Secure JWT-based login/signup plus GitHub social auth powered by urBackend Auth.
+- 🔐 **Authentication** - Secure JWT-based login/signup plus GitHub and Google social auth powered by urBackend Auth.
 - 📝 **Tweet Composer** - Text + multi-image uploads (up to 4 images) with previews.
 - ❤️ **Social Interactions** - Like, comment, and retweet (coming soon) capabilities.
 - 👥 **Relationship Graph** - Real-time Follow/Unfollow system.
@@ -90,7 +90,7 @@ Add these extra fields to the `users` schema:
 ```env
 VITE_PUBLIC_KEY=pk_live_your_key_here
 VITE_API_URL=https://api.ub.bitbros.in
-# Required for image uploads and GitHub social auth start
+# Required for image uploads and social auth start
 VITE_PROXY_URL=http://localhost:4000/api/proxy
 ```
 
@@ -107,9 +107,9 @@ cp client/.env.example client/.env
 cp server/.env.example server/.env
 ```
 
-### 4.1 GitHub Social Auth Setup
+### 4.1 GitHub and Google Social Auth Setup
 
-The demo now includes a `Continue with GitHub` flow on both `/login` and `/signup`.
+The demo now includes `Continue with GitHub` and `Continue with Google` on both `/login` and `/signup`.
 
 In your urBackend dashboard:
 1. Go to `Project Settings` and set `Site URL` to your client URL.
@@ -128,8 +128,22 @@ In GitHub:
 4. Set `Authorization callback URL` to the callback URL shown in urBackend dashboard Auth settings.
 5. Copy the generated `Client ID` and `Client Secret` into urBackend Auth settings.
 
-No extra client `.env` variables are required for GitHub social auth. The redirect target comes from your urBackend project `Site URL`.
-The local `server` must be running because the demo starts GitHub OAuth through the proxy so it can attach the required API key header.
+For Google:
+1. Open `Google Cloud Console -> APIs & Services -> OAuth consent screen`.
+2. Configure an external app and add scopes:
+   - `openid`
+   - `.../auth/userinfo.email`
+   - `.../auth/userinfo.profile`
+3. Go to `APIs & Services -> Credentials -> Create Credentials -> OAuth client ID`.
+4. Choose `Web application`.
+5. Add `Authorized JavaScript origins`:
+   - local development: `http://localhost:5173`
+6. Add `Authorized redirect URIs`:
+   - the read-only Google callback URL shown in urBackend Auth settings
+7. Copy the generated `Client ID` and `Client Secret` into urBackend Auth settings under `Google`.
+
+No extra client `.env` variables are required for social auth. The redirect target comes from your urBackend project `Site URL`.
+The local `server` must be running because the demo starts GitHub and Google OAuth through the proxy so it can attach the required API key header.
 
 ### 5. Run the Application
 ```bash
@@ -167,9 +181,9 @@ This demo is now **PK-first** and aligned with the latest public APIs:
 
 ### Social auth flow in this demo
 
-- The client sends users to the local proxy route `GET /api/proxy/userAuth/social/github/start`.
+- The client sends users to the local proxy route `GET /api/proxy/userAuth/social/:provider/start`.
 - The proxy attaches your configured API key and forwards the request to urBackend.
-- urBackend handles the GitHub OAuth redirect and sends users back to `<siteUrl>/auth/callback`.
+- urBackend handles the provider OAuth redirect and sends users back to `<siteUrl>/auth/callback`.
 - The callback page exchanges the one-time `rtCode` for a refresh token, stores both tokens, and loads the signed-in user.
 
 ### Required RLS configuration
@@ -250,11 +264,12 @@ For each writable collection (`posts`, `comments`, `likes`, `follows`, `profiles
 - **Profile/search pages empty?** Ensure `profiles` collection exists and RLS is enabled with `ownerField=userId`.
 - **403 on create/update/delete?** Ensure RLS is enabled on that collection for `pk_live` writes.
 - **Images not uploading?** Ensure the `server` is running and `API_KEY` is a secret key (`sk_live_...`) for `/storage/*`.
-- **GitHub button shows `API key not found`?** Make sure the local `server` is running and `VITE_PROXY_URL` points to it. The demo starts GitHub OAuth through the proxy, not directly from the browser.
+- **GitHub or Google button shows `API key not found`?** Make sure the local `server` is running and `VITE_PROXY_URL` points to it. The demo starts social OAuth through the proxy, not directly from the browser.
 - **403 Forbidden?** Double-check your **Domain Whitelisting** settings in the urBackend dashboard.
 - **Data not appearing?** Verify that your collection names and field types match the schemas above exactly.
-- **GitHub login redirects back but does not sign in?** Make sure your urBackend project `Site URL` exactly matches the demo origin, usually `http://localhost:5173`.
+- **GitHub or Google login redirects back but does not sign in?** Make sure your urBackend project `Site URL` exactly matches the demo origin, usually `http://localhost:5173`.
 - **GitHub setup fails?** Confirm the callback URL in GitHub matches the read-only callback URL shown in urBackend Auth settings.
+- **Google setup fails?** Confirm both the Google redirect URI and JavaScript origin match your local demo and the callback URL shown in urBackend Auth settings.
 
 ---
 

@@ -105,6 +105,28 @@ Social Auth follows a dashboard-driven setup similar to Supabase:
 After successful login, users are redirected to:
 `<Site URL>/auth/callback`
 
+The frontend should then:
+1. Read `token` from the URL fragment and `rtCode` from the query string.
+2. Call `POST /api/userAuth/social/exchange` with `{ token, rtCode }`.
+3. Expect the standard response shape `{ success, data, message }`.
+4. Store the access token and `data.refreshToken`.
+5. Finish the local sign-in flow and redirect into the app.
+
+Example callback request:
+
+```js
+const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+const rtCode = new URLSearchParams(window.location.search).get('rtCode');
+
+await fetch('/api/userAuth/social/exchange', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ token, rtCode })
+});
+```
+
 ### Common failure cases
 
 | Error response | Root cause | Fix |

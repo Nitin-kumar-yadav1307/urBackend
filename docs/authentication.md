@@ -128,6 +128,130 @@ await fetch('https://api.ub.bitbros.in/api/userAuth/public/dev_pulse', {
 > [!NOTE]
 > This endpoint never returns sensitive fields like `password` or `email`.
 
+## 7. Social Auth
+
+Supported providers:
+- GitHub
+- Google
+
+Social auth is configured from the dashboard:
+1. Set your project `Site URL` in Project Settings.
+2. Open `Auth -> Social Auth`.
+3. Copy the read-only callback URL shown for the provider.
+4. Register that callback URL in the provider console.
+5. Save the provider `Client ID` and `Client Secret` in urBackend and enable the provider.
+
+### Start the provider login
+
+**Endpoint**: `GET /api/userAuth/social/:provider/start`
+
+Required headers:
+- `x-api-key: pk_live_*` or `x-api-key: sk_live_*`
+
+Example:
+
+```javascript
+window.location.href = 'https://api.ub.bitbros.in/api/userAuth/social/github/start';
+```
+
+This endpoint redirects the browser to the provider and uses the project `Site URL` to send users back to:
+
+```text
+<Site URL>/auth/callback
+```
+
+### What the callback URL contains
+
+After successful provider login, urBackend redirects to your frontend callback route with:
+- `token` in the URL fragment
+- `rtCode` in the query string
+- `provider`, `projectId`, `userId`, `isNewUser`, and `linkedByEmail` in the query string
+
+Example redirect:
+
+```text
+https://your-app.example/auth/callback?rtCode=abc123&provider=github&projectId=proj_1&userId=user_1&isNewUser=false&linkedByEmail=true#token=eyJ...
+```
+
+`token` is intentionally placed in the fragment so it is not exposed through normal query-string logging or referrer leakage.
+
+### Exchange the one-time `rtCode`
+
+**Endpoint**: `POST /api/userAuth/social/exchange`
+
+Required headers:
+
+```javascript
+{
+  'Content-Type': 'application/json',
+  'x-api-key': 'YOUR_KEY'
+}
+```
+
+Required JSON body:
+
+```javascript
+{
+  token: 'ACCESS_TOKEN_FROM_HASH',
+  rtCode: 'ONE_TIME_CODE_FROM_QUERY'
+}
+```
+
+Example frontend callback handler:
+
+```javascript
+const hashParams = new URLSearchParams(window.location.hash.slice(1));
+const queryParams = new URLSearchParams(window.location.search);
+
+const token = hashParams.get('token');
+const rtCode = queryParams.get('rtCode');
+
+if (!token || !rtCode) {
+  throw new Error('Missing auth callback tokens');
+}
+
+const response = await fetch('https://api.ub.bitbros.in/api/userAuth/social/exchange', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ token, rtCode })
+});
+
+const payload = await response.json();
+```
+
+Successful response:
+
+```javascript
+{
+  success: true,
+  data: {
+    refreshToken: 'REFRESH_TOKEN_VALUE'
+  },
+  message: 'Refresh token exchanged successfully'
+}
+```
+
+Expected client behavior after success:
+1. Keep using the original `token` as the access token.
+2. Store `data.refreshToken` for session continuation.
+3. Optionally store `provider`, `projectId`, and `userId` from the callback query string.
+4. Redirect the user into the authenticated part of your app.
+
+Common error responses:
+
+```javascript
+{ success: false, message: 'rtCode and token are required' }
+{ success: false, message: 'Invalid or expired refresh token exchange code' }
+{ success: false, message: 'Invalid refresh token exchange payload' }
+```
+
+Notes:
+- `rtCode` is short-lived and one-time use.
+- Existing users are linked by verified email when possible.
+- New social-auth users still receive a generated hashed password internally to satisfy the required `users` schema contract.
+
 ## Security Note
 
 - **Access Token Expiration**: Access tokens are short-lived. Use `/api/userAuth/refresh-token` for renewal.

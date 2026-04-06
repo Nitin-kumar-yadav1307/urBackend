@@ -1388,6 +1388,14 @@ module.exports.updateAuthProviders = async (req, res) => {
         });
       }
 
+      // P1: Require siteUrl before enabling any OAuth provider
+      if (nextEnabled && !project.siteUrl?.trim()) {
+        return res.status(422).json({
+          error: "siteUrl required",
+          message: `You must configure a Site URL in Project Settings before enabling ${provider} OAuth. The Site URL is used to redirect users after authentication.`,
+        });
+      }
+
       project.authProviders[provider] = {
         enabled: nextEnabled,
         clientId: nextClientId,

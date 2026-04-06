@@ -331,8 +331,90 @@ console.log(data);
                                 <strong>Step 3:</strong> Paste that callback URL into the provider console, create your OAuth app, then copy the <code>Client ID</code> and <code>Client Secret</code> back into urBackend.
                             </p>
                             <p style={{ fontSize: '0.9rem', color: '#e5e5e5', marginBottom: 0 }}>
-                                <strong>Step 4:</strong> Enable the provider and save. After login, urBackend redirects users to <code>&lt;Site URL&gt;/auth/callback</code> with the access token in the URL fragment (<code>#token=...</code>) — read it from <code>window.location.hash</code> and exchange the <code>rtCode</code> query param for a refresh token via <code>POST /api/userAuth/social/exchange</code>.
+                                <strong>Step 4:</strong> Enable the provider and save. After login, urBackend redirects users to <code>&lt;Site URL&gt;/auth/callback</code> with <code>token</code> in the URL fragment and <code>rtCode</code> in the query string. Your frontend should read both values, call <code>POST /api/userAuth/social/exchange</code>, receive the refresh token, store the session, and then continue to your app.
                             </p>
+                        </div>
+
+                        <div className="card" style={{ backgroundColor: '#111', border: '1px solid #333', marginBottom: '1rem' }}>
+                            <h4 style={{ marginBottom: '0.75rem', color: '#60a5fa' }}>Frontend callback contract</h4>
+                            <p style={{ fontSize: '0.9rem', color: '#ddd', marginBottom: '0.75rem' }}>
+                                Handle the redirect on your frontend route <code>/auth/callback</code>. urBackend sends the access token in the hash and the refresh-token exchange code in the query string.
+                            </p>
+                            <RefTable
+                                headers={['Location', 'Field', 'Meaning']}
+                                rows={[
+                                    ['URL fragment', 'token', 'Short-lived access token to store for authenticated API calls'],
+                                    ['Query string', 'rtCode', 'One-time code used to exchange for the refresh token'],
+                                    ['Query string', 'provider', 'Provider used for login, such as github or google'],
+                                    ['Query string', 'projectId', 'Current project identifier'],
+                                    ['Query string', 'userId', 'Authenticated user identifier'],
+                                    ['Query string', 'isNewUser', 'String flag indicating whether the user was created during this login'],
+                                    ['Query string', 'linkedByEmail', 'String flag indicating whether an existing user was linked by verified email'],
+                                ]}
+                            />
+                        </div>
+
+                        <h4 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>POST /api/userAuth/social/exchange</h4>
+                        <p style={{ fontSize: '0.9rem', color: '#aaa', marginBottom: '0.75rem' }}>
+                            Call this from the callback page after extracting <code>token</code> and <code>rtCode</code>. This endpoint returns the refresh token and invalidates the one-time exchange code.
+                        </p>
+                        <ParamTable
+                            params={[
+                                { name: 'Content-Type', type: 'header', required: true, desc: 'Set to application/json.' },
+                                { name: 'token', type: 'string', required: true, desc: 'Access token read from window.location.hash.' },
+                                { name: 'rtCode', type: 'string', required: true, desc: 'One-time exchange code read from window.location.search.' },
+                            ]}
+                        />
+
+                        <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#111', border: '1px solid #333', margin: '1.5rem 0' }}>
+                            <div style={{ padding: '8px 16px', borderBottom: '1px solid #333', backgroundColor: '#1a1a1a' }}>
+                                <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#ccc' }}>Example callback handler</span>
+                            </div>
+                            <div style={{ padding: '16px', overflowX: 'auto' }}>
+                                <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.85rem', color: '#e5e5e5', lineHeight: 1.6 }}>{`const hashParams = new URLSearchParams(window.location.hash.slice(1));
+const queryParams = new URLSearchParams(window.location.search);
+
+const token = hashParams.get('token');
+const rtCode = queryParams.get('rtCode');
+
+if (!token || !rtCode) {
+    throw new Error('Missing auth callback tokens');
+}
+
+const response = await fetch('${PUBLIC_API_URL}/api/userAuth/social/exchange', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, rtCode }),
+});
+
+const payload = await response.json();`}</pre>
+                            </div>
+                        </div>
+
+                        <div className="card" style={{ backgroundColor: '#111', border: '1px solid #333', marginBottom: '1rem' }}>
+                            <h4 style={{ marginBottom: '0.75rem', color: '#4ade80' }}>Expected response</h4>
+                            <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
+                                <pre style={{ margin: 0, fontFamily: 'monospace', fontSize: '0.85rem', color: '#e5e5e5', lineHeight: 1.6 }}>{`{
+  "success": true,
+  "data": {
+    "refreshToken": "REFRESH_TOKEN_VALUE"
+  },
+  "message": "Refresh token exchanged successfully"
+}`}</pre>
+                            </div>
+                            <p style={{ fontSize: '0.9rem', color: '#ddd', marginBottom: '0.5rem' }}>
+                                After success, keep using <code>token</code> as the access token, store <code>data.refreshToken</code>, optionally store <code>provider</code>, <code>projectId</code>, and <code>userId</code>, then redirect into the authenticated area of your app.
+                            </p>
+                            <RefTable
+                                headers={['Status', 'Example message', 'When it happens']}
+                                rows={[
+                                    ['400', 'rtCode and token are required', 'Your callback page did not read one of the required values'],
+                                    ['400', 'Invalid or expired refresh token exchange code', 'The one-time code expired or was already used'],
+                                    ['403', 'Invalid refresh token exchange payload', 'The submitted token does not match the stored exchange payload'],
+                                ]}
+                            />
                         </div>
                     </div>
                 );
