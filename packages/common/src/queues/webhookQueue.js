@@ -31,7 +31,10 @@ function generateSignature(payload, secret) {
  */
 function truncate(str, maxLength = 1024) {
   if (!str || typeof str !== "string") return str;
-  return str.length > maxLength ? str.substring(0, maxLength) + "..." : str;
+  if (str.length <= maxLength) return str;
+  const ellipsis = "...";
+  if (maxLength <= ellipsis.length) return ellipsis.substring(0, maxLength);
+  return str.substring(0, maxLength - ellipsis.length) + ellipsis;
 }
 
 /**
@@ -80,6 +83,8 @@ function initWebhookWorker() {
     "webhook-delivery-queue",
     async (job) => {
       const { deliveryId, webhookId, attemptNumber } = job.data;
+
+      try {
 
       const delivery = await WebhookDelivery.findById(deliveryId);
       if (!delivery) {
@@ -144,10 +149,10 @@ function initWebhookWorker() {
       let error = null;
       let success = false;
 
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
+      try {
         const response = await fetch(webhook.url, {
           method: "POST",
           headers: {
@@ -160,7 +165,6 @@ function initWebhookWorker() {
           signal: controller.signal,
         });
 
-        clearTimeout(timeout);
         statusCode = response.status;
 
         try {
@@ -173,6 +177,8 @@ function initWebhookWorker() {
         success = statusCode >= 200 && statusCode < 300;
       } catch (err) {
         error = err.name === "AbortError" ? "Request timeout (30s)" : err.message;
+      } finally {
+        clearTimeout(timeout);
       }
 
       const durationMs = Date.now() - startTime;
@@ -240,6 +246,24 @@ function initWebhookWorker() {
           `[Webhook] Delivery ${deliveryId} permanently failed after ${attemptNumber} attempts` +
             (is4xx ? ` (4xx response: ${statusCode})` : "")
         );
+      }
+      } catch (err) {
+        console.error(`[Webhook] Unexpected worker error for delivery ${deliveryId}:`, err.message);
+        try {
+          await WebhookDelivery.findByIdAndUpdate(deliveryId, {
+            finalStatus: "failed",
+            $push: {
+              attempts: {
+                attemptNumber,
+                status: "failed",
+                error: `Worker error: ${err.message}`.substring(0, 500),
+                attemptedAt: new Date(),
+              },
+            },
+          });
+        } catch (updateErr) {
+          console.error(`[Webhook] Failed to update delivery ${deliveryId} after error:`, updateErr.message);
+        }
       }
     },
     {

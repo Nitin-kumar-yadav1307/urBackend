@@ -388,10 +388,10 @@ module.exports.testWebhook = async (req, res) => {
     let responseBody = null;
     let error = null;
 
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout for test
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout for test
 
+    try {
       const response = await fetch(webhook.url, {
         method: "POST",
         headers: {
@@ -404,7 +404,6 @@ module.exports.testWebhook = async (req, res) => {
         signal: controller.signal,
       });
 
-      clearTimeout(timeout);
       statusCode = response.status;
 
       try {
@@ -417,6 +416,8 @@ module.exports.testWebhook = async (req, res) => {
       }
     } catch (err) {
       error = err.name === "AbortError" ? "Request timeout (10s)" : err.message;
+    } finally {
+      clearTimeout(timeout);
     }
 
     const durationMs = Date.now() - startTime;

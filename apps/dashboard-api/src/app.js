@@ -80,7 +80,7 @@ app.use(capture({
   supabaseUrl: process.env.SUPABASE_URL,
   supabaseKey: process.env.SUPABASE_KEY,
   bucket: process.env.SUPABASE_BUCKET,
-  sampleRate: 0.1
+  sampleRate: 0
 }));
 
 
