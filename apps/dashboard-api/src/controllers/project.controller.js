@@ -1106,8 +1106,16 @@ module.exports.updateProject = async (req, res) => {
       }
       const trimmedFrom = resendFromEmail.trim();
       if (trimmedFrom !== "") {
-         const senderRegex = /^(?:.*<)?[^\s@]+@[^>\s@]+\.[^>\s@]+(?:>)?$/;
-         if (!senderRegex.test(trimmedFrom)) {
+         if (trimmedFrom.length > 255) {
+            return res.status(400).json({ error: "resendFromEmail is too long." });
+         }
+         let addressToValidate = trimmedFrom;
+         const bracketMatch = trimmedFrom.match(/<([^>]+)>$/);
+         if (bracketMatch) {
+            addressToValidate = bracketMatch[1].trim();
+         }
+         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+         if (!emailRegex.test(addressToValidate)) {
             return res.status(400).json({ error: "resendFromEmail must be a valid format (e.g., 'me@domain.com' or 'App <me@domain.com>')." });
          }
       }
