@@ -8,9 +8,12 @@ const {
 module.exports = async (req, res, next) => {
     try {
         // x-api-key header is preferred. For browser-navigation endpoints (e.g. social OAuth start),
+        // a publishable key may be supplied via the `key` query parameter instead.
         const headerKey = req.header('x-api-key');
+        const queryKey = typeof req.query?.key === 'string' ? req.query.key : undefined;
 
-        const apiKey = headerKey;
+        // Only allow publishable keys (pk_live_) via query param; secret keys must use the header.
+        const apiKey = headerKey || (queryKey?.startsWith('pk_live_') ? queryKey : undefined);
         if (!apiKey) {
             return res.status(401).json({ error: 'API key not found' });
         }

@@ -58,8 +58,11 @@ const getSocialRefreshExchangeKey = (rtCode) => `project:social-auth:refresh-exc
  */
 const getFrontendCallbackBaseUrl = (project) => {
     const configured = String(project?.siteUrl || '').trim();
-    const base = configured || process.env.FRONTEND_URL || 'http://localhost:5173';
-    return `${base.replace(/\/$/, '')}/auth/callback`;
+    const base = configured || process.env.FRONTEND_URL || '';
+    if (!base) {
+        console.warn('[social-auth] getFrontendCallbackBaseUrl: siteUrl is not set on the project and FRONTEND_URL env is not configured. Falling back to http://localhost:5173. Set siteUrl in Project Settings or configure FRONTEND_URL.');
+    }
+    return `${(base || 'http://localhost:5173').replace(/\/$/, '')}/auth/callback`;
 };
 
 /**
@@ -68,6 +71,43 @@ const getFrontendCallbackBaseUrl = (project) => {
  * @returns {Buffer}
  */
 const toBase64UrlBuffer = (input) => Buffer.from(input.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(input.length / 4) * 4, '='), 'base64');
+
+/**
+ * In-memory cache for Google's public JWK keys.
+ * Keys are refreshed when the cache expires (based on Cache-Control max-age).
+ */
+const googleJwkCache = { keys: null, expiresAt: 0 };
+
+/**
+ * Fetches Google's public JWK keys, using an in-memory cache keyed by Cache-Control max-age.
+ * @returns {Promise<Array>} Array of JWK key objects
+ */
+const getGooglePublicKeys = async () => {
+    const now = Date.now();
+    if (googleJwkCache.keys && now < googleJwkCache.expiresAt) {
+        return googleJwkCache.keys;
+    }
+
+    const certsResponse = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+    if (!certsResponse.ok) {
+        throw new Error('Unable to fetch Google JWK keys');
+    }
+
+    const certsPayload = await certsResponse.json();
+    const keys = certsPayload.keys || [];
+
+    // Parse Cache-Control max-age from response headers to determine TTL.
+    const cacheControl = (typeof certsResponse.headers?.get === 'function')
+        ? (certsResponse.headers.get('cache-control') || '')
+        : '';
+    const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+    const ttlMs = maxAgeMatch ? parseInt(maxAgeMatch[1], 10) * 1000 : 3600 * 1000;
+
+    googleJwkCache.keys = keys;
+    googleJwkCache.expiresAt = now + ttlMs;
+
+    return keys;
+};
 
 /**
  * Asserts that a project has auth enabled and a valid users collection schema.
@@ -315,10 +355,9 @@ const verifyGoogleIdToken = async ({ idToken, clientId }) => {
         throw new Error('Unsupported Google id_token signature');
     }
 
-    const certsResponse = await fetch('https://www.googleapis.com/oauth2/v3/certs');
-    const certsPayload = await certsResponse.json();
-    const signingKey = certsPayload.keys?.find((key) => key.kid === header.kid);
-    if (!certsResponse.ok || !signingKey) {
+    const certsKeys = await getGooglePublicKeys();
+    const signingKey = certsKeys.find((key) => key.kid === header.kid);
+    if (!signingKey) {
         throw new Error('Unable to verify Google id_token signing key');
     }
 

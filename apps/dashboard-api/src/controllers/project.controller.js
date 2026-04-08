@@ -1099,7 +1099,12 @@ module.exports.updateProject = async (req, res) => {
   try {
     const { name, siteUrl, resendApiKey, resendFromEmail } = req.body;
     const updateFields = {};
-    if (name !== undefined) updateFields.name = name;
+    if (name !== undefined) {
+      if (typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ error: "name must be a non-empty string." });
+      }
+      updateFields.name = name.trim();
+    }
     if (resendFromEmail !== undefined) {
       if (typeof resendFromEmail !== "string") {
         return res.status(400).json({ error: "resendFromEmail must be a string." });
@@ -1338,11 +1343,19 @@ module.exports.toggleAuth = async (req, res) => {
     const { projectId } = req.params;
     const { enable } = req.body; // true or false
 
-    // Ensure user owns project
+    // Ensure user owns project, and load authProviders secrets so sanitizeAuthProviders
+    // can correctly compute hasClientSecret in the response.
     const project = await Project.findOne({
       _id: projectId,
       owner: req.user._id,
-    });
+    }).select(
+      "+authProviders.github.clientSecret.encrypted " +
+      "+authProviders.github.clientSecret.iv " +
+      "+authProviders.github.clientSecret.tag " +
+      "+authProviders.google.clientSecret.encrypted " +
+      "+authProviders.google.clientSecret.iv " +
+      "+authProviders.google.clientSecret.tag"
+    );
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     if (enable) {

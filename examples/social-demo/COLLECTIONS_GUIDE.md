@@ -38,7 +38,7 @@ For GitHub social auth in this demo, these extra `users` fields are recommended:
 ```
 Field Name        | Type    | Required | Unique | Default
 ------------------|---------|----------|--------|----------
-githubId          | String  | No       | No     | -
+githubId          | String  | No       | Yes    | -
 authProviders     | Array   | No       | No     | []
 ```
 
