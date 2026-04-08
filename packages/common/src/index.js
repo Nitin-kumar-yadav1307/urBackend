@@ -22,7 +22,7 @@ const Webhook = require("./models/Webhook");
 const WebhookDelivery = require("./models/WebhookDelivery");
 
 // Queues
-const { authEmailQueue } = require("./queues/authEmailQueue");
+const { authEmailQueue, initAuthEmailWorker } = require("./queues/authEmailQueue");
 const { emailQueue } = require("./queues/emailQueue");
 const {
   webhookQueue,
@@ -60,6 +60,7 @@ const {
   updateAuthProvidersSchema,
   createWebhookSchema,
   updateWebhookSchema,
+  sendMailSchema,
 } = require("./utils/input.validation");
 const { garbageCollect, storageGarbageCollect } = require("./utils/GC");
 const { generateApiKey, hashApiKey } = require("./utils/api");
@@ -117,6 +118,7 @@ module.exports = {
   updateAuthProvidersSchema,
   createWebhookSchema,
   updateWebhookSchema,
+  sendMailSchema,
   garbageCollect,
   storageGarbageCollect,
   generateApiKey,
@@ -149,5 +151,6 @@ module.exports = {
   validateData,
   validateUpdateData,
   userSignupSchema,
+  initAuthEmailWorker,
   ...sessionManager,
 };
