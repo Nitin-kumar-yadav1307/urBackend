@@ -158,11 +158,3 @@ For Jest in this repo, `--runInBand` is often safer in constrained Windows envir
 - Do not make social auth depend on dashboard login cookies; it belongs to project public auth.
 - When touching docs, update both repo docs and in-dashboard docs if the user-facing flow changes.
 
-## Current version: v0.8.0
-Social auth (GitHub + Google) shipped. Next: v0.9.0 — Webhooks + BYOK Resend mail.
-
-## Planned for v0.9.0 (already done)
-- Webhook system: per-project config, HMAC-SHA256, retry, delivery logs
-- BYOK Resend mail key: project-level Resend API key, custom domain mail
-- Follow same encryption pattern as authProviders for storing Resend key
-- Webhook model: separate MongoDB collection (not embedded in Project)

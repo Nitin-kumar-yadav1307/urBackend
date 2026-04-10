@@ -3,6 +3,8 @@ import { UrBackendError, parseApiError } from './errors';
 import { AuthModule } from './modules/auth';
 import { DatabaseModule } from './modules/database';
 import { StorageModule } from './modules/storage';
+import { SchemaModule } from './modules/schema';
+import { MailModule } from './modules/mail';
 
 export class UrBackendClient {
   private apiKey: string;
@@ -10,6 +12,8 @@ export class UrBackendClient {
   private _auth?: AuthModule;
   private _db?: DatabaseModule;
   private _storage?: StorageModule;
+  private _schema?: SchemaModule;
+  private _mail?: MailModule;
   private headers: Record<string, string>;
 
   constructor(config: UrBackendConfig) {
@@ -17,9 +21,9 @@ export class UrBackendClient {
     this.baseUrl = config.baseUrl || 'https://api.ub.bitbros.in';
     this.headers = config.headers || {};
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && this.apiKey.startsWith('sk_live_')) {
       console.warn(
-        '⚠️ urbackend-sdk: Avoid exposing your SK-API key in client-side code(instead use pk_live key). This can lead to unauthorized access to your account and data.',
+        '⚠️ urbackend-sdk: Avoid exposing your Secret Key (sk_live_...) in client-side code. This can lead to unauthorized access to your account and data. Use your Publishable Key (pk_live_...) instead.',
       );
     }
   }
@@ -45,6 +49,20 @@ export class UrBackendClient {
     return this._storage;
   }
 
+  get schema(): SchemaModule {
+    if (!this._schema) {
+      this._schema = new SchemaModule(this);
+    }
+    return this._schema;
+  }
+
+  get mail(): MailModule {
+    if (!this._mail) {
+      this._mail = new MailModule(this);
+    }
+    return this._mail;
+  }
+
   /**
    * Internal request handler
    */
@@ -56,12 +74,17 @@ export class UrBackendClient {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       'x-api-key': this.apiKey,
-      'User-Agent': `urbackend-sdk-js/0.1.1`,
+      'User-Agent': `urbackend-sdk-js/0.2.0`,
       ...this.headers,
     };
 
     if (options.token) {
       headers['Authorization'] = `Bearer ${options.token}`;
+    }
+
+    // Merge custom headers from options if provided
+    if ((options as any).headers) {
+      Object.assign(headers, (options as any).headers);
     }
 
     let requestBody: BodyInit | undefined;
@@ -79,6 +102,7 @@ export class UrBackendClient {
         method,
         headers,
         body: requestBody,
+        credentials: options.credentials,
       });
 
       if (!response.ok) {
@@ -89,7 +113,11 @@ export class UrBackendClient {
       if (contentType && contentType.includes('application/json')) {
         const json = await response.json();
         // The API returns { data, success, message }
-        return json.data !== undefined ? json.data : json;
+        // If data is present, return it. If success/message are present but no data, return the whole object (for exchange/logout etc)
+        if (json.data !== undefined) {
+          return json.data;
+        }
+        return json;
       }
 
       return (await response.text()) as unknown as T;

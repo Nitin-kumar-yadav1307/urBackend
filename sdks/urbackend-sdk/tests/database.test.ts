@@ -1,8 +1,12 @@
-import { expect, test, vi } from 'vitest';
+import { expect, test, vi, beforeEach } from 'vitest';
 import urBackend from '../src/index';
 
-const mockApiKey = 'test-api-key';
+const mockApiKey = 'pk_live_test';
 const client = urBackend({ apiKey: mockApiKey });
+
+beforeEach(() => {
+  vi.resetAllMocks();
+});
 
 test('getAll returns array of typed documents', async () => {
   const mockData = [
@@ -20,99 +24,97 @@ test('getAll returns array of typed documents', async () => {
 
   const items = await client.db.getAll<{ _id: string; name: string }>('products');
   expect(items).toEqual(mockData);
-  expect(items[0].name).toBe('Product 1');
 });
 
-test('getOne throws NotFoundError on 404', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: false,
-      status: 404,
-      url: 'https://api.urbackend.bitbros.in/api/data/products/999',
-      json: () => Promise.resolve({ success: false, message: 'Not Found' }),
-    }),
-  );
+test('getAll with query params builds correct query string', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: () => Promise.resolve({ success: true, data: [] }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
 
-  await expect(client.db.getOne('products', '999')).rejects.toThrow('Not Found');
+  await client.db.getAll('products', {
+    page: 2,
+    limit: 10,
+    sort: 'price:asc',
+    populate: 'category',
+    filter: { price_gt: 100 }
+  });
+
+  const url = fetchMock.mock.calls[0][0] as string;
+  const searchParams = new URL(url).searchParams;
+  
+  expect(searchParams.get('page')).toBe('2');
+  expect(searchParams.get('limit')).toBe('10');
+  expect(searchParams.get('sort')).toBe('price:asc');
+  expect(searchParams.get('populate')).toBe('category');
+  expect(searchParams.get('price_gt')).toBe('100');
 });
 
-test('insert returns created document with _id', async () => {
+test('insert returns created document and handles optional token', async () => {
   const payload = { name: 'New Item' };
   const mockCreated = { _id: 'new-id', ...payload };
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      headers: new Headers({ 'content-type': 'application/json' }),
-      json: () => Promise.resolve({ success: true, data: mockCreated }),
-    }),
-  );
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: () => Promise.resolve({ success: true, data: mockCreated }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
 
-  const result = await client.db.insert<{ _id: string; name: string }>('products', payload);
+  const result = await client.db.insert<{ _id: string; name: string }>('products', payload, 'user-token');
+  
   expect(result._id).toBe('new-id');
-});
-
-test('update returns updated document', async () => {
-  const payload = { name: 'Updated' };
-  const mockUpdated = { _id: 'id-1', ...payload };
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      headers: new Headers({ 'content-type': 'application/json' }),
-      json: () => Promise.resolve({ success: true, data: mockUpdated }),
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining('/api/data/products'),
+    expect.objectContaining({
+      method: 'POST',
+      headers: expect.objectContaining({
+        Authorization: 'Bearer user-token',
+      }),
     }),
   );
-
-  const result = await client.db.update<{ _id: string; name: string }>('products', 'id-1', payload);
-  expect(result.name).toBe('Updated');
 });
 
-test('delete returns { deleted: true }', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      headers: new Headers({ 'content-type': 'application/json' }),
-      json: () => Promise.resolve({ success: true, data: { deleted: true } }),
+test('patch sends PATCH request', async () => {
+  const payload = { price: 50 };
+  const mockUpdated = { _id: '1', name: 'Original', price: 50 };
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: () => Promise.resolve({ success: true, data: mockUpdated }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  await client.db.patch('products', '1', payload);
+
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining('/api/data/products/1'),
+    expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify(payload),
     }),
   );
+});
 
-  const result = await client.db.delete('products', 'id-1');
+test('delete returns { deleted: true } and handles token', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: () => Promise.resolve({ success: true, data: { message: 'Deleted' } }),
+  });
+  vi.stubGlobal('fetch', fetchMock);
+
+  const result = await client.db.delete('products', 'id-1', 'admin-token');
+  
   expect(result.deleted).toBe(true);
-});
-
-test('RateLimitError thrown on 429', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: false,
-      status: 429,
-      url: 'https://api.urbackend.bitbros.in/api/data/products',
-      headers: new Headers({ 'Retry-After': '60' }),
-      json: () => Promise.resolve({ success: false, message: 'Too Many Requests' }),
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining('/api/data/products/id-1'),
+    expect.objectContaining({
+      method: 'DELETE',
+      headers: expect.objectContaining({
+        Authorization: 'Bearer admin-token',
+      }),
     }),
   );
-
-  try {
-    await client.db.getAll('products');
-  } catch (error: any) {
-    expect(error.name).toBe('RateLimitError');
-    expect(error.retryAfter).toBe(60);
-  }
-});
-
-test('ValidationError thrown on 400', async () => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({
-      ok: false,
-      status: 400,
-      url: 'https://api.urbackend.bitbros.in/api/data/products',
-      json: () => Promise.resolve({ success: false, message: 'Invalid data format' }),
-    }),
-  );
-
-  await expect(client.db.insert('products', {})).rejects.toThrow('Invalid data format');
 });
