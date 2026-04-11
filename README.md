@@ -1,4 +1,6 @@
-# urBackend 🚀
+<h1 align="center">
+  urBackend 🚀
+<h1>
 
 <p align="center">
   <img src="banner.png" alt="urBackend Banner" width="100%" />
@@ -11,8 +13,8 @@
 
 <p align="center">
   <a href="https://urbackend.bitbros.in"><strong>Dashboard</strong></a> ·
-  <a href="docs/introduction.md"><strong>Docs</strong></a> ·
-  <a href="docs/getting-started.md"><strong>Quick Start</strong></a> ·
+  <a href="https://docs.ub.bitbros.in/introduction"><strong>Docs</strong></a> ·
+  <a href="https://docs.ub.bitbros.in/quickstart"><strong>Quick Start</strong></a> ·
   <a href="https://discord.gg/CXJjvJkNWn"><strong>Discord</strong></a>
 </p>
 
