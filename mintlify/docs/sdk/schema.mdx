@@ -1,0 +1,42 @@
+---
+title: "Schema"
+description: "Inspect collection definitions and field types using the SDK schema module."
+keywords: ["schema", "introspection", "metadata", "sdk"]
+---
+
+Access schema methods via `client.schema`. This module allows you to programmatically retrieve the definitions of your collections, which is useful for building dynamic forms or data table components.
+
+## getSchema
+
+Fetch the schema definition for a specific collection.
+
+```typescript
+getSchema(collection: string): Promise<CollectionSchema>
+```
+
+**Returns (`CollectionSchema`)**
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | The name of the collection. |
+| `model` | `SchemaField[]` | Array of field definitions. |
+
+**`SchemaField` Object**
+
+| Field | Type | Description |
+|---|---|---|
+| `key` | `string` | The field name. |
+| `type` | `string` | The Mongoose type (e.g. `"String"`, `"Number"`, `"Ref"`). |
+| `required` | `boolean` | Whether the field is mandatory. |
+| `unique` | `boolean` | Whether the field has a uniqueness constraint. |
+| `ref` | `string` | If type is `"Ref"`, the target collection name. |
+
+**Example**
+
+```typescript
+const schema = await client.schema.getSchema('products');
+
+console.log(schema.name); // 'products'
+console.log(schema.model[0].key); // 'name'
+console.log(schema.model[0].type); // 'String'
+```

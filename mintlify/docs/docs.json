@@ -54,7 +54,9 @@
               "sdk/overview",
               "sdk/auth",
               "sdk/database",
-              "sdk/storage"
+              "sdk/storage",
+              "sdk/schema",
+              "sdk/mail"
             ]
           },
           {

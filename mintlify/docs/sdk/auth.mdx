@@ -1,10 +1,10 @@
 ---
 title: "Auth"
-description: "Create accounts, log in users, and retrieve the current session with the SDK auth module."
-keywords: ["auth", "authentication", "login", "signup", "sdk"]
+description: "Manage user accounts, sessions, and social authentication with the SDK auth module."
+keywords: ["auth", "authentication", "login", "signup", "sdk", "social auth", "oauth"]
 ---
 
-Access auth methods via `client.auth`. The module stores the session token from `login()` automatically, so you do not need to thread it through subsequent calls manually.
+Access auth methods via `client.auth`. The module automatically stores the `accessToken` from `login()` or `refreshToken()` and uses it for subsequent authenticated requests like `me()` or `updateProfile()`.
 
 ## signUp
 
@@ -14,150 +14,167 @@ Create a new user account.
 signUp(payload: SignUpPayload): Promise<AuthUser>
 ```
 
-**Parameters**
-
-| Name | Type | Required | Description |
-|---|---|---|---|
-| `email` | `string` | Yes | User's email address. |
-| `password` | `string` | Yes | User's password. |
-| `name` | `string` | No | Display name. |
-
-**Returns** `AuthUser`
-
-```typescript
-interface AuthUser {
-  _id: string;
-  email: string;
-  name?: string;
-  [key: string]: unknown;
-}
-```
-
 **Example**
 
 ```typescript
 const user = await client.auth.signUp({
   email: 'alice@example.com',
   password: 'secret123',
+  username: 'alice_dev',
   name: 'Alice',
 });
-
-console.log(user._id); // '507f1f77bcf86cd799439011'
 ```
 
 ---
 
 ## login
 
-Authenticate an existing user. The returned token is stored internally in the auth module and used automatically by `me()`.
+Authenticate an existing user. The returned `accessToken` is stored internally.
 
 ```typescript
 login(payload: LoginPayload): Promise<AuthResponse>
 ```
 
-**Parameters**
-
-| Name | Type | Required | Description |
-|---|---|---|---|
-| `email` | `string` | Yes | User's email address. |
-| `password` | `string` | Yes | User's password. |
-
 **Returns** `AuthResponse`
 
 ```typescript
 interface AuthResponse {
-  token: string;   // accessToken — store this securely
+  accessToken: string;
+  token: string; // Alias for accessToken (deprecated)
   user: AuthUser;
+  expiresIn: string;
 }
 ```
 
 **Example**
 
 ```typescript
-const { token, user } = await client.auth.login({
+const { accessToken, user } = await client.auth.login({
   email: 'alice@example.com',
   password: 'secret123',
 });
-
-console.log(token); // 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-console.log(user.name); // 'Alice'
 ```
 
-<Note>
-Store `token` securely — for example in `localStorage` or an HTTP-only cookie — and pass it to authenticated API calls. Never expose it in URLs or logs.
-</Note>
+---
+
+## refreshToken
+
+Rotate the current access token. 
+
+- **Browser**: Call without arguments. It will automatically use the `refreshToken` stored in your HTTP-only cookies.
+- **Mobile/Node**: Pass the `refreshToken` string manually.
+
+```typescript
+refreshToken(refreshToken?: string): Promise<AuthResponse>
+```
 
 ---
 
 ## me
 
-Fetch the profile of the currently authenticated user. If you call `login()` first, you do not need to pass a token explicitly — the module uses the stored session token automatically.
+Fetch the profile of the currently authenticated user.
 
 ```typescript
 me(token?: string): Promise<AuthUser>
 ```
 
-**Parameters**
-
-| Name | Type | Required | Description |
-|---|---|---|---|
-| `token` | `string` | No | Override the stored session token. |
-
-**Returns** `AuthUser`
-
-**Example — using the stored token after login()**
-
-```typescript
-await client.auth.login({ email: 'alice@example.com', password: 'secret123' });
-
-const user = await client.auth.me();
-console.log(user.email); // 'alice@example.com'
-```
-
-**Example — passing a token directly**
-
-```typescript
-const token = localStorage.getItem('urbackend_token');
-const user = await client.auth.me(token);
-```
-
-<Note>
-Calling `me()` without a token and without a prior `login()` in the same client instance throws an `AuthError`. Always pass the token explicitly if the client is newly initialized (for example, on page reload).
-</Note>
-
 ---
 
-## logout
+## updateProfile
 
-Clear the locally stored session token. This does not invalidate the token on the server.
+Update the authenticated user's profile fields.
 
 ```typescript
-logout(): void
+updateProfile(payload: UpdateProfilePayload, token?: string): Promise<{ message: string }>
 ```
 
 **Example**
 
 ```typescript
-client.auth.logout();
-// The stored session token is cleared.
-// Subsequent calls to me() will require a token to be passed explicitly.
+await client.auth.updateProfile({ name: 'Alice Smith' });
 ```
 
 ---
 
-## Error handling
+## changePassword
+
+Change the authenticated user's password.
 
 ```typescript
-import urBackend, { AuthError } from '@urbackend/sdk';
-
-const client = urBackend({ apiKey: process.env.URBACKEND_API_KEY });
-
-try {
-  await client.auth.login({ email: 'alice@example.com', password: 'wrong' });
-} catch (e) {
-  if (e instanceof AuthError) {
-    console.error('Login failed:', e.message);
-    // e.statusCode is 401 or 403
-  }
-}
+changePassword(payload: ChangePasswordPayload, token?: string): Promise<{ message: string }>
 ```
+
+---
+
+## Social Auth
+
+urBackend supports OAuth via GitHub and Google.
+
+### socialStart
+
+Returns the URL to initiate the OAuth flow. Redirect your user's browser to this URL.
+
+```typescript
+socialStart(provider: 'github' | 'google'): string
+```
+
+### socialExchange
+
+Exchange the `rtCode` received at your callback URL for a session.
+
+```typescript
+socialExchange(payload: SocialExchangePayload): Promise<SocialExchangeResponse>
+```
+
+**Example**
+
+```typescript
+// At your /auth/callback page
+const urlParams = new URLSearchParams(window.location.search);
+const rtCode = urlParams.get('rtCode');
+const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+
+const { refreshToken } = await client.auth.socialExchange({ token, rtCode });
+```
+
+---
+
+## Account Verification
+
+Methods for handling email OTP flows.
+
+| Method | Description |
+|---|---|
+| `verifyEmail(payload)` | Verify an account using the OTP sent to email. |
+| `resendVerificationOtp(payload)` | Request a new verification OTP. |
+| `requestPasswordReset(payload)` | Start the "forgot password" flow. |
+| `resetPassword(payload)` | Complete password reset using an OTP. |
+
+---
+
+## publicProfile
+
+Fetch a public-safe profile for any user by their username. This does not return sensitive fields like email or provider IDs.
+
+```typescript
+publicProfile(username: string): Promise<AuthUser>
+```
+
+---
+
+## logout
+
+Revokes the current session on the server and clears the local token.
+
+```typescript
+logout(token?: string): Promise<{ success: boolean; message: string }>
+```
+
+---
+
+## Manual Token Management
+
+If you need to manage tokens manually (e.g., after social auth), use these helper methods:
+
+- `getToken()`: Returns the current in-memory access token.
+- `setToken(token)`: Manually set the access token for the client.

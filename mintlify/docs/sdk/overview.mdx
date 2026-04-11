@@ -37,22 +37,27 @@ import urBackend from '@urbackend/sdk';
 
 const client = urBackend({ apiKey: process.env.URBACKEND_API_KEY });
 
-// Sign up a new user
-const user = await client.auth.signUp({
+// Log in an existing user
+const { accessToken } = await client.auth.login({
   email: 'alice@example.com',
-  password: 'secret123',
-  name: 'Alice',
+  password: 'secret123'
 });
 
-// Insert a document (collection must be created in the dashboard first)
-const product = await client.db.insert('products', { name: 'Chair', price: 99 });
+// Insert a document with RLS support (passing the user token)
+const product = await client.db.insert('products', { name: 'Chair', price: 99 }, accessToken);
 
-// Fetch all documents
-const products = await client.db.getAll('products');
+// Fetch documents with filtering and sorting
+const products = await client.db.getAll('products', { 
+  filter: { price_gt: 50 },
+  sort: 'price:asc'
+});
 
-// Upload a file (browser)
-const input = document.querySelector('input[type="file"]');
-const { url, path } = await client.storage.upload(input.files[0]);
+// Send an email (server-side only, requires secret key)
+await client.mail.send({
+  to: 'user@example.com',
+  subject: 'Order Confirmed',
+  text: 'Your chair is on the way!'
+});
 ```
 
 ## TypeScript generics
@@ -109,23 +114,29 @@ try {
 ## API key security
 
 <Warning>
-Use `pk_live_...` (publishable key) in frontend/browser code. It allows read operations only.
+Use `pk_live_...` (publishable key) in frontend/browser code. It allows read operations by default, and write operations only if RLS is enabled.
 
-Use `sk_live_...` (secret key) in server-side code only. It allows reads and writes. Never expose it in client-side bundles or public repositories.
+Use `sk_live_...` (secret key) in server-side code only. It allows full CRUD access. Never expose it in client-side bundles or public repositories.
 </Warning>
 
-The SDK logs a console warning if it detects you are using it in a browser context, as a reminder to check which key you are passing.
+The SDK logs a console warning if it detects you are using a **Secret Key** (`sk_live_...`) in a browser context.
 
 ## Explore the SDK
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="Auth" icon="lock" href="/sdk/auth">
-    Sign up, log in, and fetch the current user.
+    Login, logout, profile updates, and social auth.
   </Card>
   <Card title="Database" icon="database" href="/sdk/database">
-    Read and write documents in any collection.
+    CRUD operations, query building, and RLS support.
   </Card>
   <Card title="Storage" icon="cloud" href="/sdk/storage">
     Upload files and get back a public CDN URL.
+  </Card>
+  <Card title="Schema" icon="brackets-curly" href="/sdk/schema">
+    Inspect collection definitions and field types.
+  </Card>
+  <Card title="Mail" icon="envelope" href="/sdk/mail">
+    Send transactional emails from your server.
   </Card>
 </CardGroup>

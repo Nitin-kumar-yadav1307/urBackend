@@ -17,7 +17,7 @@ Storage operations accept both `pk_live_...` and `sk_live_...` keys. Use `pk_liv
 Upload a file to storage.
 
 ```typescript
-upload(file: File | Blob | Buffer, filename?: string): Promise<{ url: string; path: string }>
+upload(file: File | Blob | Buffer, filename?: string): Promise<UploadResponse>
 ```
 
 **Parameters**
@@ -27,12 +27,13 @@ upload(file: File | Blob | Buffer, filename?: string): Promise<{ url: string; pa
 | `file` | `File \| Blob \| Buffer` | Yes | The file to upload. |
 | `filename` | `string` | No | Override the stored filename. |
 
-**Returns**
+**Returns (`UploadResponse`)**
 
 | Field | Type | Description |
 |---|---|---|
 | `url` | `string` | Public CDN URL for the uploaded file. |
 | `path` | `string` | Storage path — required to delete the file later. |
+| `provider` | `'internal' \| 'external'` | Whether the file is stored on urBackend or your own Supabase. |
 
 <Note>
 Store the `path` alongside the `url` in your database. You need it to delete the file.
@@ -44,27 +45,9 @@ Store the `path` alongside the `url` in your database. You need it to delete the
 const input = document.querySelector<HTMLInputElement>('input[type="file"]');
 const file = input.files[0];
 
-const { url, path } = await client.storage.upload(file);
+const { url, path, provider } = await client.storage.upload(file);
 console.log(url);  // 'https://cdn.example.com/uploads/abc123.jpg'
-console.log(path); // 'uploads/abc123.jpg'
-
-// Store both so you can delete the file later
-await client.db.insert('product_images', { url, path });
-```
-
-**Example — custom filename**
-
-```typescript
-const { url, path } = await client.storage.upload(file, 'profile-photo.jpg');
-```
-
-**Example — Node.js Buffer**
-
-```typescript
-import { readFileSync } from 'fs';
-
-const buffer = readFileSync('./report.pdf');
-const { url, path } = await client.storage.upload(buffer, 'report.pdf');
+console.log(provider); // 'internal'
 ```
 
 ---
@@ -83,46 +66,15 @@ deleteFile(path: string): Promise<{ deleted: boolean }>
 |---|---|---|---|
 | `path` | `string` | Yes | The `path` returned by `upload()`. |
 
-**Example**
-
-```typescript
-// Retrieve the stored path
-const image = await client.db.getOne('product_images', id);
-
-const result = await client.storage.deleteFile(image.path);
-console.log(result.deleted); // true
-```
-
 ---
 
 ## Limits
 
 | Limit | Value |
 |---|---|
-| Max file size | 5 MB per file |
-| Total storage per project | 100 MB |
+| Max file size | 10 MB per file |
+| Total storage per project | 100 MB (Free Tier) |
 
 <Note>
-Uploads that exceed 5 MB are rejected with a `StorageError`. Check `file.size` before calling `upload()` if you need to show a friendly error to your users.
+Uploads that exceed 10 MB are rejected with a `StorageError`. 
 </Note>
-
-**Example — checking file size before upload**
-
-```typescript
-import { StorageError } from '@urbackend/sdk';
-
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-
-if (file.size > MAX_BYTES) {
-  console.error('File must be 5 MB or smaller');
-  return;
-}
-
-try {
-  const { url, path } = await client.storage.upload(file);
-} catch (e) {
-  if (e instanceof StorageError) {
-    console.error('Upload failed:', e.message);
-  }
-}
-```

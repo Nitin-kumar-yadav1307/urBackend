@@ -1,0 +1,49 @@
+---
+title: "Mail"
+description: "Send transactional emails from your server using the SDK mail module."
+keywords: ["mail", "email", "resend", "transactional email", "sdk"]
+---
+
+Access mail methods via `client.mail`. This module allows you to send emails using your project's configured mail provider (e.g. Resend).
+
+<Warning>
+Mail operations require a **Secret Key** (`sk_live_...`). This module should only be used in server-side environments (Node.js, Edge Functions, etc.). Never call these methods from a browser.
+</Warning>
+
+## send
+
+Send an email.
+
+```typescript
+send(payload: SendMailPayload): Promise<SendMailResponse>
+```
+
+**Parameters (`SendMailPayload`)**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `to` | `string \| string[]` | Yes | Recipient email address(es). |
+| `subject` | `string` | Yes | Email subject line. |
+| `text` | `string` | No | Plain text body. |
+| `html` | `string` | No | HTML body. |
+
+**Returns (`SendMailResponse`)**
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | `string` | The message ID from the provider. |
+| `provider` | `string` | The provider used (`"byok"` or `"default"`). |
+| `monthlyUsage` | `number` | Total emails sent this month. |
+| `monthlyLimit` | `number` | Your project's monthly quota. |
+
+**Example**
+
+```typescript
+const response = await client.mail.send({
+  to: 'customer@example.com',
+  subject: 'Welcome to urBackend',
+  html: '<h1>Hi there!</h1><p>Thanks for joining.</p>'
+});
+
+console.log(response.id);
+```
