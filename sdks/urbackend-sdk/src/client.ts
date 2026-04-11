@@ -82,7 +82,7 @@ export class UrBackendClient {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       'x-api-key': this.apiKey,
-      'User-Agent': `urbackend-sdk-js/0.2.0`,
+      'User-Agent': `urbackend-sdk-js/0.2.2`,
       ...this.headers,
     };
 
