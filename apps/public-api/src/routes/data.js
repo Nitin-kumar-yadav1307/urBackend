@@ -6,7 +6,7 @@ const authorizeWriteOperation = require('../middlewares/authorizeWriteOperation'
 const authorizeReadOperation = require('../middlewares/authorizeReadOperation');
 const projectRateLimiter = require('../middlewares/projectRateLimiter');
 const blockUsersCollectionDataAccess = require('../middlewares/blockUsersCollectionDataAccess');
-const { insertData, getAllData, getSingleDoc, updateSingleData, deleteSingleDoc } = require("../controllers/data.controller")
+const { insertData, getAllData, getSingleDoc, updateSingleData, deleteSingleDoc, aggregateData } = require("../controllers/data.controller")
 
 
 // POST REQ TO INSERT DATA
@@ -15,6 +15,9 @@ router.post('/:collectionName', verifyApiKey, blockUsersCollectionDataAccess, re
 
 // GET REQ ALL DATA
 router.get('/:collectionName', verifyApiKey, blockUsersCollectionDataAccess, resolvePublicAuthContext, projectRateLimiter, authorizeReadOperation, getAllData);
+
+// POST REQ AGGREGATION DATA
+router.post('/:collectionName/aggregate', verifyApiKey, blockUsersCollectionDataAccess, resolvePublicAuthContext, projectRateLimiter, authorizeReadOperation, aggregateData);
 
 
 // GET REQ SINGLE DATA

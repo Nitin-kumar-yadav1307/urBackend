@@ -4,9 +4,10 @@ const { Project } = require("@urbackend/common");
 const { getConnection } = require("@urbackend/common");
 const { getCompiledModel } = require("@urbackend/common");
 const { QueryEngine } = require("@urbackend/common");
-const { validateData, validateUpdateData } = require("@urbackend/common");
+const { validateData, validateUpdateData, aggregateSchema } = require("@urbackend/common");
 const { performance } = require('perf_hooks');
 const { dispatchWebhooks } = require('../utils/webhookDispatcher');
+const { z } = require("zod");
 
 const isDebug = process.env.DEBUG === 'true';
 
@@ -15,6 +16,14 @@ const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 const isDuplicateKeyError = (err) => {
   return err && err.code === 11000;
+};
+
+const BLOCKED_AGGREGATION_STAGES = new Set(["$out", "$merge"]);
+
+const containsBlockedAggregationStage = (pipeline = []) => {
+  return pipeline.some((stage) =>
+    Object.keys(stage || {}).some((key) => BLOCKED_AGGREGATION_STAGES.has(key)),
+  );
 };
 
 // INSERT DATA
@@ -178,6 +187,76 @@ module.exports.getSingleDoc = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+};
+
+// AGGREGATE DATA
+module.exports.aggregateData = async (req, res) => {
+  try {
+    let start;
+    if (isDebug) start = performance.now();
+    const { collectionName } = req.params;
+    const project = req.project;
+
+    const collectionConfig = project.collections.find(
+      (c) => c.name === collectionName,
+    );
+    if (!collectionConfig) {
+      return res.status(404).json({
+        success: false,
+        data: {},
+        message: "Collection not found",
+      });
+    }
+
+    const { pipeline } = aggregateSchema.parse(req.body || {});
+
+    if (containsBlockedAggregationStage(pipeline)) {
+      return res.status(400).json({
+        success: false,
+        data: {},
+        message: "Aggregation pipeline contains blocked stage.",
+      });
+    }
+
+    const connection = await getConnection(project._id);
+    const Model = getCompiledModel(
+      connection,
+      collectionConfig,
+      project._id,
+      project.resources.db.isExternal,
+    );
+
+    const baseFilter =
+      req.rlsFilter && typeof req.rlsFilter === "object" ? req.rlsFilter : {};
+    const effectivePipeline = Object.keys(baseFilter).length > 0
+      ? [{ $match: baseFilter }, ...pipeline]
+      : pipeline;
+
+    const data = await Model.aggregate(effectivePipeline);
+
+    if (isDebug) console.log(`[DEBUG] aggregate took ${(performance.now() - start).toFixed(2)}ms`);
+    return res.status(200).json({
+      success: true,
+      data,
+      message: "Aggregation executed successfully.",
+    });
+  } catch (err) {
+    console.error(err);
+
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        data: {},
+        message: err.issues?.[0]?.message || "Invalid aggregation payload.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      data: {},
+      message: err.message || "Failed to execute aggregation.",
+    });
   }
 };
 

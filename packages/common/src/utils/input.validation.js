@@ -273,6 +273,17 @@ module.exports.createSchemaApiKeySchema = z.object({
   fields: z.array(buildApiFieldSchemaZod(1)).optional(),
 });
 
+module.exports.aggregateSchema = z.object({
+  pipeline: z
+    .array(
+      z.record(z.string(), z.unknown()).refine(
+        (stage) => Object.keys(stage).length > 0,
+        { message: "Each aggregation stage must be a non-empty object." },
+      ),
+    )
+    .min(1, "Pipeline must contain at least one stage."),
+});
+
 module.exports.sanitize = (obj) => {
   const clean = {};
   for (const key in obj) {
