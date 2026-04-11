@@ -120,7 +120,7 @@ socialStart(provider: 'github' | 'google'): string
 
 ### socialExchange
 
-Exchange the `rtCode` received at your callback URL for a session.
+Exchange the `rtCode` received at your callback URL for a refresh token.
 
 ```typescript
 socialExchange(payload: SocialExchangePayload): Promise<SocialExchangeResponse>
@@ -133,6 +133,10 @@ socialExchange(payload: SocialExchangePayload): Promise<SocialExchangeResponse>
 const urlParams = new URLSearchParams(window.location.search);
 const rtCode = urlParams.get('rtCode');
 const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+
+if (!rtCode || !token) {
+  throw new Error('Missing OAuth callback parameters');
+}
 
 const { refreshToken } = await client.auth.socialExchange({ token, rtCode });
 ```
