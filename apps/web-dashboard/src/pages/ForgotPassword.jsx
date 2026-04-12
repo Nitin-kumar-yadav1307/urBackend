@@ -1,297 +1,264 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Terminal } from 'lucide-react';
-import api from '../utils/api';
+import { Eye, EyeOff, KeyRound, Lock, Mail } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+
+import AuthShell from '../components/AuthShell';
 import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 
 function ForgotPassword() {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { isAuthenticated, isLoading: authLoading } = useAuth();
-    const [step, setStep] = useState(1);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({
-        email: location.state?.email || '',
-        otp: '',
-        newPassword: '',
-        confirmPassword: '',
-    });
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-    useEffect(() => {
-        if (!authLoading && isAuthenticated) {
-            navigate('/dashboard', { replace: true });
-        }
-    }, [authLoading, isAuthenticated, navigate]);
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: location.state?.email || '',
+    otp: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
-    if (authLoading) return null;
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+  if (authLoading) {
+    return null;
+  }
 
-    const handleSendOtp = async (e) => {
-        e.preventDefault();
-        if (!formData.email) {
-            toast.error('Email is required.');
-            return;
-        }
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormData((current) => ({ ...current, [name]: value }));
+  };
 
-        setIsSubmitting(true);
-        const loadingToast = toast.loading('Sending reset code...');
+  const handleSendOtp = async (event) => {
+    if (event) {
+      event.preventDefault();
+    }
 
-        try {
-            const response = await api.post('/api/auth/forgot-password', {
-                email: formData.email,
-            });
+    if (!formData.email) {
+      toast.error('Email is required.');
+      return;
+    }
 
-            toast.dismiss(loadingToast);
-            toast.success(response.data?.message || 'If this email exists, a reset code has been sent.');
-            setStep(2);
-        } catch (err) {
-            toast.dismiss(loadingToast);
-            const data = err.response?.data;
-            let message = 'Failed to send reset code.';
+    setIsSubmitting(true);
+    const loadingToast = toast.loading('Sending reset code...');
 
-            if (typeof data?.error === 'string') {
-                message = data.error;
-            } else if (Array.isArray(data?.error)) {
-                message = data.error[0]?.message || message;
-            }
+    try {
+      const response = await api.post('/api/auth/forgot-password', {
+        email: formData.email,
+      });
 
-            toast.error(message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+      toast.dismiss(loadingToast);
+      toast.success(response.data?.message || 'If this email exists, a reset code has been sent.');
+      setStep(2);
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      const data = error.response?.data;
+      let message = 'Failed to send reset code.';
 
-    const handleResetPassword = async (e) => {
-        e.preventDefault();
+      if (typeof data?.error === 'string') {
+        message = data.error;
+      } else if (Array.isArray(data?.error)) {
+        message = data.error[0]?.message || message;
+      }
 
-        if (!formData.otp || !formData.newPassword || !formData.confirmPassword) {
-            toast.error('OTP and both password fields are required.');
-            return;
-        }
-        if (formData.newPassword.length < 6) {
-            toast.error('Password must be at least 6 characters.');
-            return;
-        }
-        if (formData.newPassword !== formData.confirmPassword) {
-            toast.error('Passwords do not match.');
-            return;
-        }
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-        setIsSubmitting(true);
-        const loadingToast = toast.loading('Resetting password...');
+  const handleResetPassword = async (event) => {
+    event.preventDefault();
 
-        try {
-            const response = await api.post('/api/auth/reset-password', {
-                email: formData.email,
-                otp: formData.otp,
-                newPassword: formData.newPassword,
-            });
+    if (!formData.otp || !formData.newPassword || !formData.confirmPassword) {
+      toast.error('OTP and both password fields are required.');
+      return;
+    }
+    if (formData.newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    if (formData.newPassword !== formData.confirmPassword) {
+      toast.error('Passwords do not match.');
+      return;
+    }
 
-            toast.dismiss(loadingToast);
-            toast.success(response.data?.message || 'Password reset successfully.');
-            navigate('/login', {
-                replace: true,
-                state: { email: formData.email },
-            });
-        } catch (err) {
-            toast.dismiss(loadingToast);
-            const data = err.response?.data;
-            let message = 'Password reset failed.';
+    setIsSubmitting(true);
+    const loadingToast = toast.loading('Resetting password...');
 
-            if (typeof data?.error === 'string') {
-                message = data.error;
-            } else if (Array.isArray(data?.error)) {
-                message = data.error[0]?.message || message;
-            }
+    try {
+      const response = await api.post('/api/auth/reset-password', {
+        email: formData.email,
+        otp: formData.otp,
+        newPassword: formData.newPassword,
+      });
 
-            toast.error(message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+      toast.dismiss(loadingToast);
+      toast.success(response.data?.message || 'Password reset successfully.');
+      navigate('/login', {
+        replace: true,
+        state: { email: formData.email },
+      });
+    } catch (error) {
+      toast.dismiss(loadingToast);
+      const data = error.response?.data;
+      let message = 'Password reset failed.';
 
-    return (
-        <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '100vh',
-            padding: '1rem',
-            background: 'radial-gradient(circle at top center, #1a1a1a 0%, #000000 100%)'
-        }}>
-            <div className="card" style={{ width: '100%', maxWidth: '460px', padding: '2.5rem' }}>
-                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <div style={{
-                        width: '50px',
-                        height: '50px',
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, var(--color-primary), #059669)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 1.5rem auto',
-                        boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)'
-                    }}>
-                        <Terminal size={28} color="#000" />
-                    </div>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
-                        Reset Your Password
-                    </h2>
-                    <p style={{ color: 'var(--color-text-muted)' }}>
-                        {step === 1
-                            ? 'We will email you a one-time reset code.'
-                            : `Enter the reset code sent to ${formData.email}`}
-                    </p>
-                </div>
+      if (typeof data?.error === 'string') {
+        message = data.error;
+      } else if (Array.isArray(data?.error)) {
+        message = data.error[0]?.message || message;
+      }
 
-                {step === 1 ? (
-                    <form onSubmit={handleSendOtp}>
-                        <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.9rem' }}>Email Address</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className="input-field"
-                                placeholder="name@example.com"
-                                required
-                                style={{
-                                    padding: '12px',
-                                    background: 'var(--color-bg-input)',
-                                    border: '1px solid var(--color-border)',
-                                    color: '#fff'
-                                }}
-                            />
-                        </div>
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                fontSize: '1rem',
-                                fontWeight: 600,
-                                justifyContent: 'center'
-                            }}
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? 'Sending...' : 'Send Reset Code'}
-                        </button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleResetPassword}>
-                        <div className="form-group" style={{ marginBottom: '1rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.9rem' }}>Reset Code</label>
-                            <input
-                                type="text"
-                                name="otp"
-                                value={formData.otp}
-                                onChange={handleChange}
-                                className="input-field"
-                                placeholder="Enter 6-digit code"
-                                required
-                                maxLength={6}
-                                style={{
-                                    padding: '12px',
-                                    background: 'var(--color-bg-input)',
-                                    border: '1px solid var(--color-border)',
-                                    color: '#fff',
-                                    letterSpacing: '0.18em'
-                                }}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: '1rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.9rem' }}>New Password</label>
-                            <input
-                                type="password"
-                                name="newPassword"
-                                value={formData.newPassword}
-                                onChange={handleChange}
-                                className="input-field"
-                                placeholder="Min. 6 characters"
-                                required
-                                minLength={6}
-                                style={{
-                                    padding: '12px',
-                                    background: 'var(--color-bg-input)',
-                                    border: '1px solid var(--color-border)',
-                                    color: '#fff'
-                                }}
-                            />
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                            <label className="form-label" style={{ fontSize: '0.9rem' }}>Confirm New Password</label>
-                            <input
-                                type="password"
-                                name="confirmPassword"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                className="input-field"
-                                placeholder="Re-enter your password"
-                                required
-                                minLength={6}
-                                style={{
-                                    padding: '12px',
-                                    background: 'var(--color-bg-input)',
-                                    border: '1px solid var(--color-border)',
-                                    color: '#fff'
-                                }}
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="btn btn-primary"
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                fontSize: '1rem',
-                                fontWeight: 600,
-                                justifyContent: 'center',
-                                marginBottom: '0.75rem'
-                            }}
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? 'Resetting...' : 'Reset Password'}
-                        </button>
-
-                        <button
-                            type="button"
-                            className="btn"
-                            style={{
-                                width: '100%',
-                                padding: '12px',
-                                fontSize: '0.95rem',
-                                fontWeight: 500,
-                                justifyContent: 'center',
-                                background: 'transparent',
-                                border: '1px solid var(--color-border)',
-                                color: 'var(--color-text-muted)'
-                            }}
-                            disabled={isSubmitting}
-                            onClick={handleSendOtp}
-                        >
-                            Resend Code
-                        </button>
-                    </form>
-                )}
-
-                <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-                        Remembered your password? <Link to="/login" state={{ email: formData.email }} style={{ color: 'var(--color-primary)', fontWeight: 500, textDecoration: 'none' }}>Back to login</Link>
-                    </p>
-                </div>
+  return (
+    <AuthShell
+      modeLabel={step === 1 ? 'Forgot password' : 'Reset password'}
+      title=""
+      subtitle=""
+      alternateText="Remembered your password?"
+      alternateLabel="Back to sign in"
+      alternateTo="/login"
+    >
+      {step === 1 ? (
+        <form className="auth-form" onSubmit={handleSendOtp}>
+          <div className="auth-field">
+            <label htmlFor="forgot-email">Email address</label>
+            <div className="auth-input-wrap">
+              <Mail size={18} />
+              <input
+                id="forgot-email"
+                type="email"
+                name="email"
+                className="input-field auth-input"
+                placeholder="name@company.com"
+                value={formData.email}
+                onChange={handleChange}
+                autoComplete="email"
+                required
+              />
             </div>
-        </div>
-    );
+          </div>
+
+          <button type="submit" className="btn btn-primary auth-submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Sending...' : 'Send reset code'}
+          </button>
+        </form>
+      ) : (
+        <form className="auth-form" onSubmit={handleResetPassword}>
+          <div className="auth-field">
+            <label htmlFor="reset-otp">Reset code</label>
+            <div className="auth-input-wrap">
+              <KeyRound size={18} />
+              <input
+                id="reset-otp"
+                type="text"
+                name="otp"
+                className="input-field auth-input"
+                placeholder="Enter 6-digit code"
+                value={formData.otp}
+                onChange={handleChange}
+                maxLength={6}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="auth-field">
+            <label htmlFor="reset-password">New password</label>
+            <div className="auth-input-wrap">
+              <Lock size={18} />
+              <input
+                id="reset-password"
+                type={showNewPassword ? 'text' : 'password'}
+                name="newPassword"
+                className="input-field auth-input auth-input--password"
+                placeholder="Create a new password"
+                value={formData.newPassword}
+                onChange={handleChange}
+                minLength={6}
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="auth-input-toggle"
+                aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowNewPassword((current) => !current)}
+              >
+                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="auth-field">
+            <label htmlFor="reset-confirm-password">Confirm password</label>
+            <div className="auth-input-wrap">
+              <Lock size={18} />
+              <input
+                id="reset-confirm-password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                className="input-field auth-input auth-input--password"
+                placeholder="Re-enter your password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                minLength={6}
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="auth-input-toggle"
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowConfirmPassword((current) => !current)}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary auth-submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Resetting...' : 'Reset password'}
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary auth-submit"
+            disabled={isSubmitting}
+            onClick={handleSendOtp}
+          >
+            Resend code
+          </button>
+        </form>
+      )}
+
+      <div className="auth-inline-note">
+        <span>Using email:</span>
+        <strong>{formData.email || 'Enter your account email'}</strong>
+      </div>
+
+      <div className="auth-inline-link">
+        <Link to="/login" state={{ email: formData.email }}>
+          Back to sign in
+        </Link>
+      </div>
+    </AuthShell>
+  );
 }
 
 export default ForgotPassword;
