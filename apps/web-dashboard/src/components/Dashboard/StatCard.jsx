@@ -1,5 +1,6 @@
 import React from 'react';
 
+// eslint-disable-next-line no-unused-vars
 const StatCard = ({ title, value, icon: Icon, color = 'var(--color-primary)', background = 'rgba(62, 207, 142, 0.1)' }) => {
   return (
     <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>

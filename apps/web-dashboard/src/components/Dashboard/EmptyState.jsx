@@ -3,10 +3,8 @@ import { Server } from 'lucide-react';
 
 const EmptyState = ({ onCreateProject }) => {
   const cardStyle = {
-    background: 'var(--color-bg-card)',
     border: '1px solid var(--color-border)',
     borderRadius: '12px',
-    padding: '1.5rem',
     transition: 'all 0.2s ease',
     display: 'flex',
     flexDirection: 'column',
