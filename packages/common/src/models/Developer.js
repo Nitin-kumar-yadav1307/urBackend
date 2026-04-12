@@ -19,6 +19,10 @@ const developerSchema = new mongoose.Schema({
         type: Number,
         default: 1
     },
+    maxCollections: {
+        type: Number,
+        default: 20
+    },
     refreshToken: {
         type: String,
         default: null,

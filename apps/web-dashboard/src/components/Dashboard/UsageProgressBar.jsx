@@ -7,9 +7,12 @@ const UsageProgressBar = ({ label, used, limit, unit = 'MB' }) => {
   if (percentage > 80) statusClass = 'danger';
   else if (percentage > 60) statusClass = 'warning';
 
-  const formatSize = (bytes) => {
-    if (used > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} ${unit}`;
-    return `${(bytes / 1024).toFixed(1)} KB`;
+  const formatValue = (value) => {
+    if (unit === 'MB') {
+      if (value > 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+      return `${(value / 1024).toFixed(1)} KB`;
+    }
+    return value; // Return raw number for Proj, Col, etc.
   };
 
   return (
@@ -25,7 +28,7 @@ const UsageProgressBar = ({ label, used, limit, unit = 'MB' }) => {
         ></div>
       </div>
       <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: '4px', textAlign: 'right' }}>
-        {formatSize(used)} / {formatSize(limit)}
+        {formatValue(used)} / {formatValue(limit)} {unit !== 'MB' ? unit : ''}
       </div>
     </div>
   );

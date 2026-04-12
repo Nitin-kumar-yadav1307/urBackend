@@ -14,6 +14,10 @@ import ProjectGrid from '../components/Dashboard/ProjectGrid';
 import EmptyState from '../components/Dashboard/EmptyState';
 import SkeletonLoader from '../components/Dashboard/SkeletonLoader';
 import RecentActivityItem from '../components/Dashboard/RecentActivityItem';
+import UsageQuota from '../components/Dashboard/UsageQuota';
+import OnboardingChecklist from '../components/Dashboard/OnboardingChecklist';
+import DocLinks from '../components/Dashboard/DocLinks';
+import ReleaseBadge from '../components/Dashboard/ReleaseBadge';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -78,6 +82,7 @@ export default function Dashboard() {
   // Calculate global stats directly from projects array for 100% accuracy
   const totalDatabaseUsed = projects.reduce((acc, p) => acc + (p.databaseUsed || 0), 0);
   const totalStorageUsed = projects.reduce((acc, p) => acc + (p.storageUsed || 0), 0);
+  const totalCollectionsCount = projects.reduce((acc, p) => acc + (p.collectionsCount || 0), 0);
   const totalRequests = globalStats?.totalRequests || 0;
 
   const formatSize = (bytes) => {
@@ -88,6 +93,7 @@ export default function Dashboard() {
 
   return (
     <DashboardShell>
+      <DocLinks />
       <DashboardHeader onCreateProject={handleCreateProject} />
 
       {/* Global Usage Overview Belt - More Compact */}
@@ -158,48 +164,46 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Right Column: Activity Sidebar */}
+        {/* Right Column: Activity & Extras Sidebar */}
         <div className="activity-sidebar">
+          {/* 1. Usage Quota (Technical Context) */}
+          <SectionHeader title="Plan & Usage" />
+          <UsageQuota 
+            projectsCount={projects.length} 
+            collectionsCount={totalCollectionsCount}
+            limits={globalStats?.limits}
+          />
+
+          {/* 2. Onboarding (Helpful Context) */}
+          <OnboardingChecklist 
+            projectsCount={projects.length} 
+            activityCount={activity.length} 
+          />
+
+          {/* 3. Recent Activity (Historical Context) */}
           <SectionHeader title="Recent Activity" />
           <div className="glass-card custom-scrollbar" style={{ 
             padding: '1.25rem', 
             borderRadius: '12px', 
-            maxHeight: '600px', 
+            maxHeight: '400px', 
             overflowY: 'auto',
             background: 'var(--color-bg-card)',
-            border: '1px solid var(--color-border)'
+            border: '1px solid var(--color-border)',
+            marginBottom: '2rem'
           }}>
             {activity.length === 0 ? (
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem 0' }}>
-                No recent activity found.
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '2rem 0' }}>
+                No recent activity.
               </p>
             ) : (
               activity.map(item => (
                 <RecentActivityItem key={item.id} activity={item} />
               ))
             )}
-            <button className="btn btn-ghost" style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', opacity: 0.6 }}>
-              View All Logs
-            </button>
           </div>
 
-          <div className="glass-card" style={{ 
-            marginTop: '2rem', 
-            padding: '1.25rem', 
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(123, 97, 255, 0.1) 0%, rgba(0,0,0,0) 100%)',
-            border: '1px solid rgba(123, 97, 255, 0.2)'
-          }}>
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Zap size={14} color="#7B61FF" /> Upgrade to Pro
-            </h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: '1.4', marginBottom: '1rem' }}>
-              Get unlimited projects, custom domains, and advanced analytics.
-            </p>
-            <button className="btn btn-primary" style={{ width: '100%', height: '36px', fontSize: '0.8rem', background: '#7B61FF', borderColor: '#7B61FF' }}>
-              Upgrade Now
-            </button>
-          </div>
+          {/* 5. Version Badge */}
+          <ReleaseBadge />
         </div>
       </div>
     </DashboardShell>

@@ -246,7 +246,7 @@ module.exports.createProject = async (req, res) => {
 module.exports.getAllProject = async (req, res) => {
   try {
     const projects = await Project.find({ owner: req.user._id })
-      .select("name description databaseUsed databaseLimit storageUsed storageLimit updatedAt isAuthEnabled")
+      .select("name description databaseUsed databaseLimit storageUsed storageLimit updatedAt isAuthEnabled collections")
       .lean();
 
     // --- HEALTH CALCULATION (SIMULATED / CALCULATED) ---
@@ -283,6 +283,7 @@ module.exports.getAllProject = async (req, res) => {
       return {
         ...project,
         health,
+        collectionsCount: project.collections?.length || 0,
         metrics: {
           database: { used: project.databaseUsed, limit: project.databaseLimit },
           storage: { used: project.storageUsed, limit: project.storageLimit }

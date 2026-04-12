@@ -1,4 +1,4 @@
-const { Project, Log } = require("@urbackend/common");
+const { Project, Log, Developer } = require("@urbackend/common");
 const mongoose = require("mongoose");
 
 /**
@@ -8,24 +8,29 @@ module.exports.getGlobalStats = async (req, res) => {
   try {
     const user_id = req.user._id;
     // Bulletproof matching: string or ObjectId
-    const stats = await Project.aggregate([
-      { 
-        $match: { 
-          $or: [
-            { owner: user_id },
-            { owner: new mongoose.Types.ObjectId(user_id) }
-          ]
-        } 
-      },
-      {
-        $group: {
-          _id: null,
-          totalProjects: { $sum: 1 },
-          totalDatabaseUsed: { $sum: { $ifNull: ["$databaseUsed", 0] } },
-          totalStorageUsed: { $sum: { $ifNull: ["$storageUsed", 0] } },
-          totalCollections: { $sum: { $size: { $ifNull: ["$collections", []] } } }
+    const userId = new mongoose.Types.ObjectId(user_id);
+
+    const [stats, dev] = await Promise.all([
+      Project.aggregate([
+        { 
+          $match: { 
+            $or: [
+              { owner: user_id },
+              { owner: userId }
+            ]
+          } 
+        },
+        {
+          $group: {
+            _id: null,
+            totalProjects: { $sum: 1 },
+            totalDatabaseUsed: { $sum: { $ifNull: ["$databaseUsed", 0] } },
+            totalStorageUsed: { $sum: { $ifNull: ["$storageUsed", 0] } },
+            totalCollections: { $sum: { $size: { $ifNull: ["$collections", []] } } }
+          }
         }
-      }
+      ]),
+      Developer.findById(user_id).select("maxProjects maxCollections")
     ]);
 
     const globalStats = stats[0] || {
@@ -41,7 +46,11 @@ module.exports.getGlobalStats = async (req, res) => {
 
     res.json({
       ...globalStats,
-      totalRequests
+      totalRequests,
+      limits: {
+        maxProjects: dev?.maxProjects || 1,
+        maxCollections: dev?.maxCollections || 20
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

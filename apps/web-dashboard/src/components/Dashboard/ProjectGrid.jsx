@@ -17,7 +17,7 @@ const ProjectGrid = ({ projects, onCreateProject }) => {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.25rem' }}>
       {projects.map((project) => (
         <ProjectCard key={project._id} project={project} />
       ))}
@@ -34,14 +34,14 @@ const ProjectGrid = ({ projects, onCreateProject }) => {
           alignItems: 'center',
           cursor: 'pointer',
           color: 'var(--color-text-muted)',
-          minHeight: '260px',
+          minHeight: '180px', // Shrunk
           transition: 'all 0.2s'
         }}
       >
-        <div style={{ background: 'var(--color-bg-input)', padding: '16px', borderRadius: '50%', marginBottom: '1rem', border: '1px solid var(--color-border)' }}>
-          <Plus size={24} />
+        <div style={{ background: 'var(--color-bg-input)', padding: '12px', borderRadius: '50%', marginBottom: '0.75rem', border: '1px solid var(--color-border)' }}>
+          <Plus size={18} />
         </div>
-        <span style={{ fontWeight: 600 }}>Create New Project</span>
+        <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>New Project</span>
       </button>
     </div>
   );
