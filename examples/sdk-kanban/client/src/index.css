@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* High-Contrast Monochrome Base */
+    --bg-main: #ffffff;
+    --bg-subtle: #f9fafb;
+    --text-main: #000000;
+    --text-muted: #666666;
+    --border-main: #000000;
+    --border-subtle: #e5e7eb;
+    
+    /* Vibrant Core Accents */
+    --core-blue: #2563eb;
+    --core-red: #dc2626;
+    --core-green: #16a34a;
+    --core-yellow: #ca8a04;
+    --core-pink: #db2777;
+    --core-purple: #7c3aed;
+    --core-cyan: #0891b2;
+
+    --sidebar-width: 260px;
+    --topnav-height: 64px;
+    --thick-border: 2px;
+  }
+}
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  overflow: hidden;
+}
+
+/* Custom Scrollbar (Minimalist) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #000000;
+  border-radius: 0px;
+}
+
+/* UI Utilities */
+.mono-card {
+  @apply bg-white border-[2px] border-black rounded-sm shadow-none transition-all;
+}
+
+.mono-card:hover {
+  @apply shadow-[4px_4px_0px_0px_rgba(0,0,0,1)];
+  transform: translate(-2px, -2px);
+}
+
+.mono-btn {
+  @apply border-[2px] border-black px-4 py-2 font-black uppercase text-xs tracking-widest transition-all rounded-sm;
+}
+
+.mono-btn-primary {
+  @apply bg-black text-white hover:bg-white hover:text-black;
+}
+
+.mono-btn-vibrant {
+  @apply hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none;
+}
+
+.column-header {
+  @apply border-b-[3px] border-black pb-2 mb-4 flex items-center justify-between;
+}
