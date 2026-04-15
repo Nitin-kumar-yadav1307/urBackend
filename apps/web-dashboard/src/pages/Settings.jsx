@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -17,6 +17,7 @@ export default function Settings() {
     const [deletePass, setDeletePass] = useState('');
     const [loadingDelete, setLoadingDelete] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
 
     // Handle Password Change
     const handlePasswordChange = async (e) => {
@@ -57,6 +58,27 @@ export default function Settings() {
         if (!deletePass) return toast.error("Please enter your password to confirm.");
         setShowDeleteModal(true);
     };
+
+useEffect(() => {
+    const timer = setTimeout(() => setPageLoading(false), 500);
+    return () => clearTimeout(timer);
+}, []);
+
+const SettingsSkeleton = () => (
+    <div style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="skeleton" style={{ width: '140px', height: '28px' }} />
+        {[1, 2].map(i => (
+            <div key={i} className="glass-card" style={{ borderRadius: '8px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="skeleton" style={{ width: '160px', height: '20px' }} />
+                <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '6px' }} />
+                <div className="skeleton" style={{ width: '100%', height: '38px', borderRadius: '6px' }} />
+                <div className="skeleton" style={{ width: '100px', height: '34px', borderRadius: '6px' }} />
+            </div>
+        ))}
+    </div>
+);
+
+if (pageLoading) return <SettingsSkeleton />;
 
     return (
         <div className="container" style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
