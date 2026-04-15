@@ -1,10 +1,14 @@
 {
   "name": "@urbackend/sdk",
 <<<<<<< HEAD
+<<<<<<< HEAD
   "version": "0.2.6",
 =======
   "version": "0.2.3",
 >>>>>>> 806126af (chore: bump sdk version to 0.2.3)
+=======
+  "version": "0.2.7",
+>>>>>>> 99b31f75 (chore: bump sdk version to 0.2.7)
   "description": "Official TypeScript SDK for urBackend BaaS",
   "type": "module",
   "files": [
