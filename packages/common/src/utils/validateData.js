@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+const FORMAT_REGEX = {
+    email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+    url: /^https?:\/\/.+$/,
+    color: /^#[0-9A-Fa-f]{6}$/,
+    slug: /^[a-z0-9-]+$/,
+};
+
 const normalizeKey = (key) => String(key || '').replace(/\uFEFF/g, '').trim();
 
 const buildIncomingMaps = (incomingData = {}) => {
@@ -29,6 +36,17 @@ function validateField(value, field) {
     switch (field.type) {
         case 'String':
             if (typeof value !== 'string') return `Field '${field.key}' must be a String.`;
+            if (field.format) {
+                const regex = FORMAT_REGEX[field.format];
+                const trimmedValue = value.trim();
+                if (regex && !regex.test(trimmedValue)) {
+                    if (field.format === 'email') {
+                        return `Field '${field.key}' must be a valid email (e.g., user@example.com).`;
+                    } else {
+                        return `Field '${field.key}' must match format '${field.format}'.`;
+                    }
+                }
+            }
             break;
         case 'Number':
             if (typeof value !== 'number') return `Field '${field.key}' must be a Number.`;
