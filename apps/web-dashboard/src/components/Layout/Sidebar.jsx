@@ -5,6 +5,7 @@ import {
     ArrowLeft, LogOut, X, Rocket, Webhook
 } from 'lucide-react';
 
+
 function Sidebar({ logo, isOpen, onClose }) {
     const location = useLocation();
     const { projectId } = useParams();
