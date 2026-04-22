@@ -1,4 +1,5 @@
 const { Developer, Project, resolveEffectivePlan, getPlanLimits, AppError } = require('@urbackend/common');
+const mongoose = require('mongoose');
 
 /**
  * Middleware to load the full Developer document and attach it to req.developer.
@@ -44,11 +45,8 @@ exports.checkProjectLimit = async (req, res, next) => {
         // -1 means unlimited
         if (limits.maxProjects === -1) return next();
 
-        const currentProjectsCount = await Project.countDocuments({ owner: req.developer._id });
-        
-        if (currentProjectsCount >= limits.maxProjects) {
-            return next(new AppError(403, `Project limit reached (${limits.maxProjects}). Please upgrade your plan to create more projects.`));
-        }
+        // Store limits in req for atomic enforcement in controller
+        req.projectLimit = limits.maxProjects;
 
         next();
     } catch (err) {
@@ -90,9 +88,8 @@ exports.checkCollectionLimit = async (req, res, next) => {
 
         if (limits.maxCollections === -1) return next();
 
-        if (project.collections.length >= limits.maxCollections) {
-            return next(new AppError(403, `Collection limit reached (${limits.maxCollections}). Please upgrade your plan to create more collections.`));
-        }
+        // Store limit in req for atomic enforcement in controller
+        req.collectionLimit = limits.maxCollections;
 
         next();
     } catch (err) {

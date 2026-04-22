@@ -50,13 +50,8 @@ module.exports.uploadFile = async (req, res) => {
                 effectiveLimit = 20 * 1024 * 1024;
             }
 
-            // Only honor -1 (unlimited) for external storage; clamp internal to safety ceiling
-            if (effectiveLimit === -1 && isProjectStorageExternal(project)) {
-                await Project.updateOne(
-                    { _id: project._id },
-                    { $inc: { storageUsed: file.size } }
-                );
-            } else if (effectiveLimit === -1) {
+            // For internal storage: honor -1 as unlimited but clamp to safety ceiling
+            if (effectiveLimit === -1) {
                 // Internal storage with -1: clamp to safety ceiling
                 const result = await Project.updateOne(
                     {

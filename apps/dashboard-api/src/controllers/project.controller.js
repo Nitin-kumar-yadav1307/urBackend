@@ -186,11 +186,28 @@ const sanitizeProjectResponse = (projectObj) => {
 };
 
 module.exports.createProject = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     // POST FOR - PROJECT CREATION
     const { name, description, siteUrl } = createProjectSchema.parse(req.body);
 
-    // Project limit is now handled by checkProjectLimit middleware
+    // Atomic limit enforcement: count and create within transaction
+    if (req.projectLimit !== undefined) {
+      const currentCount = await Project.countDocuments(
+        { owner: req.user._id },
+        { session }
+      );
+
+      if (currentCount >= req.projectLimit) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(403).json({
+          error: `Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`
+        });
+      }
+    }
 
     const rawPublishableKey = generateApiKey("pk_live_");
     const hashedPublishableKey = hashApiKey(rawPublishableKey);
@@ -209,7 +226,10 @@ module.exports.createProject = async (req, res) => {
       jwtSecret: rawJwtSecret,
       siteUrl: siteUrl || "",
     });
-    await newProject.save();
+    await newProject.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
 
     const projectObj = newProject.toObject();
     projectObj.publishableKey = rawPublishableKey;
@@ -219,6 +239,9 @@ module.exports.createProject = async (req, res) => {
 
     res.status(201).json(projectObj);
   } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
+
     if (err instanceof z.ZodError) {
       return res.status(400).json({ error: err.issues });
     }
@@ -545,6 +568,8 @@ module.exports.createCollection = async (req, res) => {
   let collectionWasPersisted = false;
   let collectionNameForRollback;
   let collectionExistedBefore = false;
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
   try {
     const { projectId, collectionName, schema } = createCollectionSchema.parse(
@@ -556,12 +581,30 @@ module.exports.createCollection = async (req, res) => {
     project = await Project.findOne({
       _id: projectId,
       owner: req.user._id,
-    });
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    }).session(session);
+    if (!project) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: "Project not found" });
+    }
 
     const exists = project.collections.find((c) => c.name === collectionName);
-    if (exists)
+    if (exists) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ error: "Collection already exists" });
+    }
+
+    // Atomic limit enforcement within transaction
+    if (req.collectionLimit !== undefined) {
+      if (project.collections.length >= req.collectionLimit) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(403).json({
+          error: `Collection limit reached (${req.collectionLimit}). Please upgrade your plan to create more collections.`
+        });
+      }
+    }
 
     if (!project.jwtSecret) {
       project.jwtSecret = generateApiKey("jwt_");
@@ -569,6 +612,8 @@ module.exports.createCollection = async (req, res) => {
 
     if (collectionName === "users") {
       if (!validateUsersSchema(schema)) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(422).json({
           error:
             "The 'users' collection must have required 'email' and 'password' string fields.",
@@ -587,7 +632,7 @@ module.exports.createCollection = async (req, res) => {
     };
 
     project.collections.push(newCollectionConfig);
-    await project.save();
+    await project.save({ session });
     collectionWasPersisted = true;
 
     connection = await getConnection(projectId);
@@ -605,6 +650,9 @@ module.exports.createCollection = async (req, res) => {
 
     await createUniqueIndexes(Model, newCollectionConfig.model);
 
+    await session.commitTransaction();
+    session.endSession();
+
     await deleteProjectById(projectId);
     await setProjectById(projectId, project.toObject());
     await deleteProjectByApiKeyCache(project.publishableKey);
@@ -617,14 +665,10 @@ module.exports.createCollection = async (req, res) => {
 
     return res.status(201).json(projectObj);
   } catch (err) {
-    try {
-      if (project && collectionWasPersisted) {
-        project.collections = project.collections.filter(
-          (c) => c.name !== collectionNameForRollback,
-        );
-        await project.save();
-      }
+    await session.abortTransaction();
+    session.endSession();
 
+    try {
       if (connection && compiledCollectionName) {
         clearCompiledModel(connection, compiledCollectionName);
 
