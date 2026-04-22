@@ -2,7 +2,6 @@
 const { connectDB } = require("./config/db");
 const redis = require("./config/redis");
 
-// redis cache
 const {
   setProjectByApiKeyCache,
   getProjectByApiKeyCache,
@@ -10,6 +9,8 @@ const {
   setProjectById,
   getProjectById,
   deleteProjectById,
+  getDeveloperPlanCache,
+  setDeveloperPlanCache,
 } = require("./redis/redisCaching");
 
 // Models
@@ -87,6 +88,8 @@ const { getStorage } = require("./utils/storage.manager");
 const validateEnv = require("./utils/validateEnv");
 const { validateData, validateUpdateData } = require("./utils/validateData");
 const sessionManager = require("./utils/session.manager");
+const planLimits = require("./utils/planLimits");
+const AppError = require("./utils/AppError");
 
 module.exports = {
   connectDB,
@@ -156,9 +159,13 @@ module.exports = {
   setProjectById,
   getProjectById,
   deleteProjectById,
+  getDeveloperPlanCache,
+  setDeveloperPlanCache,
   validateData,
   validateUpdateData,
   userSignupSchema,
   initAuthEmailWorker,
   ...sessionManager,
+  ...planLimits,
+  AppError,
 };

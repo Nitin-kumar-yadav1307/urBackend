@@ -37,9 +37,12 @@ const logger = (req, res, next) => {
                     });
 
                     // Usage counter (Redis): daily API requests per project
-                    const day = getDayKey();
-                    const reqCountKey = `project:usage:req:count:${req.project._id}:${day}`;
-                    incrWithTtlAtomic(redis, reqCountKey, DEFAULT_DAILY_TTL_SECONDS).catch(() => {});
+                    // Skip increment if usageGate already incremented atomically
+                    if (!req._dailyCountIncremented) {
+                        const day = getDayKey();
+                        const reqCountKey = `project:usage:req:count:${req.project._id}:${day}`;
+                        incrWithTtlAtomic(redis, reqCountKey, DEFAULT_DAILY_TTL_SECONDS).catch(() => {});
+                    }
 
                     console.log(`📝 Logged: ${req.method} ${req.originalUrl} (${res.statusCode})`);
                 } catch (e) {

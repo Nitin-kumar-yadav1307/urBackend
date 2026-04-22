@@ -5,6 +5,7 @@ const { isProjectStorageExternal } = require("@urbackend/common");
 const { getMonthKey, getEndOfMonthTtlSeconds, incrWithTtlAtomic } = require("../utils/usageCounter");
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const SAFETY_MAX_BYTES = 100 * 1024 * 1024; // 100MB safety ceiling for internal storage
 
 const getBucket = (project) =>
     isProjectStorageExternal(project) ? "files" : "dev-files";
@@ -38,16 +39,43 @@ module.exports.uploadFile = async (req, res) => {
 
         // ATOMIC QUOTA RESERVATION
         if (!external) {
-            const result = await Project.updateOne(
-                { 
-                    _id: project._id, 
-                    $expr: { $lte: [{ $add: ["$storageUsed", file.size] }, "$storageLimit"] }
-                },
-                { $inc: { storageUsed: file.size } }
-            );
+            const limits = req.planLimits || {};
+            // Use explicit type checks instead of || to distinguish between undefined and 0
+            let effectiveLimit;
+            if (typeof limits.storageBytes === 'number') {
+                effectiveLimit = limits.storageBytes;
+            } else if (typeof project.storageLimit === 'number') {
+                effectiveLimit = project.storageLimit;
+            } else {
+                effectiveLimit = 20 * 1024 * 1024;
+            }
 
-            if (result.matchedCount === 0) {
-                return res.status(403).json({ error: "Internal storage limit exceeded." });
+            // For internal storage: honor -1 as unlimited but clamp to safety ceiling
+            if (effectiveLimit === -1) {
+                // Internal storage with -1: clamp to safety ceiling
+                const result = await Project.updateOne(
+                    {
+                        _id: project._id,
+                        $expr: { $lte: [{ $add: ["$storageUsed", file.size] }, SAFETY_MAX_BYTES] }
+                    },
+                    { $inc: { storageUsed: file.size } }
+                );
+
+                if (result.matchedCount === 0) {
+                    return res.status(403).json({ error: "Storage limit exceeded. Please upgrade your plan or delete some files." });
+                }
+            } else {
+                const result = await Project.updateOne(
+                    {
+                        _id: project._id,
+                        $expr: { $lte: [{ $add: ["$storageUsed", file.size] }, effectiveLimit] }
+                    },
+                    { $inc: { storageUsed: file.size } }
+                );
+
+                if (result.matchedCount === 0) {
+                    return res.status(403).json({ error: "Storage limit exceeded. Please upgrade your plan or delete some files." });
+                }
             }
         }
 

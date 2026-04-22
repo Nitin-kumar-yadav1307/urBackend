@@ -225,7 +225,18 @@ module.exports.sendMail = async (req, res) => {
       }
 
       if (!t) {
-        return res.status(404).json({ success: false, data: {}, message: "Mail template not found." });
+        return res.status(400).json({ success: false, data: {}, message: "Template not found." });
+      }
+
+      // Enforce Pro feature limit only for custom (project-owned) templates.
+      if (t.projectId) {
+        if (!req.planLimits || req.planLimits.mailTemplatesEnabled !== true) {
+          return res.status(403).json({ 
+            success: false, 
+            data: {}, 
+            message: "Custom Email Templates are a Pro feature. Please upgrade to use this functionality." 
+          });
+        }
       }
 
       templateUsed = {
@@ -285,7 +296,7 @@ module.exports.sendMail = async (req, res) => {
       return res.status(500).json({ success: false, data: {}, message: "Resend API key is not configured." });
     }
 
-    const limit = getMonthlyMailLimit(req.project);
+    const limit = getMonthlyMailLimit(req.project, req.planLimits);
     const { count, key } = await reserveMonthlyMailSlot(projectId, limit);
     consumedQuotaKey = key;
 

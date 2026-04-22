@@ -33,6 +33,7 @@ jest.mock('@urbackend/common', () => {
         },
         decrypt: jest.fn(),
         redis: redisMock,
+        getPlanLimits: jest.fn(() => ({ mailPerMonth: 100 })),
     };
 });
 
@@ -44,6 +45,7 @@ const makeReq = () => ({
     keyRole: 'secret',
     project: { _id: 'proj_1' },
     body: { to: 'user@example.com', subject: 'Hello', text: 'This is a message.' },
+    planLimits: { mailTemplatesEnabled: true },
 });
 
 const makeRes = () => {
