@@ -66,6 +66,16 @@ const updateMonthlyUsageCounter = (projectId, metricName, value) => {
     incrWithTtlAtomic(redis, key, ttlSeconds, value).catch(() => {});
 };
 
+const bestEffortDeleteUploadedObject = async (project, filePath) => {
+    try {
+        const supabase = await getStorage(project);
+        const bucket = getBucket(project);
+        await supabase.storage.from(bucket).remove([filePath]);
+    } catch {
+        // ignore cleanup failures; the primary response should still be returned
+    }
+};
+
 
 // Upload File
 
@@ -348,13 +358,27 @@ module.exports.confirmUpload = async (req, res) => {
             return res.status(403).json({ error: "Access denied." });
 
         // verify file actually exists on cloud before touching quota
-        const actualSize = await verifyUploadedFile(project, normalizedPath);
+        let actualSize;
+        try {
+            actualSize = await verifyUploadedFile(project, normalizedPath);
+        } catch (err) {
+            if (err?.message === "File not found after upload") {
+                await bestEffortDeleteUploadedObject(project, normalizedPath);
+                return res.status(409).json({
+                    error: "UPLOAD_NOT_READY",
+                    message: "Uploaded file is not visible yet. Please retry confirmation."
+                });
+            }
+            throw err;
+        }
 
         if (!Number.isFinite(actualSize) || actualSize <= 0) {
+            await bestEffortDeleteUploadedObject(project, normalizedPath);
             return res.status(500).json({ error: "Upload confirmation failed", details: process.env.NODE_ENV === "development" ? "Uploaded file size could not be determined" : undefined });
         }
 
         if (actualSize !== declaredSize) {
+            await bestEffortDeleteUploadedObject(project, normalizedPath);
             return res.status(400).json({ error: "Declared file size does not match uploaded file size." });
         }
 
@@ -363,12 +387,17 @@ module.exports.confirmUpload = async (req, res) => {
             const result = await Project.updateOne(
                 {
                     _id: project._id,
-                    $expr: { $lte: [{ $add: ["$storageUsed", actualSize] }, "$storageLimit"] }
+                    $or: [
+                        { storageLimit: -1 },
+                        { $expr: { $lte: [{ $add: ["$storageUsed", actualSize] }, "$storageLimit"] } }
+                    ]
                 },
                 { $inc: { storageUsed: actualSize } }
             );
-            if (result.matchedCount === 0)
+            if (result.matchedCount === 0) {
+                await bestEffortDeleteUploadedObject(project, normalizedPath);
                 return res.status(403).json({ error: "Internal storage limit exceeded." });
+            }
         }
 
         updateMonthlyUsageCounter(project._id, "storage:uploadedBytes", actualSize);
