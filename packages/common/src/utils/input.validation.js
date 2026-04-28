@@ -1,4 +1,5 @@
 const z = require("zod");
+const mongoose = require("mongoose");
 const {
   MAX_FIELD_DEPTH,
   UNIQUE_SUPPORTED_TYPES,
@@ -292,6 +293,26 @@ module.exports.sanitize = (obj) => {
     }
   }
   return clean;
+};
+
+module.exports.sanitizeObjectId = (value) => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  return mongoose.Types.ObjectId.isValid(normalized) ? normalized : null;
+};
+
+module.exports.sanitizeNonEmptyString = (value, options = {}) => {
+  if (typeof value !== "string") return null;
+
+  const { maxLength = 1024, allowNullByte = false } = options;
+  const normalized = value.trim();
+
+  if (!normalized) return null;
+  if (normalized.length > maxLength) return null;
+  if (!allowNullByte && normalized.includes("\0")) return null;
+
+  return normalized;
 };
 
 const emptyToUndefined = z.preprocess(

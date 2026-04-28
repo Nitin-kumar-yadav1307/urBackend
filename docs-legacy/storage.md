@@ -66,3 +66,36 @@ If `path` is invalid or already removed, API returns `404`.
 - `400 Bad Request`: usually missing `file` in multipart form.
 - `401 Unauthorized`: missing/invalid API key.
 - `413 Payload Too Large`: file exceeds max size limit.
+
+## Presigned Upload (Dashboard/Public API)
+
+For the newer upload flow, file bytes are uploaded directly from the browser to storage.
+
+Typical flow:
+
+1. Call backend `POST /api/storage/upload-request` with `filename`, `contentType`, and `size`.
+2. Receive `signedUrl` and `filePath`.
+3. Browser uploads file to `signedUrl` using `PUT`.
+4. Call backend `POST /api/storage/upload-confirm` to verify file existence and charge quota.
+
+This avoids proxying file bytes through Node.js and keeps server memory usage predictable.
+
+## Required Bucket CORS For S3/R2
+
+If using AWS S3 or Cloudflare R2 with presigned browser uploads, bucket CORS must allow the dashboard origin.
+
+Required methods:
+
+- `PUT`
+- `OPTIONS`
+- `GET`
+- `HEAD`
+
+Required headers should include at least:
+
+- `content-type`
+- `content-length`
+
+Browser `PUT` requests to `signedUrl` should send the file body and include the correct `Content-Type`, and `Content-Length` when your client/runtime allows explicitly setting it.
+
+If preflight CORS is missing or restrictive, browser uploads will fail even when the signed URL is valid.

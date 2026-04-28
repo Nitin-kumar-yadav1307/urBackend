@@ -39,18 +39,45 @@ export default function Storage() {
             toast.error("Account Verification Required. Please verify in Settings.");
             return;
         }
-        const formData = new FormData();
-        formData.append('file', file);
+
         setUploading(true);
         const toastId = toast.loading("Uploading...");
+
         try {
-            await api.post(`/api/projects/${projectId}/storage/upload`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
+            const requestRes = await api.post(`/api/projects/${projectId}/storage/upload-request`, {
+                filename: file.name,
+                contentType: file.type || 'application/octet-stream',
+                size: file.size,
             });
+
+            const signedUrl = requestRes?.data?.data?.signedUrl;
+            const filePath = requestRes?.data?.data?.filePath;
+
+            if (!signedUrl || !filePath) {
+                throw new Error('Could not get upload URL');
+            }
+
+            const uploadRes = await fetch(signedUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                },
+                body: file,
+            });
+
+            if (!uploadRes.ok) {
+                throw new Error('Direct upload failed');
+            }
+
+            await api.post(`/api/projects/${projectId}/storage/upload-confirm`, {
+                filePath,
+                size: file.size,
+            });
+
             toast.success("File uploaded!", { id: toastId });
             fetchFiles();
         } catch (err) {
-            toast.error(err.response?.data?.error || "Upload failed", { id: toastId });
+            toast.error(err.response?.data?.message || err.message || "Upload failed", { id: toastId });
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

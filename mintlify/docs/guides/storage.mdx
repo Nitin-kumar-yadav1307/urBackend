@@ -51,7 +51,7 @@ Uploads use a presigned URL three-step flow so the binary is sent directly to st
 
 ### Step 2 — Upload the binary to storage
 
-Send a `PUT` request to `signedUrl` with the raw file contents and the correct `Content-Type` header.
+Send a browser `PUT` request to `signedUrl` with the raw file contents and the correct `Content-Type` header.
 
 ```javascript
 const uploadRes = await fetch(signedUrl, {
@@ -181,6 +181,24 @@ console.log(url, provider, path, warning);
   SDK users (`urbackend-sdk`) do not need to change anything — `client.storage.upload()` uses this flow internally.
 </Note>
 
+## Required bucket CORS (S3/R2)
+
+If you use AWS S3 or Cloudflare R2 with presigned browser uploads, configure bucket CORS so browser uploads to `signedUrl` can pass preflight.
+
+Required methods:
+
+- `PUT`
+- `OPTIONS`
+- `GET`
+- `HEAD`
+
+Required `AllowedHeaders` (not `ExposeHeaders`) should include at least:
+
+- `content-type` — required for presigned `PUT` requests
+- `content-length` — typically safelisted, but some providers still require it to be allow-listed
+
+Without these CORS rules, browser uploads can fail even when `POST /api/storage/upload-request` and `POST /api/storage/upload-confirm` are correct.
+
 ## Delete a file
 
 To delete a file, pass the `path` returned from the upload response.
@@ -225,6 +243,6 @@ If the path is invalid or the file has already been removed, the API returns `40
   </Accordion>
 
   <Accordion title="CORS errors on PUT to signedUrl">
-    If you use an external S3/R2 bucket, configure its CORS policy to allow `PUT` requests from your client origin. The presigned URL flow requires this bucket-level setting.
+    If you use an external S3/R2 bucket, configure bucket CORS to allow `PUT`, `OPTIONS`, `GET`, and `HEAD`, and allow `content-type` and `content-length` headers from your client origin.
   </Accordion>
 </AccordionGroup>

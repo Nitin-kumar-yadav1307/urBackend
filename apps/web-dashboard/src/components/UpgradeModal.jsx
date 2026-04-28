@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Zap, Check, Loader2 } from 'lucide-react';
-import api from '../utils/api';
-import toast from 'react-hot-toast';
-import { useAuth } from '../context/AuthContext';
+// import api from '../utils/api';
+// import toast from 'react-hot-toast';
+// import { useAuth } from '../context/AuthContext';
 
 const FREE_FEATURES = [
     '1 Project',
-    '10 Collections per project',
-    '5,000 API requests / day',
-    '20MB File Storage',
-    '50 Emails / month',
+    '5 Collections per project',
+    '2,000 API requests / day',
+    '10MB File Storage',
+    '200 Auth Users',
+    '25 Emails / month',
     'Global email templates',
     'Community support',
 ];
@@ -18,7 +19,10 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
     '10 Projects',
     'Unlimited collections',
-    '50,000 API requests / day',
+    'Unlimited API requests',
+    'Unlimited Auth Users',
+    'Unlimited Webhooks',
+    'External Database (BYOM)',
     'Bring your own Storage (S3/R2)',
     '1,000 Emails / month',
     'Custom HTML email templates',
@@ -29,12 +33,13 @@ const PRO_FEATURES = [
 ];
 
 export default function UpgradeModal({ isOpen, onClose }) {
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading] = useState(false); // setIsLoading removed to fix lint error (unused)
     const navigate = useNavigate();
-    const { user } = useAuth();
+    // const { user } = useAuth(); // Removed to fix lint error (unused)
 
     if (!isOpen) return null;
 
+    /*
     const loadRazorpayScript = () => {
         return new Promise((resolve) => {
             if (window.Razorpay) return resolve(true);
@@ -45,8 +50,16 @@ export default function UpgradeModal({ isOpen, onClose }) {
             document.body.appendChild(script);
         });
     };
+    */
 
     const handleUpgrade = async () => {
+        // BETA TOGGLE: Route users to manual request instead of Razorpay
+        onClose();
+        navigate('/request-pro');
+        return;
+
+        /*
+        // Code below is disabled during Public Beta
         setIsLoading(true);
         try {
             const res = await api.post('/api/billing/checkout');
@@ -100,6 +113,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
             toast.error(msg);
             setIsLoading(false);
         }
+        */
     };
 
     return (
@@ -147,14 +161,14 @@ export default function UpgradeModal({ isOpen, onClose }) {
                     }}>
                         <Zap size={14} color="#7B61FF" />
                         <span style={{ fontSize: '0.75rem', color: '#7B61FF', fontWeight: 600 }}>
-                            Upgrade to Pro
+                            Get 1 month Pro for free (Beta)
                         </span>
                     </div>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>
-                        Unlock the full power of urBackend
+                        Get 1 month of Pro for free to test out urBackend
                     </h2>
                     <p style={{ color: 'var(--color-text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                        Take your projects to production with unlimited resources and advanced features.
+                        Help us test the platform during our beta phase and get full access to all Pro features.
                     </p>
                 </div>
 
@@ -201,7 +215,10 @@ export default function UpgradeModal({ isOpen, onClose }) {
                             <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#7B61FF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 Pro
                             </span>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>$9 <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>/mo</span></div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '4px' }}>$0 <span style={{ fontSize: '0.85rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>/mo</span></div>
+                            <p style={{ fontSize: '0.75rem', color: '#7B61FF', fontWeight: 500, margin: '8px 0 0 0' }}>
+                                Get a month free to test out app before launch!
+                            </p>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {PRO_FEATURES.map((f) => (
@@ -231,7 +248,7 @@ export default function UpgradeModal({ isOpen, onClose }) {
                         }}
                     >
                         {isLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Zap size={16} />}
-                        {isLoading ? 'Redirecting...' : 'Upgrade to Pro — $9/mo'}
+                        {isLoading ? 'Redirecting...' : 'Get 1 Month Pro for Free (Beta)'}
                     </button>
                     <p style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                         Billed monthly · Cancel anytime

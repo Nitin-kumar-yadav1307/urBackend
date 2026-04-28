@@ -22,7 +22,7 @@ const Log = require("./models/Log");
 const Otp = require("./models/otp");
 const Webhook = require("./models/Webhook");
 const WebhookDelivery = require("./models/WebhookDelivery");
-const Waitlist = require("./models/Waitlist");
+const ProRequest = require("./models/ProRequest");
 
 // Queues
 const { authEmailQueue, initAuthEmailWorker } = require("./queues/authEmailQueue");
@@ -45,7 +45,7 @@ const {
   sendOtp,
   sendReleaseEmail,
   sendAuthOtpEmail,
-  sendWaitlistConfirmationEmail,
+  sendProRequestConfirmationEmail,
 } = require("./utils/emailService");
 const {
   loginSchema,
@@ -66,6 +66,8 @@ const {
   createWebhookSchema,
   updateWebhookSchema,
   sendMailSchema,
+  sanitizeObjectId,
+  sanitizeNonEmptyString,
 } = require("./utils/input.validation");
 const { garbageCollect, storageGarbageCollect } = require("./utils/GC");
 const { generateApiKey, hashApiKey } = require("./utils/api");
@@ -102,7 +104,7 @@ module.exports = {
   Otp,
   Webhook,
   WebhookDelivery,
-  Waitlist,
+  ProRequest,
   authEmailQueue,
   emailQueue,
   webhookQueue,
@@ -112,7 +114,7 @@ module.exports = {
   sendOtp,
   sendReleaseEmail,
   sendAuthOtpEmail,
-  sendWaitlistConfirmationEmail,
+  sendProRequestConfirmationEmail,
   loginSchema,
   signupSchema,
   changePasswordSchema,
@@ -130,6 +132,8 @@ module.exports = {
   createWebhookSchema,
   updateWebhookSchema,
   sendMailSchema,
+  sanitizeObjectId,
+  sanitizeNonEmptyString,
   garbageCollect,
   storageGarbageCollect,
   generateApiKey,
