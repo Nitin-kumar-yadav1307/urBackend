@@ -173,9 +173,16 @@ module.exports.insertData = async (req, res) => {
       message: "Bulk insert successful",
     });
   } catch (err) {
-    console.error(err);
-    return next(new AppError("Failed to insert bulk data", 500));
+  console.error(err);
+
+  if (isDuplicateKeyError(err)) {
+    return next(
+      new AppError("Duplicate value violates unique constraint.", 409)
+    );
   }
+
+  return next(new AppError("Failed to insert bulk data", 500));
+}
 };
 
 // GET ALL DATA
