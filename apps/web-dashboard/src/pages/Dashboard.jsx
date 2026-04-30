@@ -18,7 +18,6 @@ import RecentActivityItem from '../components/Dashboard/RecentActivityItem';
 import UsageQuota from '../components/Dashboard/UsageQuota';
 import OnboardingChecklist from '../components/Dashboard/OnboardingChecklist';
 import DocLinks from '../components/Dashboard/DocLinks';
-import ReleaseBadge from '../components/Dashboard/ReleaseBadge';
 
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -27,7 +26,7 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
   const { setHeaderContent } = useLayout();
-  const { fetchPlanData } = usePlan();
+  const { fetchPlanData, planData } = usePlan();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
 
@@ -159,7 +158,9 @@ export default function Dashboard() {
             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Activity size={12} /> API Requests
             </span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary)' }}>—</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+              {planData ? `${planData.usage?.totalRequests || 0} / ${planData.limits?.reqPerDay === -1 ? '∞' : (planData.limits?.reqPerDay || 2000)}` : '—'}
+            </span>
           </div>
         </div>
       )}
@@ -232,8 +233,7 @@ export default function Dashboard() {
             </>
           )}
 
-          {/* 5. Version Badge */}
-          <ReleaseBadge />
+          {/* 5. Version Badge removed */}
         </div>
       </div>
     </DashboardShell>
