@@ -146,6 +146,24 @@
   --color-auth-footer-note: #999999;
 }
 
+/* Remove heavy shadows in light mode for cleaner look */
+.light-mode .card,
+.light-mode .card:hover,
+.light-mode .glass-panel,
+.light-mode .glass-card,
+.light-mode .btn-primary,
+.light-mode .btn-primary:hover {
+  box-shadow: none !important;
+}
+
+/* Target inline heavy shadows specifically in light mode */
+.light-mode [style*="box-shadow: 0 25px 60px rgba(0,0,0,0.4)"],
+.light-mode [style*="box-shadow: -10px 0 30px rgba(0,0,0,0.3)"],
+.light-mode [style*="box-shadow: 0 20px 40px rgba(0,0,0,0.4)"],
+.light-mode [style*="box-shadow: 0 10px 20px rgba(0,0,0,0.3)"] {
+  box-shadow: none !important;
+}
+
 * {
   margin: 0;
   padding: 0;
