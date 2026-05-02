@@ -16,17 +16,19 @@ export default function Releases() {
     const isAdmin = user?.email === ADMIN_EMAIL;
 
     useEffect(() => {
+        let isMounted = true;
         const fetchReleases = async () => {
             try {
                 const res = await api.get(`/api/releases`);
-                setReleases(res.data);
+                if (isMounted) setReleases(res.data);
             } catch (err) {
                 console.error("Failed to fetch releases", err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
         fetchReleases();
+        return () => { isMounted = false; };
     }, []);
 
     return (

@@ -45,7 +45,13 @@ export default function Analytics() {
         }
     }, [projectId]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { 
+        let isMounted = true;
+        Promise.resolve().then(() => {
+            if (isMounted) fetchData();
+        });
+        return () => { isMounted = false; };
+    }, [fetchData]);
 
     if (loading) return (
         <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>

@@ -359,7 +359,11 @@ function MailTemplatesForm({ projectId }) {
     };
 
     useEffect(() => {
-        fetchTemplates();
+        let isMounted = true;
+        Promise.resolve().then(() => {
+            if (isMounted) fetchTemplates();
+        });
+        return () => { isMounted = false; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectId]);
 
@@ -794,12 +798,17 @@ function DatabaseConfigForm({ project, projectId, onProjectUpdate }) {
     const [serverIp, setServerIp] = useState(null);
 
     useEffect(() => {
-        setShowForm(!( project?.resources?.db?.isExternal || false));
+        let isMounted = true;
+        Promise.resolve().then(() => setShowForm(!(project?.resources?.db?.isExternal || false)));
         const fetchIp = async () => {
-            try { const res = await api.get(`/api/server-ip`); setServerIp(res.data.ip); }
+            try { 
+                const res = await api.get(`/api/server-ip`); 
+                if (isMounted) setServerIp(res.data.ip); 
+            }
             catch (e) { console.error("Failed to fetch server IP", e); }
         };
         fetchIp();
+        return () => { isMounted = false; };
     }, [project]);
 
     const copyIp = () => {
@@ -916,14 +925,18 @@ function StorageConfigForm({ project, projectId, onProjectUpdate }) {
     const [showForm, setShowForm] = useState(!isConfigured);
     const [showRemoveModal, setShowRemoveModal] = useState(false);
 
-    useEffect(() => { setShowForm(!(project?.resources?.storage?.isExternal || false)); }, [project]);
+    useEffect(() => { 
+        Promise.resolve().then(() => setShowForm(!(project?.resources?.storage?.isExternal || false))); 
+    }, [project?.resources?.storage?.isExternal]);
 
     useEffect(() => {
-        if (config.storageProvider === "supabase") {
-            setConfig(prev => ({ ...prev, s3AccessKeyId: "", s3SecretAccessKey: "", s3Region: "", s3Endpoint: "", s3Bucket: "", publicUrlHost: "" }));
-        } else if (["s3", "cloudflare_r2"].includes(config.storageProvider)) {
-            setConfig(prev => ({ ...prev, storageUrl: "", storageKey: "" }));
-        }
+        Promise.resolve().then(() => {
+            if (config.storageProvider === "supabase") {
+                setConfig(prev => ({ ...prev, s3AccessKeyId: "", s3SecretAccessKey: "", s3Region: "", s3Endpoint: "", s3Bucket: "", publicUrlHost: "" }));
+            } else if (["s3", "cloudflare_r2"].includes(config.storageProvider)) {
+                setConfig(prev => ({ ...prev, storageUrl: "", storageKey: "" }));
+            }
+        });
     }, [config.storageProvider]);
 
     const handleChange = (e) => setConfig({ ...config, [e.target.name]: e.target.value });
@@ -1078,7 +1091,11 @@ function AllowedDomainsForm({ project, projectId, onProjectUpdate }) {
     const [newDomain, setNewDomain] = useState("");
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => { if (project?.allowedDomains) setDomains(project.allowedDomains); }, [project]);
+    useEffect(() => { 
+        if (project?.allowedDomains) {
+            Promise.resolve().then(() => setDomains(project.allowedDomains)); 
+        }
+    }, [project?.allowedDomains]);
 
     const handleUpdate = async (updatedDomains) => {
         setLoading(true);

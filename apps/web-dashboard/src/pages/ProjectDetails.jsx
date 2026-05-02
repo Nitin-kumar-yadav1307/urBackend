@@ -27,27 +27,33 @@ function ProjectDetails() {
     const [newKey, setNewKey] = useState(null);
 
     useEffect(() => {
-        completeStep('get_api_key');
-        setActiveProjectId(projectId);
+        Promise.resolve().then(() => {
+            completeStep('get_api_key');
+            setActiveProjectId(projectId);
+        });
     }, [completeStep, setActiveProjectId, projectId]);
 
     useEffect(() => {
+        let isMounted = true;
         const fetchData = async () => {
             try {
                 const [projectRes, analyticsRes] = await Promise.all([
                     api.get(`/api/projects/${projectId}`),
                     api.get(`/api/projects/${projectId}/analytics`)
                 ]);
-                setProject(projectRes.data);
-                setAnalytics(analyticsRes.data);
+                if (isMounted) {
+                    setProject(projectRes.data);
+                    setAnalytics(analyticsRes.data);
+                }
             } catch (err){
                 toast.error("Failed to load project details");
                 console.error(err)
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
         fetchData();
+        return () => { isMounted = false; };
     }, [projectId, user]);
 
     const handleRegenerateKey = async (keyType) => {

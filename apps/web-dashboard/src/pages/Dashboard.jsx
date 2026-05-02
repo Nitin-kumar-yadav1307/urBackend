@@ -63,7 +63,13 @@ export default function Dashboard() {
       }
     };
 
-    if (user) fetchData();
+    if (user) {
+      let isMounted = true;
+      Promise.resolve().then(() => {
+        if (isMounted) fetchData();
+      });
+      return () => { isMounted = false; };
+    }
   }, [user, fetchPlanData]);
 
   // Inject search bar into global header

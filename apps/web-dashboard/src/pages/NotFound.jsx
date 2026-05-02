@@ -20,7 +20,7 @@ export default function NotFound() {
     useEffect(() => {
         const initialLogs = ['> Initializing search sequence...', '> Analyzing request headers...', '> Checking neural pathways...', '> Searching /dev/null...', '> Error: 404 - Page Data Corrupted.', '> System halted.'];
 
-        setTerminalText([]); // Start empty
+        Promise.resolve().then(() => setTerminalText([])); // Start empty
 
         let i = 0;
         const interval = setInterval(() => {

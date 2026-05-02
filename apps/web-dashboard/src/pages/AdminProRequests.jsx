@@ -31,7 +31,7 @@ export default function AdminProRequests() {
 
     useEffect(() => {
         if (user?.isAdmin) {
-            fetchData();
+            Promise.resolve().then(() => fetchData());
         }
     }, [user]);
 

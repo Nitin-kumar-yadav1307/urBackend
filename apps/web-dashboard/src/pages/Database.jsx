@@ -50,44 +50,50 @@ export default function Database() {
 
   // ... (Keeping core logic: fetchProject, fetchData, handleSaveRls, etc. - mapped to new components)
 
-  useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const res = await api.get(`/api/projects/${projectId}`);
-        const withRlsDefaults = (res.data.collections || []).map(c => ({
-            ...c,
-            rls: {
-              enabled: typeof c.rls?.enabled === 'boolean' ? c.rls.enabled : false,
-              mode: c.rls?.mode === 'owner-write-only' ? 'public-read' : (c.rls?.mode || 'public-read'),
-              ownerField: c.rls?.ownerField || 'userId',
-              requireAuthForWrite: typeof c.rls?.requireAuthForWrite === 'boolean' ? c.rls.requireAuthForWrite : true
+    useEffect(() => {
+      let isMounted = true;
+      const fetchProject = async () => {
+        try {
+          const res = await api.get(`/api/projects/${projectId}`);
+          const withRlsDefaults = (res.data.collections || []).map(c => ({
+              ...c,
+              rls: {
+                enabled: typeof c.rls?.enabled === 'boolean' ? c.rls.enabled : false,
+                mode: c.rls?.mode === 'owner-write-only' ? 'public-read' : (c.rls?.mode || 'public-read'),
+                ownerField: c.rls?.ownerField || 'userId',
+                requireAuthForWrite: typeof c.rls?.requireAuthForWrite === 'boolean' ? c.rls.requireAuthForWrite : true
+              }
+          }));
+          if (isMounted) {
+            setProject(res.data);
+            setCollections(withRlsDefaults);
+            const queryCol = searchParams.get("collection");
+            if (queryCol) {
+              const found = withRlsDefaults.find(c => c.name === queryCol);
+              if (found) setActiveCollection(found);
+            } else if (withRlsDefaults.length > 0) {
+              setActiveCollection(withRlsDefaults.find(c => c.name !== 'users') || withRlsDefaults[0]);
             }
-        }));
-        setProject(res.data);
-        setCollections(withRlsDefaults);
-        const queryCol = searchParams.get("collection");
-        if (queryCol) {
-          const found = withRlsDefaults.find(c => c.name === queryCol);
-          if (found) setActiveCollection(found);
-        } else if (withRlsDefaults.length > 0) {
-          setActiveCollection(withRlsDefaults.find(c => c.name !== 'users') || withRlsDefaults[0]);
-        }
-      } catch { toast.error("Failed to load project"); }
-    };
-    fetchProject();
-  }, [projectId, user, searchParams]);
+          }
+        } catch { toast.error("Failed to load project"); }
+      };
+      fetchProject();
+      return () => { isMounted = false; };
+    }, [projectId, user, searchParams]);
 
-  // Sync RLS states with active collection
-  useEffect(() => {
-    if (activeCollection) {
-      setRlsEnabled(activeCollection.rls?.enabled || false);
-      setRlsMode(activeCollection.rls?.mode || 'public-read');
-      setRlsOwnerField(activeCollection.rls?.ownerField || 'userId');
-      
-      // Reset filters when switching collections to prevent invalid field queries
-      setQueryParams(p => ({ ...p, page: 1, filters: [] }));
-    }
-  }, [activeCollection]);
+    // Sync RLS states with active collection
+    useEffect(() => {
+      if (activeCollection) {
+        Promise.resolve().then(() => {
+          setRlsEnabled(activeCollection.rls?.enabled || false);
+          setRlsMode(activeCollection.rls?.mode || 'public-read');
+          setRlsOwnerField(activeCollection.rls?.ownerField || 'userId');
+          
+          // Reset filters when switching collections to prevent invalid field queries
+          setQueryParams(p => ({ ...p, page: 1, filters: [] }));
+        });
+      }
+    }, [activeCollection]);
 
   const fetchData = useCallback(async () => {
     if (!activeCollection) return;
@@ -120,7 +126,12 @@ export default function Database() {
     if (queryParams.sort !== '-createdAt') newParams.sort = queryParams.sort;
     
     setSearchParams(newParams);
-    fetchData();
+    
+    let isMounted = true;
+    Promise.resolve().then(() => {
+      if (isMounted) fetchData();
+    });
+    return () => { isMounted = false; };
   }, [activeCollection, fetchData, setSearchParams, queryParams.page, queryParams.limit, queryParams.sort]);
 
   const handleSaveRls = async () => {

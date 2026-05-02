@@ -61,19 +61,23 @@ export default function Auth() {
         (hasHiddenPasswordField || normalizedUsersFields.some((f) => f.key === 'password' && f.type === 'string' && f.required));
 
     useEffect(() => {
+        let isMounted = true;
         const fetchData = async () => {
             try {
                 const projRes = await api.get(`/api/projects/${projectId}`);
-                setProject(projRes.data);
-                if (projRes.data.authProviders) setAuthProviders(projRes.data.authProviders);
-                if (projRes.data.isAuthEnabled) {
-                    const usersRes = await api.get(`/api/projects/${projectId}/collections/users/data`);
-                    setUsers(usersRes.data);
+                if (isMounted) {
+                    setProject(projRes.data);
+                    if (projRes.data.authProviders) setAuthProviders(projRes.data.authProviders);
+                    if (projRes.data.isAuthEnabled) {
+                        const usersRes = await api.get(`/api/projects/${projectId}/collections/users/data`);
+                        setUsers(usersRes.data);
+                    }
                 }
             } catch { toast.error("Failed to load auth details"); }
-            finally { setLoading(false); }
+            finally { if (isMounted) setLoading(false); }
         };
         fetchData();
+        return () => { isMounted = false; };
     }, [projectId]);
 
     const handleEnableAuth = async () => {

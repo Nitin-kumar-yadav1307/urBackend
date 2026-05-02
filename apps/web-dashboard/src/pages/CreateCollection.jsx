@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -387,15 +387,17 @@ function CreateCollection() {
     const [collections, setCollections] = useState([]);
 
     // Fetch existing collections for Ref picker
-    useState(() => {
+    useEffect(() => {
+        let isMounted = true;
         const fetchCollections = async () => {
             try {
                 const res = await api.get(`/api/projects/${projectId}`);
-                setCollections(res.data.collections || []);
+                if (isMounted) setCollections(res.data.collections || []);
             } catch { /* ignore */ }
         };
         fetchCollections();
-    }, []);
+        return () => { isMounted = false; };
+    }, [projectId]);
 
     const addField = () => {
         setFields([...fields, createEmptyField()]);
