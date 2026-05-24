@@ -18,6 +18,29 @@ export default function Login() {
   });
 
   /**
+   * Updates the email field in the login form.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Email input change event.
+   */
+  const handleEmailChange = (e) => {
+    setFormData((current) => ({ ...current, email: e.target.value }));
+  };
+
+  /**
+   * Updates the password field in the login form.
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Password input change event.
+   */
+  const handlePasswordChange = (e) => {
+    setFormData((current) => ({ ...current, password: e.target.value }));
+  };
+
+  /**
+   * Navigates to the dashboard after a successful login mutation.
+   */
+  const handleLoginSuccess = () => {
+    navigate('/');
+  };
+
+  /**
    * Submits the login form and forwards successful sign-ins to the home page.
    * @param {React.FormEvent<HTMLFormElement>} e - Form submit event.
    * @returns {Promise<void>}
@@ -25,7 +48,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     login(formData, {
-      onSuccess: () => navigate('/'),
+      onSuccess: handleLoginSuccess,
     });
   };
 
@@ -64,7 +87,7 @@ export default function Login() {
             label="Email"
             placeholder="Enter your email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={handleEmailChange}
             required
           />
           
@@ -73,7 +96,7 @@ export default function Login() {
             label="Password"
             placeholder="Enter your password"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={handlePasswordChange}
             required
           />
 
