@@ -5,6 +5,10 @@ import { authApi } from '../../lib/api';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 
+/**
+ * Social login page for the social demo client.
+ * Handles email/password sign-in and social provider redirects.
+ */
 export default function Login() {
   const navigate = useNavigate();
   const { login, loginError, isLoginLoading } = useAuth();
@@ -13,6 +17,11 @@ export default function Login() {
     password: '',
   });
 
+  /**
+   * Submits the login form and forwards successful sign-ins to the home page.
+   * @param {React.FormEvent<HTMLFormElement>} e - Form submit event.
+   * @returns {Promise<void>}
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     login(formData, {
@@ -20,11 +29,17 @@ export default function Login() {
     });
   };
 
+  /**
+   * Redirects the user to the GitHub OAuth start endpoint.
+   */
   const handleGithubLogin = () => {
     const startUrl = authApi.getSocialStartUrl('github');
     window.location.href = startUrl;
   };
 
+  /**
+   * Redirects the user to the Google OAuth start endpoint.
+   */
   const handleGoogleLogin = () => {
     const startUrl = authApi.getSocialStartUrl('google');
     window.location.href = startUrl;
