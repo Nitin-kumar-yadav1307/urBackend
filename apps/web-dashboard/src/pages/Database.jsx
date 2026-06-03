@@ -486,7 +486,7 @@ export default function Database() {
                             style={{ width: '100%', height: '40px', fontSize: '0.85rem' }}
                           >
                               <option value="userId">userId (Default)</option>
-                              {activeCollection?.model?.filter(f => f.type === 'STRING').map(f => (
+                                {activeCollection?.model?.filter(f => String(f?.type || '').toLowerCase() === 'string').map(f => (
                                   <option key={f.key} value={f.key}>{f.key}</option>
                               ))}
                           </select>
