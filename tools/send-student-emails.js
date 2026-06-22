@@ -12,7 +12,7 @@ const BATCH_SIZE = 100;
 
 async function sendEmail(email) {
     return resend.emails.send({
-        from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+          from: process.env.EMAIL_FROM || 'urBackend <urbackend@apps.bitbros.in>',
         to: email,
         subject: 'Try urBackend',
         html: `
@@ -43,21 +43,27 @@ async function main() {
         .map(e => e.trim())
         .filter(Boolean);
 
-   const batchSize = parseInt(process.argv[2]) || 100;
-    const batch = emails.slice(0, batchSize);
+     const parsed = Number(process.argv[2]);
+   const batchSize = Number.isInteger(parsed) && parsed > 0 ? parsed : BATCH_SIZE;
+    const batch = emails.slice(0, Math.min(batchSize, emails.length));
     console.log(`Sending ${batch.length} emails...`);
+
+     const redactEmail = (value) => {
+       const [local, domain] = String(value).split('@');
+        if (!domain) return '***';
+        return `${local?.slice(0, 2) || '**'}***@${domain}`;
+    };
 
     for (const email of batch) {
         try {
             await sendEmail(email);
-            console.log(`✓ ${email}`);
-
+          console.error(`✗ ${redactEmail(email)}`, err.message);
             await new Promise(resolve =>
                 setTimeout(resolve, 1000)
             );
 
         } catch (err) {
-            console.error(`✗ ${email}`, err.message);
+             console.error(`✗ ${redactEmail(email)}`, err.message);
         }
     }
 
