@@ -32,10 +32,8 @@ module.exports = function (req, res, next) {
         // Proceed to the next middleware or route handler
         next();
     } catch (err) {
-        if (process.env.NODE_ENV !== 'test') {
-            console.error(err);
-        }
+    console.error("JWT ERROR:", err);
 
-        return next(new AppError(401, 'Invalid Token'));
-    }
+    return next(new AppError(401, "Invalid Token"));
+}
 };
