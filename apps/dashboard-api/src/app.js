@@ -75,14 +75,15 @@ const csrfProtection = csurf({
     } 
 });
 
+// AFTER
 app.use((req, res, next) => {
     // Exclude Razorpay webhook from CSRF protection since it's an external POST request
-    if (req.path === '/api/billing/webhook') {
+    // Exclude CLI routes — CLI authenticates via Bearer PAT, not cookies
+    if (req.path === '/api/billing/webhook' || req.path.startsWith('/api/user/cli')) {
         return next();
     }
     csrfProtection(req, res, next);
 });
-
 
 if (process.env.NODE_ENV !== 'test') {
     garbageCollect();

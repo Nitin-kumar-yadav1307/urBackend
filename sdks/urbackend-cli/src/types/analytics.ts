@@ -1,11 +1,13 @@
 export interface GlobalStats {
-  plan: "free" | "pro";
+  plan: string;
   planExpiresAt: string | null;
   limits: {
     maxProjects: number;
     maxCollections: number;
-    storageLimit: number;
-    databaseLimit: number;
+    reqPerDay: number;
+    storageBytes: number;
+    mongoBytes: number;
+    authUsersLimit: number;
   };
   usage: {
     totalProjects: number;
@@ -26,11 +28,4 @@ export interface RecentActivityLog {
   path: string;
   status: number;
   timestamp: string;
-}
-
-export interface ProjectAnalytics {
-  totalRequests: number;
-  successRequests: number;
-  errorRequests: number;
-  avgResponseTime?: number;
 }

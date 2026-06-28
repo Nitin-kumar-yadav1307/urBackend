@@ -119,7 +119,6 @@ async function authenticate(token) {
     method: "GET",
     token
   });
-  console.log("DEBUG raw response:", JSON.stringify(res, null, 2));
   return res.data;
 }
 async function getProfile() {
@@ -155,14 +154,6 @@ function formatBytes(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const value = (bytes / Math.pow(1024, i)).toFixed(2);
   return `${value} ${units[i]}`;
-}
-function formatDate(iso) {
-  if (!iso) return "Never";
-  return new Date(iso).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric"
-  });
 }
 function label(text, width = 14) {
   return text.padEnd(width);
@@ -263,16 +254,20 @@ async function whoamiCommand() {
 
 // src/services/project.service.ts
 async function listProjects() {
-  const res = await apiFetch("/projects", {
-    method: "GET"
-  });
+  const res = await apiFetch(
+    "/projects",
+    { method: "GET" }
+  );
+  if (Array.isArray(res)) return res;
   return res.data ?? [];
 }
 async function getProject(projectId) {
-  const res = await apiFetch(`/projects/${projectId}`, {
-    method: "GET"
-  });
-  return res.data;
+  const res = await apiFetch(
+    `/projects/${projectId}`,
+    { method: "GET" }
+  );
+  if ("data" in res && res.data) return res.data;
+  return res;
 }
 
 // src/commands/project/list.ts
@@ -538,9 +533,10 @@ async function getGlobalStats() {
   return res.data;
 }
 async function getRecentActivity() {
-  const res = await apiFetch("/analytics/activity", {
-    method: "GET"
-  });
+  const res = await apiFetch(
+    "/analytics/activity",
+    { method: "GET" }
+  );
   return Array.isArray(res.data) ? res.data : [];
 }
 
@@ -563,7 +559,7 @@ async function statusCommand() {
     console.log("\n\u2500\u2500 Account \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
     console.log(`${label("Plan")} ${stats.plan.toUpperCase()}`);
     if (stats.planExpiresAt) {
-      console.log(`${label("Plan expires")} ${formatDate(stats.planExpiresAt)}`);
+      console.log(`${label("Plan expires")} ${stats.planExpiresAt}`);
     }
     console.log("\n\u2500\u2500 Usage \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
     console.log(
@@ -573,13 +569,15 @@ async function statusCommand() {
       `${label("Collections")} ${stats.usage.totalCollections} / ${stats.limits.maxCollections}`
     );
     console.log(
-      `${label("Database")} ${formatBytes(stats.usage.totalDatabaseUsed)} / ${formatBytes(stats.limits.databaseLimit ?? 0)}`
+      `${label("Database")} ${formatBytes(stats.usage.totalDatabaseUsed)} / ${formatBytes(stats.limits.mongoBytes)}`
     );
     console.log(
-      `${label("Storage")} ${formatBytes(stats.usage.totalStorageUsed)} / ${formatBytes(stats.limits.storageLimit ?? 0)}`
+      `${label("Storage")} ${formatBytes(stats.usage.totalStorageUsed)} / ${formatBytes(stats.limits.storageBytes)}`
     );
-    console.log(`${label("Total requests")} ${stats.usage.totalRequests.toLocaleString()}`);
-    console.log(`${label("Total users")} ${stats.usage.totalUsers.toLocaleString()}`);
+    console.log(
+      `${label("API requests")} ${stats.usage.totalRequests.toLocaleString()} / ${stats.limits.reqPerDay.toLocaleString()} today`
+    );
+    console.log(`${label("Auth users")} ${stats.usage.totalUsers} / ${stats.limits.authUsersLimit}`);
     console.log(`${label("Webhooks")} ${stats.usage.totalWebhooks}`);
     if (currentProjectId) {
       try {
@@ -587,16 +585,12 @@ async function statusCommand() {
         console.log("\n\u2500\u2500 Active project \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
         console.log(`${label("Name")} ${project.name}`);
         console.log(`${label("ID")} ${project._id}`);
-        console.log(
-          `${label("Collections")} ${project.collections?.length ?? 0}`
-        );
+        console.log(`${label("Collections")} ${project.collections?.length ?? 0}`);
         console.log(`${label("Auth")} ${project.isAuthEnabled ? "Enabled" : "Disabled"}`);
       } catch {
       }
     } else {
-      console.log(
-        "\nTip: Run 'ub project use' to select a project and see per-project details."
-      );
+      console.log("\nTip: Run 'ub project use' to select a project.");
     }
     try {
       const activity = await getRecentActivity();
@@ -606,7 +600,7 @@ async function statusCommand() {
           const icon = statusIcon(log.status);
           const time = new Date(log.timestamp).toLocaleTimeString();
           console.log(
-            `  ${icon} [${log.status}] ${log.method.padEnd(6)} ${log.path.padEnd(32)} ${log.projectName}  ${time}`
+            `  ${icon} [${log.status}] ${log.method.padEnd(6)} ${log.path.padEnd(32)} ${time}`
           );
         }
       }

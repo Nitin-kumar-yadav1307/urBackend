@@ -1,56 +1,54 @@
 import { apiFetch } from "../core/api.js";
-import type { GlobalStats, RecentActivityLog } from "../types/analytics.js";
 
-interface GlobalStatsResponse {
-  data: GlobalStats;
+interface APIResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
 }
 
-interface RecentActivityResponse {
-  data: RecentActivityLog[];
-}
-
-interface ProjectAnalyticsResponse {
-  data: {
+export interface GlobalStats {
+  plan: string;
+  planExpiresAt: string | null;
+  limits: {
+    maxProjects: number;
+    maxCollections: number;
+    reqPerDay: number;
+    storageBytes: number;
+    mongoBytes: number;
+    authUsersLimit: number;
+  };
+  usage: {
+    totalProjects: number;
+    totalCollections: number;
+    totalStorageUsed: number;
+    totalDatabaseUsed: number;
     totalRequests: number;
-    successRequests: number;
-    errorRequests: number;
-    topCollections?: { name: string; requests: number }[];
+    totalWebhooks: number;
+    totalUsers: number;
   };
 }
 
-/**
- * Fetches global usage stats across all developer projects.
- * Endpoint: GET /analytics/stats
- */
+export interface RecentActivityLog {
+  id: string;
+  projectName: string;
+  projectId: string;
+  method: string;
+  path: string;
+  status: number;
+  timestamp: string;
+}
+
 export async function getGlobalStats(): Promise<GlobalStats> {
-  const res = await apiFetch<GlobalStatsResponse>("/analytics/stats", {
+  const res = await apiFetch<APIResponse<GlobalStats>>("/analytics/stats", {
     method: "GET",
   });
   return res.data;
 }
 
-/**
- * Fetches the 20 most recent API logs across all projects.
- * Endpoint: GET /analytics/activity
- */
 export async function getRecentActivity(): Promise<RecentActivityLog[]> {
-  const res = await apiFetch<RecentActivityResponse>("/analytics/activity", {
-    method: "GET",
-  });
-  return Array.isArray(res.data) ? res.data : [];
-}
-
-/**
- * Fetches per-project analytics.
- * Endpoint: GET /projects/:projectId/analytics?range=last24h
- */
-export async function getProjectAnalytics(
-  projectId: string,
-  range: "last1h" | "last24h" | "last7d" | "last30d" | "allTime" = "last24h",
-): Promise<ProjectAnalyticsResponse["data"]> {
-  const res = await apiFetch<ProjectAnalyticsResponse>(
-    `/projects/${projectId}/analytics?range=${range}`,
+  const res = await apiFetch<APIResponse<RecentActivityLog[]>>(
+    "/analytics/activity",
     { method: "GET" },
   );
-  return res.data;
+  return Array.isArray(res.data) ? res.data : [];
 }

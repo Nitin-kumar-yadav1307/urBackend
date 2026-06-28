@@ -12,7 +12,7 @@ export async function authenticate(token: string): Promise<CLIProfile> {
     method: "GET",
     token,
   });
-  console.log("DEBUG raw response:", JSON.stringify(res, null, 2));
+ 
   return res.data;
 }
 

@@ -8,28 +8,34 @@ interface APIResponse<T> {
 }
 
 export async function listProjects(): Promise<ProjectListItem[]> {
-  const res = await apiFetch<APIResponse<ProjectListItem[]>>("/projects", {
-    method: "GET",
-  });
-  return res.data ?? [];
+  const res = await apiFetch<ProjectListItem[] | APIResponse<ProjectListItem[]>>(
+    "/projects",
+    { method: "GET" },
+  );
+  // Backend returns raw array, not wrapped in { data: [...] }
+  if (Array.isArray(res)) return res;
+  return (res as APIResponse<ProjectListItem[]>).data ?? [];
 }
 
 export async function getProject(projectId: string): Promise<Project> {
-  const res = await apiFetch<APIResponse<Project>>(`/projects/${projectId}`, {
-    method: "GET",
-  });
-  return res.data;
+  const res = await apiFetch<Project | APIResponse<Project>>(
+    `/projects/${projectId}`,
+    { method: "GET" },
+  );
+  if ("data" in res && res.data) return (res as APIResponse<Project>).data;
+  return res as Project;
 }
 
 export async function createProject(payload: {
   name: string;
   description?: string;
 }): Promise<Project> {
-  const res = await apiFetch<APIResponse<Project>>("/projects", {
+  const res = await apiFetch<Project | APIResponse<Project>>("/projects", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return res.data;
+  if ("data" in res && res.data) return (res as APIResponse<Project>).data;
+  return res as Project;
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
