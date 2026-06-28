@@ -63,6 +63,10 @@ jest.mock('../middlewares/authFlexible', () =>
     })
 );
 
+jest.mock('../controllers/cli.controller', () => ({
+    getCLIProfile: jest.fn((_req, res) => res.json({ success: true, data: {} }))
+}));
+
 const express = require('express');
 const request = require('supertest');
 const userRouter = require('../routes/user');
