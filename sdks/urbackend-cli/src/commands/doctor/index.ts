@@ -28,7 +28,12 @@ export interface DoctorOptions {
 async function checkApiReachable(apiBase: string): Promise<number | null> {
   const start = Date.now();
   try {
-    await fetch(`${apiBase}/health`, { signal: AbortSignal.timeout(5000) });
+   const response = await fetch(`${apiBase}/health`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+      return null;
+    }
     return Date.now() - start;
   } catch {
     return null;

@@ -50,5 +50,8 @@ export async function getRecentActivity(): Promise<RecentActivityLog[]> {
     "/analytics/activity",
     { method: "GET" },
   );
-  return Array.isArray(res.data) ? res.data : [];
+  if (!Array.isArray(res.data)) {
+    throw new Error("Invalid response from /analytics/activity");
+  }
+  return res.data;
 }

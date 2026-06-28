@@ -31,20 +31,32 @@ export async function apiFetch<T>(
   }
 
   // All dashboard-api routes are under /api
-  const url = `${config.apiBase}/api${endpoint}`;
+  const base = config.apiBase.replace(/\/+$/, "");
+  const apiPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = `${base}/api${apiPath}`;
 
   let response: Response;
+
+  const controller = new AbortController();
+  const signal = options.signal ?? controller.signal;
+  const timeoutId =
+  options.signal ? undefined : setTimeout(() => controller.abort(), 15_000);
 
   try {
     response = await fetch(url, {
       ...options,
       headers,
+        signal,
     });
-  } catch {
+  } catch (error) {
     throw new APIError(
       0,
-      "Unable to connect to the urBackend API. Is the server running?",
+       error instanceof Error && error.name === "AbortError"
+        ? "The urBackend API request timed out."
+        : "Unable to connect to the urBackend API. Is the server running?",
     );
+     } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 
   if (!response.ok) {

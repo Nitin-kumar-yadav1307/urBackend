@@ -25,18 +25,27 @@ export function loadConfig(): CLIConfig {
 
 export function saveConfig(config: CLIConfig): void {
   if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+   fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
   }
 
   // Atomic write: write to temp file then rename to avoid corruption on crash
   const tmp = CONFIG_PATH + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(config, null, 2), "utf8");
+ fs.writeFileSync(tmp, JSON.stringify(config, null, 2), {
+    encoding: "utf8",
+    mode: 0o600,
+  });
   fs.renameSync(tmp, CONFIG_PATH);
+  fs.chmodSync(CONFIG_DIR, 0o700);
+  fs.chmodSync(CONFIG_PATH, 0o600);
 }
 
 export function saveToken(token: string): void {
   const config = loadConfig();
-  saveConfig({ ...config, pat: token });
+   const nextConfig: CLIConfig = { ...config, pat: token };
+  if (config.pat && config.pat !== token) {
+    delete nextConfig.currentProject;
+  }
+  saveConfig(nextConfig);
 }
 
 export function clearToken(): void {

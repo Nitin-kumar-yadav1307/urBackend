@@ -43,8 +43,11 @@ export async function projectUseCommand(projectIdOrName?: string): Promise<void>
       console.log();
 
       const answer = await prompt("Enter project number: ");
-      const index = parseInt(answer, 10) - 1;
-
+      if (!/^\d+$/.test(answer)) {
+        logger.error("Invalid selection.");
+        return;
+      }
+      const index = Number(answer) - 1;
       if (isNaN(index) || index < 0 || index >= projects.length) {
         logger.error("Invalid selection.");
         return;

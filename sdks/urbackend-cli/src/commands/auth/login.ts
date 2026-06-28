@@ -16,13 +16,20 @@ export async function loginCommand(): Promise<void> {
     logger.error(
       "Invalid token format. urBackend PATs start with 'ubpat_' followed by at least 10 characters.",
     );
+      process.exitCode = 1;
     return;
   }
 
   try {
     const profile = await authenticate(token);
 
-    saveToken(token);
+     try {
+      saveToken(token);
+    } catch {
+      logger.error("Authenticated, but failed to persist the token locally.");
+      process.exitCode = 1;
+     return;
+   }
 
     logger.success("Logged in successfully.\n");
     console.log(`${label("Email")} ${profile.developer.email}`);
@@ -42,8 +49,10 @@ export async function loginCommand(): Promise<void> {
       } else {
         logger.error(error.message);
       }
+         process.exitCode = 1;
       return;
     }
     logger.error("Unable to connect to the urBackend API.");
+     process.exitCode = 1;
   }
 }

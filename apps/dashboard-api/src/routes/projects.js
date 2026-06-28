@@ -70,7 +70,7 @@ router.post('/:projectId/reveal-secret-key', authMiddleware, authorizeProject('a
 router.post('/:projectId/collections', authMiddleware, authorizeProject('admin'), planEnforcement.attachDeveloper, planEnforcement.checkCollectionLimit, createCollection);
 
 // DELETE REQ FOR COLLECTION
-router.delete('/:projectId/collections/:collectionName', authMiddleware, authorizeProject('admin'), verifyEmail, deleteCollection);
+router.delete('/:projectId/collections/:collectionName', authFlexible, authorizeProject('admin'), verifyEmail, deleteCollection);
 
 // GET REQ FOR DATA
 router.get('/:projectId/collections/:collectionName/data', authMiddleware, authorizeProject(), getData);

@@ -9,6 +9,7 @@ export async function whoamiCommand(): Promise<void> {
 
   if (!token) {
     logger.error("You are not logged in. Run 'ub login' first.");
+     process.exitCode = 1;
     return;
   }
 
@@ -39,8 +40,10 @@ export async function whoamiCommand(): Promise<void> {
       } else {
         logger.error(error.message);
       }
+       process.exitCode = 1;
       return;
     }
     logger.error("Unable to connect to the urBackend API.");
+     process.exitCode = 1;
   }
 }

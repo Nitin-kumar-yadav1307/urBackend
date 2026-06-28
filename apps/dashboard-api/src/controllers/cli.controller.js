@@ -2,7 +2,7 @@ const { Developer, ApiResponse, AppError } = require("@urbackend/common");
 
 module.exports.getCLIProfile = async (req, res, next) => {
   try {
-    const developer = await Developer.findById(req.developer._id)
+     const developer = await Developer.findById(req.user._id)
       .select("email plan githubUsername avatarUrl");
 
     if (!developer) {
