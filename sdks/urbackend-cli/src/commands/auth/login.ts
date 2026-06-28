@@ -1,7 +1,7 @@
 import { authenticate } from "../../services/auth.service.js";
 import { saveToken } from "../../core/config.js";
 import { isValidPAT } from "../../utils/token.js";
-import { prompt } from "../../utils/prompt.js";
+import { promptSecret } from "../../utils/prompt.js";
 import { label } from "../../utils/format.js";
 import { APIError } from "../../core/errors.js";
 import { logger } from "../../core/logger.js";
@@ -10,7 +10,7 @@ export async function loginCommand(): Promise<void> {
   console.log("Generate a Personal Access Token from the urBackend dashboard:");
   console.log("  Settings → Access Tokens → New Token\n");
 
-  const token = await prompt("Paste your Personal Access Token: ");
+  const token = await promptSecret("Paste your Personal Access Token: ");
 
   if (!isValidPAT(token)) {
     logger.error(

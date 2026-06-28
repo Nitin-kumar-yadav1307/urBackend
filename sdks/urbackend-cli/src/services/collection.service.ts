@@ -32,8 +32,9 @@ export async function deleteCollection(
   projectId: string,
   collectionName: string,
 ): Promise<void> {
+  const encodedName = encodeURIComponent(collectionName);
   return apiFetch<void>(
-    `/projects/${projectId}/collections/${collectionName}`,
+    `/projects/${projectId}/collections/${encodedName}`,
     { method: "DELETE" },
   );
 }

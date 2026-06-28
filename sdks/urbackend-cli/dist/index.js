@@ -34,15 +34,24 @@ function loadConfig() {
 }
 function saveConfig(config) {
   if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    fs.mkdirSync(CONFIG_DIR, { recursive: true, mode: 448 });
   }
   const tmp = CONFIG_PATH + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(config, null, 2), "utf8");
+  fs.writeFileSync(tmp, JSON.stringify(config, null, 2), {
+    encoding: "utf8",
+    mode: 384
+  });
   fs.renameSync(tmp, CONFIG_PATH);
+  fs.chmodSync(CONFIG_DIR, 448);
+  fs.chmodSync(CONFIG_PATH, 384);
 }
 function saveToken(token) {
   const config = loadConfig();
-  saveConfig({ ...config, pat: token });
+  const nextConfig = { ...config, pat: token };
+  if (config.pat && config.pat !== token) {
+    delete nextConfig.currentProject;
+  }
+  saveConfig(nextConfig);
 }
 function clearToken() {
   const config = loadConfig();
@@ -85,18 +94,26 @@ async function apiFetch(endpoint, options = {}) {
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  const url = `${config.apiBase}/api${endpoint}`;
+  const base = config.apiBase.replace(/\/+$/, "");
+  const apiPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = `${base}/api${apiPath}`;
   let response;
+  const controller = new AbortController();
+  const signal = options.signal ?? controller.signal;
+  const timeoutId = options.signal ? void 0 : setTimeout(() => controller.abort(), 15e3);
   try {
     response = await fetch(url, {
       ...options,
-      headers
+      headers,
+      signal
     });
-  } catch {
+  } catch (error) {
     throw new APIError(
       0,
-      "Unable to connect to the urBackend API. Is the server running?"
+      error instanceof Error && error.name === "AbortError" ? "The urBackend API request timed out." : "Unable to connect to the urBackend API. Is the server running?"
     );
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
   if (!response.ok) {
     let message = response.statusText;
@@ -130,7 +147,7 @@ async function getProfile() {
 
 // src/utils/token.ts
 function isValidPAT(token) {
-  return typeof token === "string" && /^ubpat_[a-zA-Z0-9_]{10,}$/.test(token);
+  return typeof token === "string" && /^ubpat_\S{10,}$/.test(token);
 }
 
 // src/utils/prompt.ts
@@ -139,6 +156,26 @@ import { stdin, stdout } from "process";
 async function prompt(question) {
   const rl = createInterface({ input: stdin, output: stdout });
   const answer = (await rl.question(question)).trim();
+  rl.close();
+  return answer;
+}
+async function promptSecret(question) {
+  const rl = createInterface({
+    input: stdin,
+    output: stdout
+  });
+  stdout.write(question);
+  const oldWrite = rl._writeToOutput;
+  rl._writeToOutput = function _writeToOutput(stringToWrite) {
+    if (stringToWrite === "\r" || stringToWrite === "\n" || stringToWrite === "\r\n") {
+      oldWrite.call(rl, stringToWrite);
+    } else if (stringToWrite === question) {
+      oldWrite.call(rl, stringToWrite);
+    } else {
+    }
+  };
+  const answer = (await rl.question("")).trim();
+  rl._writeToOutput = oldWrite;
   rl.close();
   return answer;
 }
@@ -179,16 +216,23 @@ var logger = {
 async function loginCommand() {
   console.log("Generate a Personal Access Token from the urBackend dashboard:");
   console.log("  Settings \u2192 Access Tokens \u2192 New Token\n");
-  const token = await prompt("Paste your Personal Access Token: ");
+  const token = await promptSecret("Paste your Personal Access Token: ");
   if (!isValidPAT(token)) {
     logger.error(
       "Invalid token format. urBackend PATs start with 'ubpat_' followed by at least 10 characters."
     );
+    process.exitCode = 1;
     return;
   }
   try {
     const profile = await authenticate(token);
-    saveToken(token);
+    try {
+      saveToken(token);
+    } catch {
+      logger.error("Authenticated, but failed to persist the token locally.");
+      process.exitCode = 1;
+      return;
+    }
     logger.success("Logged in successfully.\n");
     console.log(`${label("Email")} ${profile.developer.email}`);
     console.log(`${label("Plan")} ${profile.developer.plan}`);
@@ -205,9 +249,11 @@ async function loginCommand() {
       } else {
         logger.error(error.message);
       }
+      process.exitCode = 1;
       return;
     }
     logger.error("Unable to connect to the urBackend API.");
+    process.exitCode = 1;
   }
 }
 
@@ -222,6 +268,7 @@ async function whoamiCommand() {
   const token = getToken();
   if (!token) {
     logger.error("You are not logged in. Run 'ub login' first.");
+    process.exitCode = 1;
     return;
   }
   try {
@@ -246,9 +293,11 @@ async function whoamiCommand() {
       } else {
         logger.error(error.message);
       }
+      process.exitCode = 1;
       return;
     }
     logger.error("Unable to connect to the urBackend API.");
+    process.exitCode = 1;
   }
 }
 
@@ -344,7 +393,11 @@ async function projectUseCommand(projectIdOrName) {
       });
       console.log();
       const answer = await prompt("Enter project number: ");
-      const index = parseInt(answer, 10) - 1;
+      if (!/^\d+$/.test(answer)) {
+        logger.error("Invalid selection.");
+        return;
+      }
+      const index = Number(answer) - 1;
       if (isNaN(index) || index < 0 || index >= projects.length) {
         logger.error("Invalid selection.");
         return;
@@ -469,8 +522,9 @@ Collections in "${project.name}" (${collections.length}):
 
 // src/services/collection.service.ts
 async function deleteCollection(projectId, collectionName) {
+  const encodedName = encodeURIComponent(collectionName);
   return apiFetch(
-    `/projects/${projectId}/collections/${collectionName}`,
+    `/projects/${projectId}/collections/${encodedName}`,
     { method: "DELETE" }
   );
 }
@@ -537,7 +591,10 @@ async function getRecentActivity() {
     "/analytics/activity",
     { method: "GET" }
   );
-  return Array.isArray(res.data) ? res.data : [];
+  if (!Array.isArray(res.data)) {
+    throw new Error("Invalid response from /analytics/activity");
+  }
+  return res.data;
 }
 
 // src/commands/status/index.ts
@@ -624,7 +681,12 @@ async function statusCommand() {
 async function checkApiReachable(apiBase) {
   const start = Date.now();
   try {
-    await fetch(`${apiBase}/health`, { signal: AbortSignal.timeout(5e3) });
+    const response = await fetch(`${apiBase}/health`, {
+      signal: AbortSignal.timeout(5e3)
+    });
+    if (!response.ok) {
+      return null;
+    }
     return Date.now() - start;
   } catch {
     return null;

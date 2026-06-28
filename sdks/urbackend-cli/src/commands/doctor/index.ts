@@ -11,9 +11,9 @@ import { logger } from "../../core/logger.js";
 
 interface DoctorResult {
   configFound: boolean;
-  patValid: boolean;
+  patValid: boolean | null;
   projectSelected: boolean;
-  projectAccessible: boolean;
+  projectAccessible: boolean | null;
   dashboardApiReachable: boolean;
   dashboardApiLatencyMs: number | null;
   email: string | null;
@@ -77,8 +77,12 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       result.patValid = true;
       result.email = profile.developer.email;
       result.plan = profile.developer.plan;
-    } catch {
-      result.patValid = false;
+    } catch (error) {
+      if (error instanceof APIError && error.status === 401) {
+        result.patValid = false;
+      } else {
+        result.patValid = null;
+      }
     }
   }
 
@@ -88,8 +92,12 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
       const project = await getProject(currentProjectId);
       result.projectAccessible = true;
       result.projectName = project.name;
-    } catch {
-      result.projectAccessible = false;
+    } catch (error) {
+      if (error instanceof APIError && (error.status === 401 || error.status === 403)) {
+        result.projectAccessible = false;
+      } else {
+        result.projectAccessible = null;
+      }
     }
   }
 
@@ -119,6 +127,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
 
   if (!token) {
     console.log(`  ${fail}  PAT                   Not set — run 'ub login'`);
+  } else if (result.patValid === null) {
+    console.log(
+      `  ${warn}  PAT                   Unable to validate — API unreachable or backend error`,
+    );
   } else {
     console.log(
       `  ${result.patValid ? ok : fail}  PAT                   ${
@@ -131,6 +143,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
 
   if (!currentProjectId) {
     console.log(`  ${warn}  Active project        Not selected — run 'ub project use'`);
+  } else if (result.projectAccessible === null) {
+    console.log(
+      `  ${warn}  Active project        Unable to validate — API unreachable or backend error`,
+    );
   } else {
     console.log(
       `  ${result.projectAccessible ? ok : fail}  Active project        ${
@@ -146,10 +162,10 @@ export async function doctorCommand(options: DoctorOptions = {}): Promise<void> 
   // Summary
   const allGood =
     result.configFound &&
-    result.patValid &&
+    result.patValid === true &&
     result.dashboardApiReachable &&
     result.projectSelected &&
-    result.projectAccessible;
+    result.projectAccessible === true;
 
   if (allGood) {
     logger.success("Everything looks good.");
