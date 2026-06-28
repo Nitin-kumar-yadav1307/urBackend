@@ -1,11 +1,15 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["index.ts"],
+  entry: ["src/index.ts"],
   format: ["esm", "cjs"],
+  target: "node20",
+  outDir: "dist",
   dts: true,
   sourcemap: true,
   clean: true,
-  outDir: "dist",
-  target: "node20"
+  splitting: false,
+  banner: {
+    js: "// @urbackend/cli — Official urBackend CLI",
+  },
 });

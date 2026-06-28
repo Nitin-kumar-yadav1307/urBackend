@@ -1,19 +1,17 @@
-const PREFIX = "ub";
-
 export const logger = {
-  info(message: string) {
-    console.log(`${PREFIX}: ${message}`);
-  },
-
-  success(message: string) {
+  success(message: string): void {
     console.log(`✓ ${message}`);
   },
 
-  warn(message: string) {
+  error(message: string): void {
+    console.error(`✖ ${message}`);
+  },
+
+  warn(message: string): void {
     console.warn(`⚠ ${message}`);
   },
 
-  error(message: string) {
-    console.error(`✖ ${message}`);
+  info(message: string): void {
+    console.log(message);
   },
 };

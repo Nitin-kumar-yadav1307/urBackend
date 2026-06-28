@@ -1,3 +1,7 @@
+/**
+ * Validates the format of a Personal Access Token.
+ * urBackend PATs always start with "ubpat_" followed by at least 10 characters.
+ */
 export function isValidPAT(token: string): boolean {
-  return token.startsWith("ubpat_");
+  return typeof token === "string" && /^ubpat_[a-zA-Z0-9_]{10,}$/.test(token);
 }
