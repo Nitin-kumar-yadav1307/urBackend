@@ -9,13 +9,16 @@ import { collectionListCommand } from "./commands/collection/list.js";
 import { collectionDeleteCommand } from "./commands/collection/delete.js";
 import { statusCommand } from "./commands/status/index.js";
 import { doctorCommand } from "./commands/doctor/index.js";
+import { initCommand } from "./commands/init/index.js";
+import { pullCommand } from "./commands/pull/index.js";
+import { generateCommand } from "./commands/generate/index.js";
 
 const program = new Command();
 
 program
   .name("ub")
   .description("Official urBackend CLI — manage projects, schemas, and more")
-  .version("0.1.0");
+  .version("0.2.0", "-v, -V, --version", "Output the current version");
 
 // ── Authentication ──────────────────────────────────────────────────────────
 
@@ -92,6 +95,23 @@ program
   .description("Run diagnostic checks on your CLI setup")
   .option("--json", "Output results as JSON (useful for CI/AI agents)")
   .action((options) => doctorCommand(options));
+
+// ── Workspace ─────────────────────────────────────────────────────────────────
+
+program
+  .command("init [projectIdOrName]")
+  .description("Initialize a local urBackend project workspace")
+  .action((projectIdOrName) => initCommand(typeof projectIdOrName === "string" ? projectIdOrName : undefined));
+
+program
+  .command("pull")
+  .description("Fetch the latest schemas for the linked project")
+  .action(pullCommand);
+
+program
+  .command("generate")
+  .description("Generate TypeScript definitions from local schemas")
+  .action(generateCommand);
 
 // ── Parse ─────────────────────────────────────────────────────────────────────
 
