@@ -13,7 +13,6 @@ interface AuthColors {
   border: string;
   inputBackground: string;
   primary: string;
-  primaryColor?: string;
   primaryText: string;
   footerBackground: string;
   dividerText: string;
@@ -22,12 +21,9 @@ interface AuthColors {
 
 interface AuthBranding {
   brandName?: string;
-  appName?: string;
   title?: string;
   subtitle?: string;
-  logo?: React.ReactNode | string;
-  logoUrl?: string;
-  primaryColor?: string;
+  logo?: React.ReactNode;
 }
 
 interface AuthLabels {
@@ -57,30 +53,16 @@ interface AuthLabels {
   footerSignupPrompt: string;
   footerForgotPrompt: string;
   noAuthMethods: string;
-  forgotSubtitle: string;
- resetSubtitle: string;
-  // Aliases support
-  signInTitle?: string;
-  signUpTitle?: string;
-  signInTab?: string;
-  signUpTab?: string;
-  signInButton?: string;
-  signUpButton?: string;
 }
 
 export interface UrAuthProps {
-  providers?: AuthProvider[] | {
-    google?: boolean;
-    github?: boolean;
-    emailPassword?: boolean;
-  };
+  providers?: AuthProvider[];
   enableEmailPassword?: boolean;
   theme?: ThemeMode;
   colors?: Partial<AuthColors>;
   branding?: AuthBranding;
   labels?: Partial<AuthLabels>;
   onSuccess?: () => void;
-  hideSignup?: boolean;
 }
 
 const defaultLabels: AuthLabels = {
@@ -110,42 +92,36 @@ const defaultLabels: AuthLabels = {
   footerSignupPrompt: 'Already have an account?',
   footerForgotPrompt: 'Remember your password?',
   noAuthMethods: 'No authentication methods are enabled for this screen.',
-  forgotSubtitle: 'Welcome back',
- resetSubtitle: 'Enter the code sent to {email}',
 };
 
 const defaultThemeColors: Record<ThemeMode, AuthColors> = {
   light: {
     background: '#ffffff',
     surface: '#ffffff',
-    text: '#09090b',
-    textMuted: '#71717a',
-    border: '#e4e4e7',
-    inputBackground: '#fafafa',
-    primary: '#09090b',
+    text: '#0f172a',
+    textMuted: '#64748b',
+    border: '#e2e8f0',
+    inputBackground: '#ffffff',
+    primary: '#111111',
     primaryText: '#ffffff',
-    footerBackground: '#fafafa',
-    dividerText: '#a1a1aa',
+    footerBackground: '#f8fafc',
+    dividerText: '#94a3b8',
     socialButtonBackground: '#ffffff',
   },
   dark: {
-    background: '#09090b',
-    surface: '#09090b',
-    text: '#fafafa',
+    background: '#1a1a1a',
+    surface: '#1a1a1a',
+    text: '#ffffff',
     textMuted: '#a1a1aa',
-    border: '#27272a',
-    inputBackground: '#09090b',
-    primary: '#fafafa',
-    primaryText: '#09090b',
-    footerBackground: '#18181b',
-    dividerText: '#52525b',
-    socialButtonBackground: '#09090b',
+    border: '#333333',
+    inputBackground: '#2a2a2a',
+    primary: '#ffffff',
+    primaryText: '#111111',
+    footerBackground: '#222222',
+    dividerText: '#94a3b8',
+    socialButtonBackground: '#2a2a2a',
   },
 };
-
-
-
-
 
 export const UrAuth: React.FC<UrAuthProps> = ({ 
   providers = ['google', 'github'], 
@@ -154,53 +130,22 @@ export const UrAuth: React.FC<UrAuthProps> = ({
   colors,
   branding,
   labels,
-  onSuccess,
-  hideSignup = false
+  onSuccess
 }) => {
   const { login, signUp, socialLogin, requestPasswordReset, resetPassword, isLoading, error, clearError } = useAuth();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'reset'>(hideSignup ? 'signin' : 'signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
- const text = {
-  ...defaultLabels,
-  ...labels,
-  loginTab: labels?.signInTab ?? labels?.loginTab ?? defaultLabels.loginTab,
-  loginTitle: labels?.signInTitle ?? labels?.loginTitle ?? defaultLabels.loginTitle,
-  loginButton: labels?.signInButton ?? labels?.loginButton ?? defaultLabels.loginButton,
-  signupTab: labels?.signUpTab ?? labels?.signupTab ?? defaultLabels.signupTab,
-  signupTitle: labels?.signUpTitle ?? labels?.signupTitle ?? defaultLabels.signupTitle,
-  signupButton: labels?.signUpButton ?? labels?.signupButton ?? defaultLabels.signupButton,
-};
-
+  const text = { ...defaultLabels, ...labels };
   const themeColors = { ...defaultThemeColors[theme], ...colors };
-  const primaryColor = branding?.primaryColor || colors?.primaryColor || themeColors.primary;
-
-  let isGoogleEnabled = true;
-  let isGithubEnabled = true;
-  let isEmailPasswordEnabled = enableEmailPassword;
-
-  if (providers) {
-    if (Array.isArray(providers)) {
-      isGoogleEnabled = providers.includes('google');
-      isGithubEnabled = providers.includes('github');
-    } else if (typeof providers === 'object') {
-      isGoogleEnabled = !!providers.google;
-      isGithubEnabled = !!providers.github;
-       isEmailPasswordEnabled = providers.emailPassword !== undefined ? providers.emailPassword : enableEmailPassword;
-    }
-  }
-
-  const hasPasswordAuth = isEmailPasswordEnabled;
-  const hasSocialAuth = isGoogleEnabled || isGithubEnabled;
-
-  const showSwitcher = hasPasswordAuth && !hideSignup;
-  const brandName = branding?.brandName || branding?.appName || branding?.title || 'urBackend';
+  const hasPasswordAuth = enableEmailPassword;
+  const hasSocialAuth = providers.length > 0;
+  const brandName = branding?.brandName || branding?.title || 'urBackend';
   const headerTitle = branding?.title || brandName;
-  const brandingLogo = branding?.logo ?? branding?.logoUrl;
   const headerSubtitle = branding?.subtitle || (mode === 'signin'
     ? text.loginTitle
     : mode === 'signup'
@@ -208,6 +153,7 @@ export const UrAuth: React.FC<UrAuthProps> = ({
       : mode === 'forgot'
         ? text.forgotTitle
         : text.resetTitle);
+  const showSwitcher = hasPasswordAuth;
 
   useEffect(() => {
     if (error) {
@@ -254,50 +200,48 @@ export const UrAuth: React.FC<UrAuthProps> = ({
       width: '100%',
       maxWidth: '420px',
       margin: '0 auto',
-      borderRadius: '16px',
+      borderRadius: '0',
       background: themeColors.background,
-      boxShadow: theme === 'dark' ? '0 0 0 1px rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.05), 0 20px 40px -12px rgba(0,0,0,0.1)',
+      boxShadow: theme === 'dark' ? '0 20px 40px rgba(0,0,0,0.5)' : '0 20px 40px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.05)',
       border: `1px solid ${themeColors.border}`,
       overflow: 'hidden',
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       color: themeColors.text,
     },
     body: {
-      padding: '40px 32px 32px 32px',
+      padding: '32px 32px 24px 32px',
     },
     header: {
       textAlign: 'center' as const,
-      marginBottom: '32px',
+      marginBottom: '28px',
     },
     brandRow: {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
       gap: '12px',
-      marginBottom: '16px',
+      marginBottom: '10px',
     },
     brandLogo: {
-      width: '48px',
-      height: '48px',
+      width: '44px',
+      height: '44px',
       borderRadius: '12px',
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: theme === 'dark' ? '#18181b' : '#f4f4f5',
+      background: theme === 'dark' ? '#2a2a2a' : '#f1f5f9',
       color: themeColors.text,
       overflow: 'hidden' as const,
-      border: `1px solid ${themeColors.border}`,
     },
     brandTitle: {
       margin: 0,
-      fontSize: '24px',
-      lineHeight: 1.2,
-      fontWeight: 700,
+      fontSize: '26px',
+      lineHeight: 1.1,
+      fontWeight: 800,
       color: themeColors.text,
-      letterSpacing: '-0.02em',
     },
     brandSubtitle: {
-      margin: '8px auto 0',
+      margin: '0 auto',
       maxWidth: '320px',
       fontSize: '14px',
       lineHeight: 1.5,
@@ -310,28 +254,25 @@ export const UrAuth: React.FC<UrAuthProps> = ({
       marginBottom: '32px'
     },
     switcher: {
-      display: 'flex',
-      background: theme === 'dark' ? '#18181b' : '#f4f4f5',
+      display: 'inline-flex',
+      background: theme === 'dark' ? '#2a2a2a' : '#f1f5f9',
       padding: '4px',
-      borderRadius: '10px',
-      border: `1px solid ${theme === 'dark' ? '#27272a' : '#e4e4e7'}`,
-      width: '100%',
+      borderRadius: '0',
     },
     switchBtn: (active: boolean) => ({
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center',
-      flex: 1,
-      gap: '8px',
-      padding: '8px 0',
-      borderRadius: '6px',
+      gap: '6px',
+      padding: '8px 20px',
+      borderRadius: '0',
       fontSize: '13px',
-      fontWeight: 500,
+      fontWeight: 600,
       cursor: 'pointer',
       color: active ? themeColors.text : themeColors.textMuted,
-      background: active ? (theme === 'dark' ? '#27272a' : '#ffffff') : 'transparent',
-      boxShadow: active ? (theme === 'dark' ? '0 1px 2px rgba(0,0,0,0.2)' : '0 1px 2px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.02)') : 'none',
+      background: active ? (theme === 'dark' ? '#444444' : '#ffffff') : 'transparent',
+      boxShadow: active ? (theme === 'dark' ? '0 2px 4px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.05)') : 'none',
       border: 'none',
+      transition: 'all 0.2s ease',
     }),
     field: {
       marginBottom: '20px',
@@ -344,13 +285,13 @@ export const UrAuth: React.FC<UrAuthProps> = ({
     },
     label: {
       fontSize: '13px',
-      fontWeight: 500,
-      color: themeColors.text,
+      fontWeight: 600,
+      color: theme === 'dark' ? '#dddddd' : '#334155',
     },
     forgotLink: {
-      fontSize: '13px',
-      fontWeight: 500,
-      color: themeColors.textMuted,
+      fontSize: '12px',
+      fontWeight: 600,
+      color: themeColors.text,
       cursor: 'pointer',
       textDecoration: 'none',
       background: 'none',
@@ -359,38 +300,38 @@ export const UrAuth: React.FC<UrAuthProps> = ({
     },
     input: {
       width: '100%',
-      padding: '10px 12px',
-      borderRadius: '8px',
+      padding: '12px 16px',
+      borderRadius: '0',
       border: `1px solid ${themeColors.border}`,
       background: themeColors.inputBackground,
       color: themeColors.text,
       fontSize: '14px',
       boxSizing: 'border-box' as const,
       outline: 'none',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.01)',
+      transition: 'border-color 0.2s ease',
     },
     primaryBtn: {
       width: '100%',
-      padding: '10px 14px',
-      borderRadius: '8px',
-      background: primaryColor,
+      padding: '14px',
+      borderRadius: '0',
+      background: `linear-gradient(180deg, ${themeColors.primary} 0%, ${theme === 'dark' ? '#111111' : '#111111'} 100%)`,
       color: themeColors.primaryText,
-      fontSize: '14px',
-      fontWeight: 500,
+      fontSize: '15px',
+      fontWeight: 600,
       border: 'none',
-      boxShadow: theme === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.1)' : '0 1px 2px rgba(0,0,0,0.05)',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
       cursor: 'pointer',
-      marginTop: '12px',
+      marginTop: '8px',
+      transition: 'transform 0.1s ease',
     },
     divider: {
       display: 'flex',
       alignItems: 'center',
       margin: '24px 0',
       color: themeColors.dividerText,
-      fontSize: '12px',
-      fontWeight: 400,
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.05em',
+      fontSize: '11px',
+      fontWeight: 600,
+      letterSpacing: '1px',
     },
     dividerLine: {
       flex: 1,
@@ -402,20 +343,21 @@ export const UrAuth: React.FC<UrAuthProps> = ({
     },
     socialBtn: {
       width: '100%',
-      padding: '10px',
-      borderRadius: '8px',
+      padding: '12px',
+      borderRadius: '0',
       border: `1px solid ${themeColors.border}`,
       background: themeColors.socialButtonBackground,
       color: themeColors.text,
       fontSize: '14px',
-      fontWeight: 500,
+      fontWeight: 600,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       gap: '10px',
       marginBottom: '12px',
       cursor: 'pointer',
-      boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+      boxShadow: theme === 'dark' ? 'none' : '0 1px 2px rgba(0,0,0,0.02)',
+      transition: 'background 0.2s ease',
     },
     footer: {
       background: themeColors.footerBackground,
@@ -427,10 +369,10 @@ export const UrAuth: React.FC<UrAuthProps> = ({
     },
     footerLink: {
       color: themeColors.text,
-      fontWeight: 500,
-      textDecoration: 'none',
+      fontWeight: 600,
+      textDecoration: 'underline',
       cursor: 'pointer',
-      marginLeft: '6px',
+      marginLeft: '4px',
       background: 'none',
       border: 'none',
       padding: 0,
@@ -468,13 +410,13 @@ export const UrAuth: React.FC<UrAuthProps> = ({
         )}
 
         <div>
-          {isGoogleEnabled && (
+          {providers.includes('google') && (
             <button style={styles.socialBtn} onClick={() => socialLogin('google')} type="button">
               <GoogleIcon />
               {text.googleButton}
             </button>
           )}
-          {isGithubEnabled && (
+          {providers.includes('github') && (
             <button style={styles.socialBtn} onClick={() => socialLogin('github')} type="button">
               <GithubIcon />
               {text.githubButton}
@@ -506,17 +448,11 @@ export const UrAuth: React.FC<UrAuthProps> = ({
       )}
       
       <div style={styles.body}>
-        {(brandingLogo || branding?.brandName || branding?.appName || branding?.title || branding?.subtitle || headerTitle || headerSubtitle) && (
+        {(branding?.logo || branding?.brandName || branding?.title || branding?.subtitle) && (
           <div style={styles.header}>
             <div style={styles.brandRow}>
-              {brandingLogo ? (
-                <div style={styles.brandLogo}>
-                  {typeof brandingLogo === 'string' ? (
-                    <img src={brandingLogo} alt={brandName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  ) : (
-                    brandingLogo
-                  )}
-                </div>
+              {branding?.logo ? (
+                <div style={styles.brandLogo}>{branding.logo}</div>
               ) : (
                 <div style={styles.brandLogo} aria-hidden="true">
                   {brandName.slice(0, 1).toUpperCase()}
@@ -557,8 +493,7 @@ export const UrAuth: React.FC<UrAuthProps> = ({
               {mode === 'forgot' ? text.forgotTitle : text.resetTitle}
             </h2>
             <p style={{ margin: 0, fontSize: '14px', color: themeColors.textMuted }}>
-                {mode === 'forgot' ? text.forgotSubtitle : text.resetSubtitle.replace('{email}', email)}
-              
+              {mode === 'forgot' ? text.loginTitle : `Enter the code sent to ${email}`}
             </p>
           </div>
         )}
@@ -639,7 +574,11 @@ export const UrAuth: React.FC<UrAuthProps> = ({
               </div>
             )}
 
-            <button style={styles.primaryBtn} type="submit" disabled={isLoading}>
+            <button style={styles.primaryBtn} type="submit" disabled={isLoading} 
+              onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+              onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
               {isLoading 
                 ? 'Processing...' 
                 : (mode === 'signin' ? text.loginButton 
@@ -654,7 +593,7 @@ export const UrAuth: React.FC<UrAuthProps> = ({
         {(mode === 'signin' || mode === 'signup') && renderSocialButtons()}
       </div>
 
-      {hasPasswordAuth && (!hideSignup || mode !== 'signin') && (
+      {hasPasswordAuth && (
         <div style={styles.footer}>
           {footerPrompt}
           <button 
