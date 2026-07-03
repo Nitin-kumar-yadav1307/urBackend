@@ -310,11 +310,11 @@ export const UrAuth: React.FC<UrAuthProps> = ({
       outline: 'none',
       transition: 'border-color 0.2s ease',
     },
-    primaryBtn: {
+     primaryBtn: {
       width: '100%',
       padding: '14px',
       borderRadius: '0',
-      background: `linear-gradient(180deg, ${themeColors.primary} 0%, ${theme === 'dark' ? '#111111' : '#111111'} 100%)`,
+      background: `linear-gradient(180deg, ${themeColors.primary} 0%, ${theme === 'dark' ? '`#333333`' : '`#111111`'} 100%)`,
       color: themeColors.primaryText,
       fontSize: '15px',
       fontWeight: 600,

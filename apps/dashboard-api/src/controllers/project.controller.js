@@ -453,17 +453,17 @@ module.exports.getSingleProject = async (req, res) => {
       await setProjectById(req.params.projectId, projectObj);
     }
 
-    res.json(sanitizeProjectResponse(projectObj));
+       res.json({ success: true, data: sanitizeProjectResponse(projectObj), message: '' });
   } catch (err) {
-    if (err instanceof AppError) {
+     if (err instanceof AppError) {
       return res.status(err.statusCode).json({
         success: false,
         data: {},
         message: err.message,
       });
     }
-
-    res.status(500).json({ success: false, data: {}, message: err.message });
+    console.error('getSingleProject error:', err);
+    res.status(500).json({ success: false, data: {}, message: 'Internal server error' });
   }
 };
 
