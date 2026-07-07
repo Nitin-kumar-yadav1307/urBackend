@@ -146,6 +146,17 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cli/overview"
+            ]
+          }
+        ]
       }
     ]
   }
