@@ -8,6 +8,10 @@ module.exports = async (req, res, next) => {
         const { projectId } = req.params;
         if (!projectId) return next(new AppError(400, "Project ID is required"));
 
+       if (!mongoose.Types.ObjectId.isValid(projectId)) {
+            return next(new AppError(400, "Invalid project ID format"));
+        }
+
         const project = await Project.findOne({
             _id: projectId,
             ...getProjectAccessQuery(req.user._id),
