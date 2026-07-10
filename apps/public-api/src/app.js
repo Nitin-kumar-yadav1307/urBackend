@@ -61,17 +61,18 @@ const mailRoute = require('./routes/mail');
 const healthRoute = require('./routes/health');
 
 // ROUTES SETUP 
-app.use('/api/userAuth', limiter, logger, userAuthRoute);
-
 const projectCorsPreflight = (req, res, next) => {
     res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key");
+    res.header("Access-Control-Allow-Credentials", "true");
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
     next();
 };
+
+app.use('/api/userAuth', projectCorsPreflight, limiter, logger, userAuthRoute);
 
 app.use('/api/data', projectCorsPreflight, limiter, logger, dataRoute);
 app.use('/api/schemas', projectCorsPreflight, limiter, logger, schemaRoute);
