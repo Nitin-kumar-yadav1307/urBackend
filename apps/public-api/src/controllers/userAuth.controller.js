@@ -628,7 +628,31 @@ const findOrCreateSocialUser = async ({ project, usersColConfig, Model, provider
         newUserPayload.avatarUrl = profile.avatarUrl;
     }
 
-    user = await Model.create(newUserPayload);
+    try {
+        user = await Model.create(newUserPayload);
+    } catch (err) {
+        if (err.name === "ValidationError") {
+            try {
+                if (typeof Model === "function") {
+                    const doc = new Model(newUserPayload);
+                    await doc.save({ validateBeforeSave: false });
+                    user = doc;
+                } else {
+                    user = await Model.create(newUserPayload);
+                }
+            } catch (saveErr) {
+                if (saveErr.code === 11000) {
+                    throw new AppError(409, "User already exists.");
+                }
+                throw new AppError(500, "Failed to complete social signup.");
+            }
+        } else {
+            if (err.code === 11000) {
+                throw new AppError(409, "User already exists.");
+            }
+            throw new AppError(500, "Failed to complete social signup.");
+        }
+    }
     return { user, isNewUser: true, linkedByEmail: false };
 };
 
@@ -1899,3 +1923,10 @@ module.exports.updateAdminUser = async (req, res, next) => {
         return next(new AppError(500, "An error occurred"));
     }
 };
+
+        
+  
+
+
+   
+
