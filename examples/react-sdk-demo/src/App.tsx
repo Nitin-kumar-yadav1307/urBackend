@@ -44,15 +44,8 @@ function App() {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f8fafc' }}>
           <UrAuth
             providers={['google', 'github']}
-            branding={{
-              appName: "My Custom App",
-              logo: "https://vite.dev/logo.svg",
-              primaryColor: "#4F46E5",
-            }}
-            labels={{
-              signInTitle: "Welcome back to Custom App",
-              signInButton: "Proceed to App",
-            }}
+            theme="light"
+            onSuccess={() => navigate('/')}
           />
         </div>
       </GuestRoute>
