@@ -43,11 +43,8 @@ function App() {
       <GuestRoute fallback={LoadingFallback} onRedirect={() => navigate('/')}>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f8fafc' }}>
           <UrAuth
-            providers={{
-              github: true,
-              google: true,
-              emailPassword: true,
-            }}
+            providers={['google', 'github']}
+            enableEmailPassword={true}
             branding={{
               appName: "My Custom App",
               logo: "https://vite.dev/logo.svg",
