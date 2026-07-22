@@ -2,7 +2,8 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
     LayoutDashboard, Database, Shield, HardDrive, Settings, BarChart2,
-    ArrowLeft, LogOut, X, Rocket, Webhook, Users, Mail, ChevronLeft, ChevronRight
+    ArrowLeft, LogOut, X, Rocket, Webhook, Users, Mail, ChevronLeft, ChevronRight,
+    LayoutTemplate
 } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
@@ -80,6 +81,9 @@ function Sidebar({ logo, isOpen, onClose, isCollapsed, onToggleCollapse }) {
                         <div className="nav-section-label">General</div>
                         <Link to="/dashboard" onClick={handleNavClick} className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`} {...navA11yProps('Dashboard')}>
                             <LayoutDashboard size={16} /> <span>Dashboard</span>
+                        </Link>
+                        <Link to="/templates" onClick={handleNavClick} className={`nav-item ${isActive('/templates') ? 'active' : ''}`} {...navA11yProps('Templates')}>
+                            <LayoutTemplate size={16} /> <span>Templates</span>
                         </Link>
                         <Link to="/releases" onClick={handleNavClick} className={`nav-item ${isActive('/releases') ? 'active' : ''}`} {...navA11yProps("What's New")}>
                             <Rocket size={16} /> <span>What's New</span>

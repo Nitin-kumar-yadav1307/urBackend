@@ -1,0 +1,74 @@
+name: Examples CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'examples/**'
+      - 'sdks/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'examples/**'
+      - 'sdks/**'
+
+jobs:
+  react-sdk-demo:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/react-sdk-demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: examples/react-sdk-demo/package-lock.json
+      - run: npm install
+      - run: npm run build
+
+  sdk-kanban-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/sdk-kanban/client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: examples/sdk-kanban/client/package-lock.json
+      - run: npm install
+      - run: npm run build
+
+  social-demo-client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/social-demo/client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: examples/social-demo/client/package-lock.json
+      - run: npm install
+      - run: npm run build
+
+  python-sdk-demo:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/python-sdk-demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - run: pytest tests/ -v
