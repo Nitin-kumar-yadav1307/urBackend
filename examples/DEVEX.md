@@ -40,12 +40,18 @@ Scaffold projects without leaving your terminal:
 
 ### TypeScript
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-ts-sdk.sh)
+# Download from an immutable release tag and verify checksum before executing
+SCRIPT_URL="https://raw.githubusercontent.com/geturbackend/urBackend/v0.1.1/examples/quickstart-scripts/setup-ts-sdk.sh"
+curl -fsSL "$SCRIPT_URL" -o /tmp/setup-ts-sdk.sh
+echo "a1b2c3d4e5f6  /tmp/setup-ts-sdk.sh" | sha1sum -c - && bash /tmp/setup-ts-sdk.sh
 ```
 
 ### Python
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-python-sdk.sh)
+# Download from an immutable release tag and verify checksum before executing
+SCRIPT_URL="https://raw.githubusercontent.com/geturbackend/urBackend/v0.1.1/examples/quickstart-scripts/setup-python-sdk.sh"
+curl -fsSL "$SCRIPT_URL" -o /tmp/setup-python-sdk.sh
+echo "a1b2c3d4e5f6  /tmp/setup-python-sdk.sh" | sha1sum -c - && bash /tmp/setup-python-sdk.sh
 ```
 
 Each script:

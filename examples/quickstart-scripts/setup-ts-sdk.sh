@@ -56,13 +56,11 @@ fi
 
 # ── Get API keys ────────────────────────────────────────────────────────────
 echo ""
-echo -e "${YELLOW}Enter your urBackend API keys (from https://urbackend.bitbros.in)${NC}"
+echo -e "${YELLOW}Enter your urBackend Publishable Key (from https://urbackend.bitbros.in)${NC}"
 read -r -p "Publishable Key (pk_live_...): " PUBLISHABLE_KEY
-read -r -p "Secret Key (sk_live_...): " SECRET_KEY
-read -r -p "Project ID: " PROJECT_ID
 
-if [ -z "$PUBLISHABLE_KEY" ] || [ -z "$SECRET_KEY" ] || [ -z "$PROJECT_ID" ]; then
-    echo -e "${RED}❌ All API keys are required.${NC}"
+if [ -z "$PUBLISHABLE_KEY" ]; then
+    echo -e "${RED}❌ Publishable Key is required.${NC}"
     exit 1
 fi
 
@@ -87,13 +85,14 @@ cat > package.json << EOF
     "test": "vitest run"
   },
   "dependencies": {
-    "@urbackend/sdk": "^0.4.2"
+    "`@urbackend/sdk`": "^0.4.2",
+    "dotenv": "^16.0.0"
   },
   "devDependencies": {
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0",
-    "@types/node": "^20.0.0"
+    "`@types/node`": "^20.0.0"
   }
 }
 EOF
@@ -123,8 +122,6 @@ EOF
 # Create .env file
 cat > .env << EOF
 URBACKEND_PUBLISHABLE_KEY=${PUBLISHABLE_KEY}
-URBACKEND_SECRET_KEY=${SECRET_KEY}
-URBACKEND_PROJECT_ID=${PROJECT_ID}
 URBACKEND_API_URL=https://api.ub.bitbros.in
 EOF
 

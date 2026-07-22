@@ -20,6 +20,7 @@ Usage:
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -40,7 +41,7 @@ def print_separator(title: str) -> None:
     print(f"{'=' * 60}")
 
 
-def demo_auth(client) -> dict | None:
+def demo_auth(client) -> Optional[dict]:
     """
     Demonstrate authentication features.
 
