@@ -60,7 +60,7 @@ def demo_auth(client) -> Optional[dict]:
 
     print(f"  Signing up user: {test_email}")
     try:
-        signup_result = client.auth.signup(
+        signup_result = client.auth.sign_up(
             email=test_email,
             password=test_password,
             username=test_username,
@@ -158,13 +158,14 @@ def demo_storage(client, project_id: str, token: str) -> None:
 
     # Create a temporary file to upload
     test_file_path = Path("demo-upload.txt")
+    uploaded_path = None
     try:
         test_file_path.write_text(
             "Hello from urBackend Python SDK!\n"
             "This file was uploaded using the Python SDK storage module.\n"
         )
 
-        uploaded_path = None
+    
         print(f"  Uploading '{test_file_path.name}'...")
         with open(test_file_path, "rb") as f:
             result = client.storage.upload(

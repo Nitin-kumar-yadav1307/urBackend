@@ -35,7 +35,7 @@ class TestDemoFunctions:
         """Test that demo_auth handles signup correctly."""
         from main import demo_auth
 
-        self.mock_auth.signup.return_value = {"_id": "user_123", "email": "test@example.com"}
+        self.mock_auth.sign_up.return_value = {"_id": "user_123", "email": "test@example.com"}
         self.mock_auth.login.return_value = {"token": "test_token_abc123"}
         self.mock_auth.get_token.return_value = "test_token_abc123"
         self.mock_auth.me.return_value = {
@@ -47,7 +47,7 @@ class TestDemoFunctions:
         result = demo_auth(self.mock_client)
         assert result is not None
         assert result["email"] == "test@example.com"
-        self.mock_auth.signup.assert_called_once()
+        self.mock_auth.sign_up.assert_called_once()
         self.mock_auth.login.assert_called_once()
         self.mock_auth.me.assert_called_once()
 
@@ -55,7 +55,7 @@ class TestDemoFunctions:
         """Test that demo_auth falls back to login if signup fails."""
         from main import demo_auth
 
-        self.mock_auth.signup.side_effect = Exception("User already exists")
+        self.mock_auth.sign_up.side_effect = Exception("User already exists")
         self.mock_auth.login.return_value = {"token": "test_token_abc123"}
         self.mock_auth.get_token.return_value = "test_token_abc123"
         self.mock_auth.me.return_value = {"_id": "user_123", "email": "test@example.com"}
@@ -63,14 +63,14 @@ class TestDemoFunctions:
         result = demo_auth(self.mock_client)
         assert result is not None
         assert result["email"] == "test@example.com"
-        self.mock_auth.signup.assert_called_once()
+        self.mock_auth.sign_up.assert_called_once()
         self.mock_auth.login.assert_called_once()
 
     def test_demo_auth_login_failure(self):
         """Test that demo_auth returns None on login failure."""
         from main import demo_auth
 
-        self.mock_auth.signup.side_effect = Exception("User exists")
+        self.mock_auth.sign_up.side_effect = Exception("User exists")
         self.mock_auth.login.side_effect = Exception("Invalid credentials")
 
         result = demo_auth(self.mock_client)
@@ -117,4 +117,3 @@ class TestDemoFunctions:
         # Should not raise any exceptions
         demo_mail(self.mock_client)
         self.mock_mail.send.assert_called_once()
-</arg_value></tool_call>
