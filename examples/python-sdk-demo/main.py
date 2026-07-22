@@ -164,6 +164,7 @@ def demo_storage(client, project_id: str, token: str) -> None:
             "This file was uploaded using the Python SDK storage module.\n"
         )
 
+        uploaded_path = None
         print(f"  Uploading '{test_file_path.name}'...")
         with open(test_file_path, "rb") as f:
             result = client.storage.upload(
@@ -171,7 +172,8 @@ def demo_storage(client, project_id: str, token: str) -> None:
                 filename=test_file_path.name,
                 token=token,
             )
-        print(f"  ✅ Upload successful! Path: {result.get('path', 'N/A')}")
+        uploaded_path = result.get('path')
+        print(f"  ✅ Upload successful! Path: {uploaded_path}")
 
         print(f"\n  Getting download URL...")
         try:
@@ -183,9 +185,15 @@ def demo_storage(client, project_id: str, token: str) -> None:
     except Exception as e:
         print(f"  ❌ Storage demo failed: {e}")
     finally:
+        if uploaded_path:
+            try:
+                client.storage.delete_file(uploaded_path, token=token)
+                print(f"  🧹 Deleted remote file: {uploaded_path}")
+            except Exception as e:
+                print(f"  ℹ️  Could not delete remote file: {e}")
         if test_file_path.exists():
             test_file_path.unlink()
-            print(f"  🧹 Cleaned up test file")
+            print(f"  🧹 Cleaned up local test file")
 
 
 def demo_mail(client) -> None:

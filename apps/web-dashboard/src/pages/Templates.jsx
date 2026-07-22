@@ -112,7 +112,7 @@ python main.py
     sdk: '@urbackend/sdk',
     language: 'TypeScript',
     features: ['CLI Scaffold', 'TypeScript', 'Vercel Ready'],
-    deployUrl: 'https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgeturbackend%2FurBackend%2Ftree%2Fmain%2Fexamples%2Fquickstart-ts&env=URBACKEND_PUBLISHABLE_KEY,URBACKEND_SECRET_KEY,URBACKEND_PROJECT_ID&project-name=urbackend-ts-quickstart&repository-name=urbackend-ts-quickstart',
+    deployUrl: 'https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgeturbackend%2FurBackend%2Ftree%2Fmain%2Fexamples%2Freact-sdk-demo&env=VITE_URBACKEND_PK&project-name=urbackend-ts-quickstart&repository-name=urbackend-ts-quickstart',
     repoUrl: 'https://github.com/geturbackend/urBackend/tree/main/examples/quickstart-scripts',
     readme: `# TypeScript Quickstart
 
@@ -167,8 +167,9 @@ function Templates() {
     const cmd = template.language === 'Python'
       ? `bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-python-sdk.sh)`
       : `bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-ts-sdk.sh)`;
-    navigator.clipboard.writeText(cmd);
-    toast.success('Quickstart command copied!');
+   navigator.clipboard.writeText(cmd)
+     .then(() => toast.success('Quickstart command copied!'))
+      .catch(() => toast.error('Failed to copy command'));
   };
 
   return (
@@ -219,6 +220,8 @@ function Templates() {
         {filteredTemplates.map(template => (
           <div
             key={template.id}
+            role="button"
+            tabIndex={0}
             style={{
               background: 'var(--color-bg-card)',
               border: `1px solid ${expandedId === template.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
@@ -228,6 +231,12 @@ function Templates() {
               cursor: 'pointer'
             }}
             onClick={() => setExpandedId(expandedId === template.id ? null : template.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setExpandedId(expandedId === template.id ? null : template.id);
+              }
+            }}
           >
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
@@ -363,7 +372,9 @@ function Templates() {
               {`bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-ts-sdk.sh)`}
             </code>
             <button
-              onClick={() => navigator.clipboard.writeText('bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-ts-sdk.sh)')}
+              onClick={() => navigator.clipboard.writeText('bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-ts-sdk.sh)')
+                .then(() => toast.success('Command copied!'))
+                .catch(() => toast.error('Failed to copy'))}
               className="btn btn-ghost"
               style={{ marginTop: '0.5rem', padding: '4px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
@@ -376,7 +387,9 @@ function Templates() {
               {`bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-python-sdk.sh)`}
             </code>
             <button
-              onClick={() => navigator.clipboard.writeText('bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-python-sdk.sh)')}
+              onClick={() => navigator.clipboard.writeText('bash <(curl -fsSL https://raw.githubusercontent.com/geturbackend/urBackend/main/examples/quickstart-scripts/setup-python-sdk.sh)')
+                .then(() => toast.success('Command copied!'))
+                .catch(() => toast.error('Failed to copy'))}
               className="btn btn-ghost"
               style={{ marginTop: '0.5rem', padding: '4px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >

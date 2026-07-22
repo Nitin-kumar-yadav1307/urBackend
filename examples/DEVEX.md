@@ -43,7 +43,7 @@ Scaffold projects without leaving your terminal:
 # Download from an immutable release tag and verify checksum before executing
 SCRIPT_URL="https://raw.githubusercontent.com/geturbackend/urBackend/v0.1.1/examples/quickstart-scripts/setup-ts-sdk.sh"
 curl -fsSL "$SCRIPT_URL" -o /tmp/setup-ts-sdk.sh
-echo "a1b2c3d4e5f6  /tmp/setup-ts-sdk.sh" | sha1sum -c - && bash /tmp/setup-ts-sdk.sh
+echo "d842dab0fab57131a51e232147cde01ff8594cb88b02a560698a32d9a7642d73  /tmp/setup-ts-sdk.sh" | sha256sum -c - && bash /tmp/setup-ts-sdk.sh
 ```
 
 ### Python
@@ -51,7 +51,7 @@ echo "a1b2c3d4e5f6  /tmp/setup-ts-sdk.sh" | sha1sum -c - && bash /tmp/setup-ts-s
 # Download from an immutable release tag and verify checksum before executing
 SCRIPT_URL="https://raw.githubusercontent.com/geturbackend/urBackend/v0.1.1/examples/quickstart-scripts/setup-python-sdk.sh"
 curl -fsSL "$SCRIPT_URL" -o /tmp/setup-python-sdk.sh
-echo "a1b2c3d4e5f6  /tmp/setup-python-sdk.sh" | sha1sum -c - && bash /tmp/setup-python-sdk.sh
+echo "1f7c32bd4d8d382da079b236b03383f61190f67745956df80b1dfc37daa4ea18  /tmp/setup-python-sdk.sh" | sha256sum -c - && bash /tmp/setup-python-sdk.sh
 ```
 
 Each script:

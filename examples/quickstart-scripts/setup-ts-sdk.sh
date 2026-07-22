@@ -158,7 +158,6 @@ async function main() {
       password: 'DemoPassword123!',
     });
     console.log('✅ Login successful!');
-    client.setToken(token);
   } catch (err) {
     console.log('ℹ️  Login failed (expected if user does not exist)');
   }
