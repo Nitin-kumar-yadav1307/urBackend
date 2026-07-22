@@ -11,7 +11,7 @@
 #   bash examples/quickstart-scripts/setup-ts-sdk.sh
 #
 # Prerequisites:
-#   - Node.js 18+
+#   - Node.js 20+
 #   - npm or yarn
 #   - A urBackend account (https://urbackend.bitbros.in)
 # =============================================================================
@@ -84,7 +84,7 @@ cat > package.json << EOF
     "start": "node dist/index.js",
     "test": "vitest run"
   },
-  "dependencies": {
+ "dependencies": {
     "`@urbackend/sdk`": "^0.4.2",
     "dotenv": "^16.0.0"
   },
