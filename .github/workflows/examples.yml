@@ -34,6 +34,10 @@ jobs:
           cache-dependency-path: examples/react-sdk-demo/package-lock.json
       - run: npm install
       - run: npm run build
+      - run: |
+          cd ../..
+          npm run build --workspace=sdks/urbackend-sdk --if-present
+          npm run build --workspace=sdks/urbackend-react --if-present
 
   sdk-kanban-client:
     runs-on: ubuntu-latest
