@@ -20,9 +20,6 @@ permissions:
 jobs:
   react-sdk-demo:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: examples/react-sdk-demo
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,13 +28,11 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: examples/react-sdk-demo/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm install
-      - run: npm run build
-      - run: |
-          cd ../..
-          npm run build --workspace=sdks/urbackend-sdk --if-present
-          npm run build --workspace=sdks/urbackend-react --if-present
+      - run: npm run build --workspace=sdks/urbackend-sdk --if-present
+      - run: npm run build --workspace=sdks/urbackend-react --if-present
+      - run: npm run build --workspace=examples/react-sdk-demo --if-present
 
   sdk-kanban-client:
     runs-on: ubuntu-latest
