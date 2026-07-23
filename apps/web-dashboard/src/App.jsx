@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import ProjectDetails from './pages/ProjectDetails';
 import CreateProject from './pages/CreateProject';
 import CreateCollection from './pages/CreateCollection';
+import Templates from './pages/Templates';
 import NotFound from './pages/NotFound';
 import Analytics from './pages/Analytics';
 import Releases from './pages/Releases';
@@ -77,6 +78,14 @@ function AppContent() {
           <ProtectedRoute>
             <MainLayout>
               <Dashboard />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/templates" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Templates />
             </MainLayout>
           </ProtectedRoute>
         } />
