@@ -34,8 +34,8 @@ A **full-featured X.com (Twitter) clone** built entirely on the **urBackend** Ba
 ### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/yash-pouranik/urBackend.git
-cd examples/social-demo
+git clone https://github.com/geturbackend/urBackend.git
+cd urBackend/examples/social-demo
 
 # Install dependencies for both Client and Proxy Server
 cd client && npm install
@@ -283,4 +283,4 @@ For each writable collection (`posts`, `comments`, `likes`, `follows`, `profiles
 ---
 
 Built with ❤️ by the **urBackend** Community.
-[Discord](https://discord.gg/CXJjvJkNWn) | [Documentation](https://github.com/yash-pouranik/urBackend/tree/main/docs)
+[Discord](https://discord.gg/CXJjvJkNWn) | [Documentation](https://github.com/geturbackend/urBackend/tree/main/docs)

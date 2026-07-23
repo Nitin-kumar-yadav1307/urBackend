@@ -21,13 +21,14 @@ const TEMPLATES = [
 A minimal React app demonstrating \`@urbackend/react\` components.
 
 ## Setup
+\`\`\`bash
+git clone https://github.com/geturbackend/urBackend.git
+cd urBackend/examples/react-sdk-demo
+npm install
+\`\`\`
+
 1. Copy \`VITE_URBACKEND_PK\` from your project's API keys
-2. Deploy with the button above or run locally:
-   \`\`\`bash
-   cd examples/react-sdk-demo
-   npm install
-   npm run dev
-   \`\`\`
+2. Run \`npm run dev\` to start the development server
 `
   },
   {
@@ -47,10 +48,20 @@ A minimal React app demonstrating \`@urbackend/react\` components.
 A Kanban board app using \`@urbackend/sdk\` for data and auth.
 
 ## Setup
+\`\`\`bash
+git clone https://github.com/geturbackend/urBackend.git
+cd urBackend/examples/sdk-kanban
+
+# Terminal 1: Start server
+cd server && npm install && npm start
+
+# Terminal 2: Start client
+cd client && npm install && npm run dev
+\`\`\`
+
 1. Enable Auth in your urBackend project
 2. Create \`boards\` and \`tasks\` collections with RLS
 3. Copy \`VITE_URBACKEND_PK\` from your API keys
-4. Deploy or run locally.
 `
   },
   {
@@ -94,7 +105,9 @@ A CLI-based demo of the urbackend Python SDK.
 
 ## Setup
 \`\`\`bash
-cd examples/python-sdk-demo
+git clone https://github.com/geturbackend/urBackend.git
+cd urBackend/examples/python-sdk-demo
+
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your API keys

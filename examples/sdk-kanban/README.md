@@ -9,7 +9,14 @@ A modern Kanban Board application demonstrating the official `@urbackend/sdk`.
 
 ## 🚀 Getting Started
 
-### 1. Dashboard Setup
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/geturbackend/urBackend.git
+cd urBackend/examples/sdk-kanban
+```
+
+### 2. Dashboard Setup
 1.  **Enable Auth**: Go to 'Auth' in your urBackend project and toggle it on.
 2.  **Create Collections**:
     - `boards`: Add field `name` (String, Required) and `ownerId` (String, Required).
