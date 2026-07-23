@@ -51,17 +51,24 @@ A Kanban board app using \`@urbackend/sdk\` for data and auth.
 \`\`\`bash
 git clone https://github.com/geturbackend/urBackend.git
 cd urBackend/examples/sdk-kanban
-
-# Terminal 1: Start server
-cd server && npm install && npm start
-
-# Terminal 2: Start client
-cd client && npm install && npm run dev
 \`\`\`
 
 1. Enable Auth in your urBackend project
-2. Create \`boards\` and \`tasks\` collections with RLS
-3. Copy \`VITE_URBACKEND_PK\` from your API keys
+2. Create collections with RLS:
+   - \`boards\`: \`name\` (String, Required), \`ownerId\` (String, Required). Mode: \`private\`, ownerField: \`ownerId\`
+   - \`tasks\`: \`title\` (String, Required), \`description\` (String), \`status\` (String, Default: \`Todo\`), \`boardId\` (String, Required), \`ownerId\` (String, Required). Mode: \`private\`, ownerField: \`ownerId\`
+3. Configure environment variables:
+   - Copy \`server/.env.example\` to \`server/.env\` and set \`URBACKEND_SECRET_KEY=sk_live_...\`
+   - Copy \`client/.env.example\` to \`client/.env\` and set \`VITE_URBACKEND_PK=pk_live_...\`
+   - Note: Vite-loaded environment changes require restarting the client server
+4. Run the application:
+   \`\`\`bash
+   # Terminal 1: Start server
+   cd server && npm install && npm start
+
+   # Terminal 2: Start client (from urBackend/examples/sdk-kanban)
+   cd client && npm install && npm run dev
+   \`\`\`
 `
   },
   {
