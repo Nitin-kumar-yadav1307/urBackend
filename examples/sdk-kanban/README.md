@@ -25,7 +25,7 @@ cd urBackend/examples/sdk-kanban
     - `boards`: Set Mode to `private`, ownerField to `ownerId`.
     - `tasks`: Set Mode to `private`, ownerField to `ownerId`.
 
-### 2. Environment Variables
+### 3. Environment Variables
 
 #### Server (`server/.env`)
 ```env
@@ -39,7 +39,7 @@ VITE_URBACKEND_PK=pk_live_...
 VITE_NOTIFY_SERVER_URL=http://localhost:4001
 ```
 
-### 3. Installation & Run
+### 4. Installation & Run
 
 ```bash
 # Terminal 1: Server
