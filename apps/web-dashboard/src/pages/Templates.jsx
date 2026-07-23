@@ -48,9 +48,28 @@ npm install
 A Kanban board app using \`@urbackend/sdk\` for data and auth.
 
 ## Setup
+
+### Option 1: Full Clone
 \`\`\`bash
 git clone https://github.com/geturbackend/urBackend.git
 cd urBackend/examples/sdk-kanban
+\`\`\`
+
+### Option 2: Sparse Checkout (Recommended)
+Clone only this template folder without downloading the entire repository:
+\`\`\`bash
+# Clone repository without files
+git clone --no-checkout --depth 1 https://github.com/geturbackend/urBackend.git sdk-kanban
+cd sdk-kanban
+
+# Enable sparse-checkout
+git sparse-checkout init --cone
+
+# Checkout only the kanban template folder
+git sparse-checkout set examples/sdk-kanban
+
+# Download the files
+git checkout main
 \`\`\`
 
 1. Enable Auth in your urBackend project
@@ -66,7 +85,7 @@ cd urBackend/examples/sdk-kanban
    # Terminal 1: Start server
    cd server && npm install && npm start
 
-   # Terminal 2: Start client (from urBackend/examples/sdk-kanban)
+   # Terminal 2: Start client (from sdk-kanban folder)
    cd client && npm install && npm run dev
    \`\`\`
 `
