@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import { gsap } from 'gsap';
 import './MagicBento.css';
 import BorderGlow from '../BorderGlow/BorderGlow';
+import { APP_SERVICES } from '../../data/services.jsx';
 
 const DEFAULT_PARTICLE_COUNT = 12;
 const DEFAULT_SPOTLIGHT_RADIUS = 300;
@@ -501,7 +502,7 @@ const MagicBento = ({
       )}
 
       <BentoCardGrid gridRef={gridRef}>
-        {(cards || cardData).map((card, index) => {
+        {(cards || APP_SERVICES).map((card, index) => {
           const title = card.title;
           const description = card.description || card.desc;
           const label = card.label || card.badge;

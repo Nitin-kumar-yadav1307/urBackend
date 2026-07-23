@@ -6,7 +6,6 @@ import Hyperspeed from '../components/Hyperspeed/Hyperspeed.jsx';
 import MagicBento from '../components/MagicBento/MagicBento.jsx';
 import StudioReplay from '../components/StudioReplay.jsx';
 import OrbitSection from '../components/OrbitSection.jsx';
-import { APP_SERVICES } from '../data/services.jsx';
 import { ArrowRight, Terminal, Database, HardDrive, Zap, Layers, Smartphone, Globe as GlobeIcon, Code, ChevronDown, ChevronUp } from 'lucide-react';
 
 const HYPERSPEED_OPTIONS = {
@@ -131,7 +130,6 @@ const FAQ_ITEMS = [
 
         <MagicBento
           client:visible
-          cards={APP_SERVICES}
           textAutoHide={true}
           enableStars={false}
           enableSpotlight={true}

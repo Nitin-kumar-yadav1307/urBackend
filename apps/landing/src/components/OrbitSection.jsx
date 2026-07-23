@@ -101,7 +101,7 @@ const COMPATIBLE_TECHNOLOGIES = [
         color: '#4353FF',
         svg: (
             <svg viewBox="0 0 24 24" width="18" height="18" fill="#4353FF">
-                <path d="M20.8 6.2c-1.2-.3-2.4-.4-3.6-.2-2.2.3-4 1.5-5.2 3.3-1.2-1.8-3-3-5.2-3.3C5.6 5.7 4.4 5.8 3.2 6.2 1.5 8.2 0 10.5c0 1.8 1.2 3 2.5 3.5 1.3.5 2.7.3 3.8-.3 1.8-1 3-2.7 3.7-4.7.7 2 1.9 3.7 3.7 4.7 1.1.6 2.5.8 3.8.3 1.3-.5 2.5-1.7 2.5-3.5 0-2.3-1.5-3.7-3.2-4.3z"/>
+                <path d="M20.8 6.2c-1.2-.3-2.4-.4-3.6-.2-2.2.3-4 1.5-5.2 3.3-1.2-1.8-3-3-5.2-3.3C5.6 5.7 4.4 5.8 3.2 6.2c-1.5 2-2.5 4.3-2.5 6.8 0 1.8 1.2 3 2.5 3.5 1.3.5 2.7.3 3.8-.3 1.8-1 3-2.7 3.7-4.7.7 2 1.9 3.7 3.7 4.7 1.1.6 2.5.8 3.8.3 1.3-.5 2.5-1.7 2.5-3.5 0-2.3-1.5-3.7-3.2-4.3z"/>
             </svg>
         ),
         code: `<!-- Add this in Webflow page header -->\n<script src="https://cdn.ub.bitbros.in/sdk/v1.js"></script>\n\n<script>\n  window.addEventListener('DOMContentLoaded', async () => {\n    // Initialize Webflow Client\n    const client = urBackend.createClient({ projectId: 'proj_webflow' });\n    \n    // Submit Webflow Form to MongoDB Collection\n    document.querySelector('#submit-btn').addEventListener('click', async () => {\n      await client.collection('leads').insert({\n        email: document.querySelector('#email-input').value\n      });\n      alert('Lead captured in MongoDB!');\n    });\n  });\n</script>`
