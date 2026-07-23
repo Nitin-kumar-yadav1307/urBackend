@@ -19,19 +19,20 @@ const NAV_ITEMS = [
     </div>
 
     <div class="nav-links">
-      {NAV_ITEMS.map((item) => (
-        item.external ? (
+      {NAV_ITEMS.map((item) => {
+        const IconComponent = item.icon;
+        return item.external ? (
           <a href={item.href} class="nav-link" target="_blank" rel="noopener noreferrer">
-            <item.icon size={14} />
+            <IconComponent size={14} />
             <span>{item.label}</span>
           </a>
         ) : (
           <a href={item.href} class="nav-link">
-            <item.icon size={14} />
+            <IconComponent size={14} />
             <span>{item.label}</span>
           </a>
-        )
-      ))}
+        );
+      })}
     </div>
 
     <div class="nav-actions">
