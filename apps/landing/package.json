@@ -1,0 +1,26 @@
+{
+  "name": "landing",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/react": "^4.x",
+    "@astrojs/sitemap": "^3.x",
+    "astro": "^5.0.0",
+    "framer-motion": "^11.0.0",
+    "gsap": "^3.12.0",
+    "lucide-react": "^0.470.0",
+    "postprocessing": "^6.36.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.170.0"
+  }
+}

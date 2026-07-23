@@ -1,0 +1,94 @@
+---
+import BaseLayout from '../layouts/Base.astro';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+import { Check } from 'lucide-react';
+
+const FREE_FEATURES = [
+  '1 Project',
+  '5 Collections per project',
+  '2,000 API requests / day',
+  '10MB File Storage',
+  '200 Auth Users',
+  '25 Emails / month',
+  'Global email templates',
+  'Community support',
+];
+
+const PRO_FEATURES = [
+  '10 Projects',
+  'Unlimited collections',
+  'Unlimited API requests',
+  'Unlimited Auth Users',
+  'Unlimited Webhooks',
+  'External Database (BYOM)',
+  'Bring your own Storage (S3/R2)',
+  '1,000 Emails / month',
+  'Custom HTML email templates',
+  'BYOK — own API keys',
+  'Analytics Pro',
+  'AI integrations (OpenAI, Groq)',
+  'Priority support',
+];
+---
+
+<BaseLayout 
+  title="urBackend | Pricing" 
+  description="Simple pricing for every stage. Start for free."
+>
+  <div class="pricing-page">
+    <Navbar />
+
+    <main class="pricing-main">
+      <div class="pricing-hero">
+        <h1>Simple pricing for every stage</h1>
+      </div>
+
+      <div class="pricing-grid">
+        <section class="pricing-card">
+          <div class="pricing-badge">Free</div>
+          <h2>Developer Beta</h2>
+          <div class="pricing-price">
+            <span class="pricing-amount">$0</span>
+            <span class="pricing-term">/mo</span>
+          </div>
+          <p class="pricing-subtext">Perfect for side projects, MVPs, and learning.</p>
+          <ul class="pricing-list">
+            {FREE_FEATURES.map((feature) => (
+              <li>
+                <Check size={16} />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+          <a href="https://app.urbackend.bitbros.in/signup" class="pricing-button">
+            Start for Free
+          </a>
+        </section>
+
+        <section class="pricing-card pricing-card-highlight">
+          <div class="pricing-badge">Pro (Beta)</div>
+          <h2>Pro</h2>
+          <div class="pricing-price">
+            <span class="pricing-amount pricing-amount-strike">$9</span>
+            <span class="pricing-term">/mo</span>
+          </div>
+          <p class="pricing-subtext pricing-free-trial">Try now free for a month</p>
+          <ul class="pricing-list">
+            {PRO_FEATURES.map((feature) => (
+              <li>
+                <Check size={16} />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+          <a href="https://app.urbackend.bitbros.in/request-pro" class="pricing-button pricing-button-green">
+            Get 1 month Pro for free
+          </a>
+        </section>
+      </div>
+    </main>
+
+    <Footer />
+  </div>
+</BaseLayout>

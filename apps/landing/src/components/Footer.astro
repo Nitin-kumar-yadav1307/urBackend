@@ -1,0 +1,246 @@
+---
+import { Github, ArrowRight } from 'lucide-react';
+const ADMIN_EMAIL = 'yashpouranik@gmail.com'; // Hardcoding since this is static site
+---
+
+<footer class="modern-footer">
+    <div class="footer-content container">
+
+        <div class="footer-top">
+
+            <div class="footer-brand-col">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <img src="/logo.png" alt="urBackend Logo" style="height: 80px; width: auto;" />
+                </div>
+                <p style="color: var(--color-text-muted); margin-bottom: 1.5rem; max-width: 300px;">
+                    The instant Backend-as-a-Service for frontend developers. Ship faster.
+                </p>
+
+                <h3 style="font-size: 18px; font-weight: bold;">
+                    Subscribe To Our Newsletter :
+                </h3>
+                <p style="color: #C0C0C0; margin-bottom: 0.5rem; max-width: 350px; font-size: 15px;">
+                   Be the first to know what’s shipping next.
+                </p>
+                <div class="footer-input-wrapper">
+                    <input 
+                        type="email" 
+                        placeholder="Enter your E-mail" 
+                        aria-label="Email address for newsletter subscription"
+                    />
+                    <button type="button" aria-label="Subscribe to newsletter">
+                        <ArrowRight size={16} />
+                    </button>
+                </div>
+            </div>
+
+            <div class="footer-nav-grid">
+
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <a href="/#features">Features</a>
+                    <a href="/#use-cases">Use Cases</a>
+                    <a href="/#how-it-works">How it Works</a>
+                    <a href="https://docs.ub.bitbros.in">Documentation</a>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Connect</h4>
+                    <a href="https://discord.gg/CXJjvJkNWn" target="_blank" rel="noreferrer">Discord</a>
+                    <a href="https://github.com/yash-pouranik/urBackend" target="_blank" rel="noreferrer">Github</a>
+                    <a href={`mailto:${ADMIN_EMAIL}`}>Email</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-middle">
+            <div class="social-links">
+                <a href="https://github.com/yash-pouranik/urBackend" target="_blank" class="social-icon"><Github size={20} /></a>
+            </div>
+            <div class="legal-links">
+                <span>&copy; 2026 urBackend Inc.</span>
+            </div>
+        </div>
+
+        <div class="footer-big-text">
+            URBACKEND
+        </div>
+    </div>
+</footer>
+
+<style>
+    .modern-footer {
+        background-color: #050505;
+        border-top: 1px solid #222;
+        padding-top: 4rem;
+        color: #fff;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .footer-top {
+        width: 80%;
+        display: grid;
+        grid-template-columns: minmax(280px, 360px) 1fr;
+        flex-wrap: wrap;
+        justify-self: center;
+        gap: 4rem;
+        margin-bottom: 5rem;
+        text-align: left;
+    }
+
+    .footer-brand-col {
+        flex: 0 1 auto;
+        min-width: 280px;
+    }
+
+    .footer-nav-grid {
+        padding-top: 1rem;
+        padding-left: clamp(0rem, 4vw, 3rem);
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        gap: clamp(1.5rem, 3vw, 3rem);
+        flex-wrap: wrap;
+        justify-content: space-evenly;
+    }
+
+    .footer-input-wrapper {
+        display: flex;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 50px;
+        padding: 6px;
+        width: 100%;
+        max-width: 360px;
+        transition: border-color 0.2s;
+    }
+    .footer-input-wrapper:focus-within {
+        border-color: var(--color-primary);
+    }
+    .footer-input-wrapper input {
+        background: transparent;
+        border: none;
+        color: #fff;
+        padding: 0 16px;
+        flex: 1;
+        outline: none;
+        font-size: 0.9rem;
+    }
+    .footer-input-wrapper button {
+        background: #333;
+        border: none;
+        color: #fff;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .footer-input-wrapper button:hover {
+        background: var(--color-primary);
+        color: #000;
+    }
+
+    .footer-col h4 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #666;
+        margin-bottom: 1.2rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+    .footer-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .footer-col a {
+        color: #ccc;
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: color 0.2s;
+    }
+    .footer-col a:hover {
+        color: #fff;
+    }
+
+    .footer-middle {
+        display: flex;
+        justify-content: center;
+        gap: 4rem;
+        align-items: center;
+        padding-bottom: 1rem;
+        padding-top: 1rem;
+        border-bottom: 1px solid #222;
+        border-top: 1px solid #222;
+        flex-wrap: wrap;
+    }
+    .social-links { display: flex; gap: 1.5rem; }
+    .social-icon { color: #666; transition: 0.2s; }
+    .social-icon:hover { color: #fff; }
+    
+    .legal-links {
+        display: flex;
+        gap: 2rem;
+        font-size: 0.85rem;
+        color: #666;
+    }
+    .legal-links a { color: #666; text-decoration: none; }
+    .legal-links a:hover { color: #fff; }
+
+    .footer-big-text {
+        font-size: clamp(3rem, 15vw, 12rem);
+        font-weight: 900;
+        color: rgba(255, 255, 255, 0.03);
+        background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        line-height: 0.8;
+        text-align: center;
+        margin-top: 1rem;
+        margin-bottom: -2%;
+        letter-spacing: -0.04em;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    @media (max-width: 900px) {
+        .footer-top { 
+            width: 100%;
+            display: flex;
+            flex-direction: column; 
+            align-items: center;
+            text-align: left;
+            gap: 3rem;
+            padding: 0 1.5rem;
+        }
+        .footer-brand-col { 
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        .footer-nav-grid { 
+            width: 100%;
+            gap: 0; 
+            padding-left: 0;
+            justify-content: flex-start;
+            text-align: left;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        .footer-col {
+            align-items: center;
+        }
+        
+        .footer-middle { 
+            flex-direction: row; 
+            gap: 2rem; 
+            align-items: center;
+        }
+    }
+</style>
