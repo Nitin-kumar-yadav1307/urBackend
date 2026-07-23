@@ -1,4 +1,10 @@
 /* --- GLOBAL & LANDING STYLES --- */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #030303;
+}
+
 body, .landing-page, .pricing-page {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
