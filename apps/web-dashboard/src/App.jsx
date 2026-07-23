@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import ProjectDetails from './pages/ProjectDetails';
 import CreateProject from './pages/CreateProject';
 import CreateCollection from './pages/CreateCollection';
+import EditCollection from './pages/EditCollection';
 import NotFound from './pages/NotFound';
 import Analytics from './pages/Analytics';
 import Releases from './pages/Releases';
@@ -138,6 +139,14 @@ function AppContent() {
           <ProtectedRoute allowIncompleteOnboarding>
             <MainLayout>
               <CreateCollection />
+            </MainLayout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/project/:projectId/edit-collection/:collectionName" element={
+          <ProtectedRoute>
+            <MainLayout>
+              <EditCollection />
             </MainLayout>
           </ProtectedRoute>
         } />

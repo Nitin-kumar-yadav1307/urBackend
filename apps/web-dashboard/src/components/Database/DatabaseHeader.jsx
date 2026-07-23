@@ -8,7 +8,7 @@ import AiQueryBar from './AiQueryBar';
 const DatabaseHeader = ({ 
   project, activeCollection, dataLength, viewMode, setViewMode, 
   showFilterMenu, setShowFilterMenu, filtersCount, 
-  onRefresh, onRlsClick, onAddRecord, onOpenSidebar,
+  onRefresh, onRlsClick, onEditSchemaClick, onAddRecord, onOpenSidebar,
   showDeleted, setShowDeleted, onFiltersGenerated, onExport, isExporting, isViewer
 }) => {
   return (
@@ -103,9 +103,14 @@ const DatabaseHeader = ({
         </button>
 
         {activeCollection?.name !== 'users' && !isViewer && (
-          <button onClick={onRlsClick} className="btn btn-secondary" style={{ padding: '6px 12px', height: '32px', gap: '6px', fontSize: '0.75rem' }}>
-            <Shield size={14} /> RLS
-          </button>
+          <>
+            <button onClick={onEditSchemaClick} className="btn btn-secondary" style={{ padding: '6px 12px', height: '32px', gap: '6px', fontSize: '0.75rem' }}>
+              Edit Schema
+            </button>
+            <button onClick={onRlsClick} className="btn btn-secondary" style={{ padding: '6px 12px', height: '32px', gap: '6px', fontSize: '0.75rem' }}>
+              <Shield size={14} /> RLS
+            </button>
+          </>
         )}
 
         

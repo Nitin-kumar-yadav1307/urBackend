@@ -12,6 +12,7 @@ import UserTable from '../components/Auth/UserTable';
 import Pagination from '../components/Database/Pagination';
 import SectionHeader from '../components/Dashboard/SectionHeader';
 import AddRecordDrawer from '../components/AddRecordDrawer';
+import ConfirmationModal from './ConfirmationModal';
 import { PUBLIC_API_URL } from '../config';
 
 export default function Auth() {
@@ -54,6 +55,7 @@ export default function Auth() {
     const [isSavingProviders, setIsSavingProviders] = useState(false);
     const [isSocialAuthModalOpen, setIsSocialAuthModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditUsersSchemaModalOpen, setIsEditUsersSchemaModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null); // user being edited
     const latestUsersRequestId = useRef(0);
     const [selectedProvider, setSelectedProvider] = useState('github');
@@ -407,7 +409,18 @@ export default function Auth() {
             ) : (
                 <div className="pro-grid">
                     <div>
-                        <SectionHeader title="User Management" />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.625rem' }}>
+                            <div style={{ flex: 1 }}><SectionHeader title="User Management" /></div>
+                            {!isViewer && (
+                                <button 
+                                    className="btn btn-secondary" 
+                                    style={{ height: '28px', fontSize: '0.7rem', padding: '0 10px', marginLeft: '10px' }} 
+                                    onClick={() => setIsEditUsersSchemaModalOpen(true)}
+                                >
+                                    Edit Users Schema
+                                </button>
+                            )}
+                        </div>
                         <div className="glass-card" style={{ borderRadius: '12px', overflow: 'hidden' }}>
                             <UserTable 
                                 users={filteredUsers}
@@ -535,6 +548,19 @@ export default function Auth() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isEditUsersSchemaModalOpen && (
+                <ConfirmationModal
+                    open={isEditUsersSchemaModalOpen}
+                    title="Warning: Editing Users Schema"
+                    message="Editing the users collection schema may cause unwanted changes or break your production app. Are you sure you want to proceed?"
+                    onConfirm={() => {
+                        setIsEditUsersSchemaModalOpen(false);
+                        navigate(`/project/${projectId}/edit-collection/users`);
+                    }}
+                    onCancel={() => setIsEditUsersSchemaModalOpen(false)}
+                />
             )}
 
             <style>{`

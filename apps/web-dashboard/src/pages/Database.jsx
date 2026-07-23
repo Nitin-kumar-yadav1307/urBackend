@@ -315,6 +315,7 @@ export default function Database() {
               filtersCount={queryParams.filters.length}
               onRefresh={fetchData}
               onRlsClick={() => setIsRlsDialogOpen(true)}
+              onEditSchemaClick={() => navigate(`/project/${projectId}/edit-collection/${activeCollection.name}`)}
               onAddRecord={() => {
                 if (activeCollection?.name === 'users') {
                   toast.error('Use the Auth page to add/manage users.');

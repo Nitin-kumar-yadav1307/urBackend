@@ -53,7 +53,8 @@ const {
     getMembers,
     inviteMember,
     updateMemberRole,
-    removeMember
+    removeMember,
+    updateCollection
 } = require("../controllers/project.controller");
 
 const { createAdminUser, resetPassword, getUserDetails, updateAdminUser, listAdminUsers, deleteAdminUser, listUserSessions, revokeUserSession } = require('../controllers/userAuth.controller');
@@ -71,6 +72,9 @@ router.post('/:projectId/collections', authMiddleware, authorizeProject('admin')
 
 // DELETE REQ FOR COLLECTION
 router.delete('/:projectId/collections/:collectionName', authFlexible, authorizeProject('admin'), verifyEmail, deleteCollection);
+
+// PUT REQ FOR UPDATE COLLECTION354
+router.put('/:projectId/collections/:collectionName', authMiddleware, authorizeProject('admin'), verifyEmail, planEnforcement.attachDeveloper, updateCollection);
 
 // GET REQ FOR DATA
 router.get('/:projectId/collections/:collectionName/data', authMiddleware, authorizeProject(), getData);

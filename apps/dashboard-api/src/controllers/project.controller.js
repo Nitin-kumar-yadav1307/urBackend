@@ -9,6 +9,7 @@ const { randomUUID } = require("crypto");
 const {
   createProjectSchema,
   createCollectionSchema,
+  editCollectionSchema,
   updateExternalConfigSchema,
   updateAuthProvidersSchema,
   sanitizeObjectId,
@@ -939,6 +940,55 @@ module.exports.createCollection = async (req, res) => {
       }
     }
 
+    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues });
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+};
+
+module.exports.updateCollection = async (req, res) => {
+  try {
+    const { projectId, collectionName, schema } = editCollectionSchema.parse({
+      projectId: req.params.projectId,
+      collectionName: req.params.collectionName,
+      schema: req.body.schema,
+    });
+
+    const project = await Project.findOne({
+      _id: projectId,
+      ...getProjectAccessQuery(req.user._id),
+    });
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    const collectionIndex = project.collections.findIndex((c) => c.name === collectionName);
+    if (collectionIndex === -1) {
+      return res.status(404).json({ message: "Collection not found" });
+    }
+
+    if (collectionName === "users") {
+      if (!validateUsersSchema(schema)) {
+        return res.status(422).json({ error: "The 'users' collection must have required 'email' and 'password' string fields." });
+      }
+    }
+
+    project.collections[collectionIndex].model = schema;
+    
+    await project.save();
+
+    await deleteProjectById(projectId);
+    await setProjectById(projectId, project.toObject());
+    
+    const projectObj = project.toObject();
+    delete projectObj.publishableKey;
+    delete projectObj.secretKey;
+    delete projectObj.jwtSecret;
+
+    emitEvent(req.user._id, 'collection_updated', { collectionName, isUsersCollection: collectionName === 'users' }, projectId);
+
+    return res.status(200).json(projectObj);
+  } catch (err) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues });
     return res.status(err.status || 400).json({ error: err.message });
   }
