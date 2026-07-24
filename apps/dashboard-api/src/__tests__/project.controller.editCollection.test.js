@@ -1,9 +1,9 @@
 'use strict';
 
 const mockFindOne = jest.fn();
-
 const mockDeleteProjectById = jest.fn();
 const mockSetProjectById = jest.fn();
+const mockDeleteProjectByApiKeyCache = jest.fn();
 
 jest.mock('@urbackend/common', () => ({
     Project: {
@@ -14,7 +14,25 @@ jest.mock('@urbackend/common', () => ({
         parse: jest.fn()
     },
     deleteProjectById: mockDeleteProjectById,
-    setProjectById: mockSetProjectById
+    setProjectById: mockSetProjectById,
+    deleteProjectByApiKeyCache: mockDeleteProjectByApiKeyCache,
+    AppError: class AppError extends Error {
+        constructor(statusCode, message) {
+            super(message);
+            this.statusCode = statusCode;
+            this.status = statusCode;
+        }
+    },
+    getConnection: jest.fn(() => ({
+        db: {
+            listCollections: jest.fn(() => ({
+                hasNext: jest.fn(() => Promise.resolve(false))
+            }))
+        }
+    })),
+    getCompiledModel: jest.fn(() => ({})),
+    createUniqueIndexes: jest.fn(() => Promise.resolve()),
+    clearCompiledModel: jest.fn()
 }));
 
 const mockEmitEvent = jest.fn();
@@ -30,6 +48,7 @@ const { z } = require('zod');
 describe('projectController.updateCollection', () => {
     let req;
     let res;
+    let next;
 
     beforeEach(() => {
         jest.clearAllMocks();
@@ -48,6 +67,8 @@ describe('projectController.updateCollection', () => {
             json: jest.fn()
         };
 
+        next = jest.fn();
+
         editCollectionSchema.parse.mockReturnValue({
             projectId: req.params.projectId,
             collectionName: req.params.collectionName,
@@ -59,18 +80,21 @@ describe('projectController.updateCollection', () => {
         const zodError = new z.ZodError([{ message: 'Invalid data' }]);
         editCollectionSchema.parse.mockImplementation(() => { throw zodError; });
 
-        await projectController.updateCollection(req, res);
+        await projectController.updateCollection(req, res, next);
         
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.any(Array) }));
+        expect(next).toHaveBeenCalledWith(expect.any(Error));
+        const error = next.mock.calls[0][0];
+        expect(error.statusCode).toBe(400);
     });
 
     it('should return 404 if project not found', async () => {
         Project.findOne.mockResolvedValue(null);
-        await projectController.updateCollection(req, res);
+        await projectController.updateCollection(req, res, next);
         
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({ message: 'Project not found' });
+        expect(next).toHaveBeenCalledWith(expect.any(Error));
+        const error = next.mock.calls[0][0];
+        expect(error.statusCode).toBe(404);
+        expect(error.message).toBe('Project not found');
     });
 
     it('should return 404 if collection not found in project', async () => {
@@ -83,10 +107,12 @@ describe('projectController.updateCollection', () => {
         };
         Project.findOne.mockResolvedValue(mockProject);
         
-        await projectController.updateCollection(req, res);
+        await projectController.updateCollection(req, res, next);
         
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({ message: 'Collection not found' });
+        expect(next).toHaveBeenCalledWith(expect.any(Error));
+        const error = next.mock.calls[0][0];
+        expect(error.statusCode).toBe(404);
+        expect(error.message).toBe('Collection not found');
     });
 
     it('should return 422 if users validation fails when editing users collection', async () => {
@@ -107,10 +133,12 @@ describe('projectController.updateCollection', () => {
         };
         Project.findOne.mockResolvedValue(mockProject);
         
-        await projectController.updateCollection(req, res);
+        await projectController.updateCollection(req, res, next);
         
-        expect(res.status).toHaveBeenCalledWith(422);
-        expect(res.json).toHaveBeenCalledWith({ error: "The 'users' collection must have required 'email' and 'password' string fields." });
+        expect(next).toHaveBeenCalledWith(expect.any(Error));
+        const error = next.mock.calls[0][0];
+        expect(error.statusCode).toBe(422);
+        expect(error.message).toContain("The 'users' collection must have required 'email' and 'password' string fields.");
     });
 
     it('should successfully update a collection schema', async () => {
@@ -122,6 +150,7 @@ describe('projectController.updateCollection', () => {
                     model: [{ key: 'oldTitle', type: 'String' }]
                 }
             ],
+            resources: { db: { isExternal: false } },
             save: jest.fn().mockResolvedValue(true),
             toObject: jest.fn().mockReturnValue({
                 _id: 'project123',
@@ -132,7 +161,7 @@ describe('projectController.updateCollection', () => {
         };
         Project.findOne.mockResolvedValue(mockProject);
         
-        await projectController.updateCollection(req, res);
+        await projectController.updateCollection(req, res, next);
         
         expect(mockProject.collections[0].model).toEqual(req.body.schema);
         expect(mockProject.save).toHaveBeenCalled();
@@ -159,6 +188,7 @@ describe('projectController.updateCollection', () => {
             collections: [
                 { name: 'users', model: [] }
             ],
+            resources: { db: { isExternal: false } },
             save: jest.fn().mockResolvedValue(true),
             toObject: jest.fn().mockReturnValue({
                 _id: 'project123',
@@ -169,7 +199,7 @@ describe('projectController.updateCollection', () => {
         };
         Project.findOne.mockResolvedValue(mockProject);
         
-        await projectController.updateCollection(req, res);
+        await projectController.updateCollection(req, res, next);
         
         expect(mockProject.collections[0].model).toEqual(req.body.schema);
         expect(mockProject.save).toHaveBeenCalled();

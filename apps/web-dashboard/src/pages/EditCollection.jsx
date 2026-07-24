@@ -434,7 +434,7 @@ function EditCollection() {
 
     const initialName = collectionName?.trim().toLowerCase() || '';
 
-    const [name, setName] = useState(initialName === 'users' ? 'users' : initialName);
+    const name = initialName === 'users' ? 'users' : initialName;
 
     // Default fields for a new collection
     // If it's a "users" collection, we provide the essential Auth fields
@@ -480,6 +480,12 @@ function EditCollection() {
                             return fieldsArray.map(f => {
                                 const newField = { ...f, _id: nextFieldId() };
                                 if (f.fields) newField.fields = mapFields(f.fields);
+                                if (f.items && f.items.fields) {
+                                    newField.items = {
+                                        ...f.items,
+                                        fields: mapFields(f.items.fields)
+                                    };
+                                }
                                 return newField;
                             });
                         };
@@ -576,18 +582,16 @@ function EditCollection() {
                     <input
                         type="text"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        disabled={initialName === 'users'}
+                        disabled={true}
                         className="input-field"
                         style={{
-                            cursor: initialName === 'users' ? 'not-allowed' : 'text',
-                            opacity: initialName === 'users' ? 0.7 : 1
+                            cursor: 'not-allowed',
+                            opacity: 0.7
                         }}
                         placeholder="e.g. users, products, orders"
-                        autoFocus={initialName !== 'users'}
                     />
                     <small style={{ color: 'var(--color-text-muted)', marginTop: '5px', display: 'block' }}>
-                        This will be the name of your collection in the database.
+                        Collection names cannot be modified after creation.
                     </small>
                 </div>
 

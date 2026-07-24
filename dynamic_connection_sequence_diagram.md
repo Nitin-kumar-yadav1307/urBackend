@@ -53,7 +53,8 @@ sequenceDiagram
     
     Note right of VAK: Extract API key from<br/>x-api-key header or<br/>?key= query param
     
-    VAK->>Redis: Check project cache<br/>getProjectByApiKeyCache(hashedKey)
+    Note right of VAK: If publishable key: check cache with raw key first,<br/>fallback to hashed key.<br/>If secret key: check cache with hashed key directly.
+    VAK->>Redis: Check project cache (getProjectByApiKeyCache)
     
     alt Cache HIT
         Redis-->>VAK: Cached project config
@@ -87,7 +88,7 @@ sequenceDiagram
         Note right of AUTH: If secret key → bypass (no filter)<br/>If RLS disabled → no filter<br/>If RLS mode = "public-read" → no filter<br/>If RLS mode = "private" → filter by ownerField
         AUTH-->>Router: next() with req.rlsFilter set
     else POST Request (Write)
-        Note right of AUTH: If secret key → bypass<br/>Require RLS enabled<br/>Require valid Bearer token<br/>Auto-inject ownerField = userId<br/>Validate ownership on each item
+        Note right of AUTH: Secret-key writes bypass authorization immediately.<br/>Bearer-token and ownership checks apply only to publishable-key writes.<br/>Auto-inject ownerField (from collection RLS config) rather than always userId.<br/>Validate ownership on each item.
         AUTH-->>Router: next()
     end
 
@@ -195,7 +196,7 @@ sequenceDiagram
 
     Note over DC,Client: ━━━ PHASE 6: RESPONSE ━━━
 
-    DC-->>Client: ApiResponse { success: true, data: {...} }
+    DC-->>Client: ApiResponse { success: true, data: {...}, message: "" }
 
     Note over GC,REG: ━━━ BACKGROUND: GARBAGE COLLECTION ━━━
 
@@ -211,11 +212,11 @@ sequenceDiagram
 
 The connection manager uses a **3-tier caching strategy** to minimize latency:
 
-| Tier | Source | Speed | What's Cached | TTL |
-|------|--------|-------|---------------|-----|
-| **1** | In-Memory Registry (`Map`) | ⚡ ~0ms | Live Mongoose connection | Until idle 20min (GC) |
+| Tier | Source | Speed | Source/operation | TTL |
+|------|--------|-------|------------------|-----|
+| **1** | In-Memory Registry (`Map`) | ⚡ ~0ms | Live Mongoose connection | Until idle 20 min (GC) |
 | **2** | Redis | 🚀 ~1-2ms | Decrypted URI + plan | 1 hour |
-| **3** | Main MongoDB + Decrypt | 🐢 ~50-200ms | Raw encrypted config | N/A (source of truth) |
+| **3** | Main MongoDB + Decrypt | 🐢 ~50-200ms | MongoDB lookup & decryption fallback (source of truth) | N/A |
 
 > [!IMPORTANT]
 > **Internal DB projects** (using urBackend's shared MongoDB) short-circuit at Tier 3 — they just return `mongoose.connection` directly. No new connection pool is created.
@@ -226,7 +227,7 @@ The connection manager uses a **3-tier caching strategy** to minimize latency:
 
 ## Collection Name Resolution
 
-```
+```text
 Internal DB:  "{projectId}_{collectionName}"  →  "6492a1f3..._posts"
 External DB:  "{collectionName}"               →  "posts"
 ```
@@ -239,15 +240,15 @@ This namespacing ensures **internal projects don't collide** on the shared datab
 
 | File | Role |
 |------|------|
-| [data.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/routes/data.js) | Route definitions + middleware chain order |
-| [verifyApiKey.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/middlewares/verifyApiKey.js) | API key validation, project loading, CORS |
-| [blockUsersCollectionDataAccess.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/middlewares/blockUsersCollectionDataAccess.js) | Blocks `users` collection from data routes |
-| [usageGate.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/middlewares/usageGate.js) | Rate limiting + daily quotas |
-| [resolvePublicAuthContext.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/middlewares/resolvePublicAuthContext.js) | JWT token → `req.authUser` |
-| [authorizeReadOperation.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/middlewares/authorizeReadOperation.js) | RLS read filtering |
-| [authorizeWriteOperation.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/middlewares/authorizeWriteOperation.js) | RLS write ownership enforcement |
-| [data.controller.js](file:///e:/Majors/WEB/urBackend/apps/public-api/src/controllers/data.controller.js) | Core CRUD logic |
-| [connection.manager.js](file:///e:/Majors/WEB/urBackend/packages/common/src/utils/connection.manager.js) | 3-tier connection resolution |
-| [injectModel.js](file:///e:/Majors/WEB/urBackend/packages/common/src/utils/injectModel.js) | Schema building + model compilation |
-| [registry.js](file:///e:/Majors/WEB/urBackend/packages/common/src/utils/registry.js) | Global in-memory `Map` for connections |
-| [GC.js](file:///e:/Majors/WEB/urBackend/packages/common/src/utils/GC.js) | 20-min idle connection garbage collector |
+| [data.js](/apps/public-api/src/routes/data.js) | Route definitions + middleware chain order |
+| [verifyApiKey.js](/apps/public-api/src/middlewares/verifyApiKey.js) | API key validation, project loading, CORS |
+| [blockUsersCollectionDataAccess.js](/apps/public-api/src/middlewares/blockUsersCollectionDataAccess.js) | Blocks `users` collection from data routes |
+| [usageGate.js](/apps/public-api/src/middlewares/usageGate.js) | Rate limiting + daily quotas |
+| [resolvePublicAuthContext.js](/apps/public-api/src/middlewares/resolvePublicAuthContext.js) | JWT token → `req.authUser` |
+| [authorizeReadOperation.js](/apps/public-api/src/middlewares/authorizeReadOperation.js) | RLS read filtering |
+| [authorizeWriteOperation.js](/apps/public-api/src/middlewares/authorizeWriteOperation.js) | RLS write ownership enforcement |
+| [data.controller.js](/apps/public-api/src/controllers/data.controller.js) | Core CRUD logic |
+| [connection.manager.js](/packages/common/src/utils/connection.manager.js) | 3-tier connection resolution |
+| [injectModel.js](/packages/common/src/utils/injectModel.js) | Schema building + model compilation |
+| [registry.js](/packages/common/src/utils/registry.js) | Global in-memory `Map` for connections |
+| [GC.js](/packages/common/src/utils/GC.js) | 20-min idle connection garbage collector |

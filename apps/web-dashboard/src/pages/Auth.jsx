@@ -555,6 +555,8 @@ export default function Auth() {
                     open={isEditUsersSchemaModalOpen}
                     title="Warning: Editing Users Schema"
                     message="Editing the users collection schema may cause unwanted changes or break your production app. Are you sure you want to proceed?"
+                    confirmLabel="Proceed"
+                    confirmVariant="primary"
                     onConfirm={() => {
                         setIsEditUsersSchemaModalOpen(false);
                         navigate(`/project/${projectId}/edit-collection/users`);

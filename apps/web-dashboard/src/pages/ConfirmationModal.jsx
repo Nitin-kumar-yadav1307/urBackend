@@ -1,7 +1,7 @@
 import React from "react";
 import { AlertTriangle } from "lucide-react";
 
-function ConfirmationModal({ open, title, message, onConfirm, onCancel }) {
+function ConfirmationModal({ open, title, message, onConfirm, onCancel, confirmLabel = "Delete", confirmVariant = "danger" }) {
   if (!open) return null;
 
   return (
@@ -37,9 +37,9 @@ function ConfirmationModal({ open, title, message, onConfirm, onCancel }) {
 
           <button
             onClick={onConfirm}
-            className="btn btn-danger confirmationModalBtn"
+            className={`btn btn-${confirmVariant} confirmationModalBtn`}
           >
-            Delete
+            {confirmLabel}
           </button>
         </div>
       </div>

@@ -945,7 +945,7 @@ module.exports.createCollection = async (req, res) => {
   }
 };
 
-module.exports.updateCollection = async (req, res) => {
+module.exports.updateCollection = async (req, res, next) => {
   try {
     const { projectId, collectionName, schema } = editCollectionSchema.parse({
       projectId: req.params.projectId,
@@ -959,38 +959,62 @@ module.exports.updateCollection = async (req, res) => {
     });
 
     if (!project) {
-      return res.status(404).json({ message: "Project not found" });
+      return next(new AppError(404, "Project not found"));
     }
 
     const collectionIndex = project.collections.findIndex((c) => c.name === collectionName);
     if (collectionIndex === -1) {
-      return res.status(404).json({ message: "Collection not found" });
+      return next(new AppError(404, "Collection not found"));
     }
 
-    if (collectionName === "users") {
-      if (!validateUsersSchema(schema)) {
-        return res.status(422).json({ error: "The 'users' collection must have required 'email' and 'password' string fields." });
+    if (schema !== undefined) {
+      if (collectionName === "users") {
+        if (!validateUsersSchema(schema)) {
+          return next(new AppError(422, "The 'users' collection must have required 'email' and 'password' string fields."));
+        }
       }
+      project.collections[collectionIndex].model = schema;
     }
 
-    project.collections[collectionIndex].model = schema;
-    
     await project.save();
 
+    const connection = await getConnection(projectId);
+    const finalCollectionName = project.resources.db.isExternal
+      ? collectionName
+      : `${project._id}_${collectionName}`;
+
+    clearCompiledModel(connection, finalCollectionName);
+
+    const Model = getCompiledModel(
+      connection,
+      project.collections[collectionIndex],
+      projectId,
+      project.resources.db.isExternal,
+    );
+
+    if (project.collections[collectionIndex].model) {
+      await createUniqueIndexes(Model, project.collections[collectionIndex].model);
+    }
+
     await deleteProjectById(projectId);
+    await deleteProjectByApiKeyCache(project.publishableKey);
+    await deleteProjectByApiKeyCache(project.secretKey);
     await setProjectById(projectId, project.toObject());
     
-    const projectObj = project.toObject();
-    delete projectObj.publishableKey;
-    delete projectObj.secretKey;
-    delete projectObj.jwtSecret;
+    const projectObj = sanitizeProjectResponse(project.toObject());
 
     emitEvent(req.user._id, 'collection_updated', { collectionName, isUsersCollection: collectionName === 'users' }, projectId);
 
-    return res.status(200).json(projectObj);
+    return res.status(200).json({
+      success: true,
+      data: projectObj,
+      message: "Collection updated successfully",
+    });
   } catch (err) {
-    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues });
-    return res.status(err.status || 400).json({ error: err.message });
+    if (err instanceof z.ZodError) {
+      return next(new AppError(400, err.issues?.[0]?.message || "Validation failed"));
+    }
+    return next(new AppError(err.status || 400, err.message));
   }
 };
 
