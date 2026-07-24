@@ -9,6 +9,7 @@ const { randomUUID } = require("crypto");
 const {
   createProjectSchema,
   createCollectionSchema,
+  editCollectionSchema,
   updateExternalConfigSchema,
   updateAuthProvidersSchema,
   sanitizeObjectId,
@@ -941,6 +942,88 @@ module.exports.createCollection = async (req, res) => {
 
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues });
     return res.status(err.status || 400).json({ error: err.message });
+  }
+};
+
+module.exports.updateCollection = async (req, res, next) => {
+  try {
+    const { projectId, collectionName, schema } = editCollectionSchema.parse({
+      projectId: req.params.projectId,
+      collectionName: req.params.collectionName,
+      schema: req.body.schema,
+    });
+
+    const project = await Project.findOne({
+      _id: projectId,
+      ...getProjectAccessQuery(req.user._id),
+    });
+
+    if (!project) {
+      return next(new AppError(404, "Project not found"));
+    }
+
+    const collectionIndex = project.collections.findIndex((c) => c.name === collectionName);
+    if (collectionIndex === -1) {
+      return next(new AppError(404, "Collection not found"));
+    }
+
+    if (schema !== undefined) {
+      if (collectionName === "users") {
+        if (!validateUsersSchema(schema)) {
+          return next(new AppError(422, "The 'users' collection must have required 'email' and 'password' string fields."));
+        }
+      }
+      project.collections[collectionIndex].model = schema;
+
+      await project.save();
+
+      const connection = await getConnection(projectId);
+      const finalCollectionName = project.resources.db.isExternal
+        ? collectionName
+        : `${project._id}_${collectionName}`;
+
+      clearCompiledModel(connection, finalCollectionName);
+
+      const Model = getCompiledModel(
+        connection,
+        project.collections[collectionIndex],
+        projectId,
+        project.resources.db.isExternal,
+      );
+
+      if (project.collections[collectionIndex].model) {
+        await createUniqueIndexes(Model, project.collections[collectionIndex].model);
+      }
+
+      await deleteProjectById(projectId);
+      await deleteProjectByApiKeyCache(project.publishableKey);
+      await deleteProjectByApiKeyCache(project.secretKey);
+      await setProjectById(projectId, project.toObject());
+
+      emitEvent(req.user._id, 'collection_updated', { collectionName, isUsersCollection: collectionName === 'users' }, projectId);
+    } else {
+      await project.save();
+    }
+    
+    const projectObj = sanitizeProjectResponse(project.toObject());
+
+    return res.status(200).json({
+      success: true,
+      data: projectObj,
+      message: "Collection updated successfully",
+    });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      return next(new AppError(400, err.issues?.[0]?.message || "Validation failed"));
+    }
+    if (err.message && err.message.startsWith("Cannot create unique index on")) {
+      err.status = 422;
+    }
+    const statusCode = err.status || err.statusCode || 500;
+    const message = (statusCode >= 400 && statusCode < 500)
+      ? err.message
+      : "An unexpected error occurred while updating the collection schema.";
+    return next(new AppError(statusCode, message));
   }
 };
 

@@ -234,6 +234,13 @@ module.exports.createCollectionSchema = z.object({
   schema: z.array(fieldSchemaZod).optional(),
 });
 
+// SCHEMA - EDIT COLLECTION (DASHBOARD)
+module.exports.editCollectionSchema = z.object({
+  projectId: z.string().min(1, "Project ID is required"),
+  collectionName: z.string().min(1, "Collection Name is required"),
+  schema: z.array(fieldSchemaZod).optional(),
+});
+
 // SYNC SCHEMA (CLI)
 // Validates the full collections array sent by `ub push`.
 // Each entry carries a name + model (field definitions).

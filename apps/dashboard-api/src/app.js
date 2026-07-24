@@ -54,6 +54,7 @@ const whitelist = (function() {
 app.use(cors({
     origin: whitelist.get(),
     credentials: true,
+    maxAge: 86400
 }));
 
 app.use(express.json({
