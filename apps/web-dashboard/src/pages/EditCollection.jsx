@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { useOnboarding } from '../context/OnboardingContext';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -431,8 +430,6 @@ function cleanFieldsForApi(fields) {
 function EditCollection() {
     const { projectId, collectionName } = useParams();
     const navigate = useNavigate();
-    const location = useLocation();
-    const { completeStep } = useOnboarding();
     const { user } = useAuth();
 
     const initialName = collectionName?.trim().toLowerCase() || '';
@@ -442,7 +439,7 @@ function EditCollection() {
     // Default fields for a new collection
     // If it's a "users" collection, we provide the essential Auth fields
     const getInitialFields = () => {
-        if (initialName === 'users' || preset === 'auth-users') {
+        if (initialName === 'users') {
             return [
                 { ...createEmptyField(), key: 'email', type: 'String', required: true, locked: true },
                 { ...createEmptyField(), key: 'password', type: 'String', required: true, locked: true },
@@ -509,7 +506,7 @@ function EditCollection() {
         };
         fetchCollections();
         return () => { isMounted = false; };
-    }, [projectId, user, navigate]);
+    }, [projectId, user, navigate, initialName]);
 
     const addField = () => {
         setFields([...fields, createEmptyField()]);
