@@ -1,12 +1,10 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Analytics as VercelAnalytics } from '@vercel/analytics/react';
 import ScrollToTop from './components/Layout/ScrollToTop';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import MainLayout from './components/Layout/MainLayout';
-import LandingPage from './pages/LandingPage';
-import Pricing from './pages/Pricing';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import ProjectDetails from './pages/ProjectDetails';
@@ -57,8 +55,8 @@ function AppContent() {
       <ScrollToTop />
 
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/pricing" element={<Navigate to="/dashboard" replace />} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
