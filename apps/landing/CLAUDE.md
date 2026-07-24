@@ -1,12 +1,12 @@
 ## Development
 
-When starting the dev server, use background mode:
+To start the local development server:
 
-```
-astro dev --background
+```bash
+npm run dev
 ```
 
-Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
+The server will run in the foreground at `http://localhost:4321`.
 
 ## Documentation
 

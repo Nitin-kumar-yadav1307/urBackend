@@ -92,6 +92,7 @@ const {
   createWebhookSchema,
   updateWebhookSchema,
   sendMailSchema,
+  syncSchemaPayload,
   sanitizeObjectId,
   sanitizeNonEmptyString,
 } = require("./utils/input.validation");
@@ -178,6 +179,7 @@ module.exports = {
   createWebhookSchema,
   updateWebhookSchema,
   sendMailSchema,
+  syncSchemaPayload,
   sanitizeObjectId,
   sanitizeNonEmptyString,
   garbageCollect,

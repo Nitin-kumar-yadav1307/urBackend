@@ -244,3 +244,18 @@ const ADMIN_EMAIL = 'yashpouranik@gmail.com'; // Hardcoding since this is static
         }
     }
 </style>
+
+<script>
+    const subscribeInput = document.querySelector('.footer-input-wrapper input') as HTMLInputElement;
+    const subscribeBtn = document.querySelector('.footer-input-wrapper button');
+    
+    subscribeBtn?.addEventListener('click', () => {
+        const email = subscribeInput?.value;
+        if (email && email.includes('@')) {
+            alert('Thank you for subscribing! We will notify you when we launch.');
+            if (subscribeInput) subscribeInput.value = '';
+        } else {
+            alert('Please enter a valid email address.');
+        }
+    });
+</script>
