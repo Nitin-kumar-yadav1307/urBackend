@@ -209,6 +209,28 @@ async function createUniqueIndexes(Model, fields = []) {
   }
   const existingIndexNames = new Set(existingIndexes.map((idx) => idx.name));
 
+  const schemaUniqueKeys = new Set();
+  for (const field of fields) {
+    if (field.unique && UNIQUE_SUPPORTED_TYPES_SET.has(field.type)) {
+      const nk = normalizeKey(field.key);
+      if (nk) {
+        schemaUniqueKeys.add(`unique_${nk}_1`);
+      }
+    }
+  }
+
+  // Drop stale unique indexes
+  for (const index of existingIndexes) {
+    const name = index.name;
+    if (name.startsWith("unique_") && name.endsWith("_1") && !schemaUniqueKeys.has(name)) {
+      try {
+        await Model.collection.dropIndex(name);
+      } catch (dropErr) {
+        // ignore
+      }
+    }
+  }
+
   try {
     for (const field of fields) {
       if (!field.unique) continue;

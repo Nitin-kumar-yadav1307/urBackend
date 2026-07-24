@@ -974,36 +974,38 @@ module.exports.updateCollection = async (req, res, next) => {
         }
       }
       project.collections[collectionIndex].model = schema;
+
+      await project.save();
+
+      const connection = await getConnection(projectId);
+      const finalCollectionName = project.resources.db.isExternal
+        ? collectionName
+        : `${project._id}_${collectionName}`;
+
+      clearCompiledModel(connection, finalCollectionName);
+
+      const Model = getCompiledModel(
+        connection,
+        project.collections[collectionIndex],
+        projectId,
+        project.resources.db.isExternal,
+      );
+
+      if (project.collections[collectionIndex].model) {
+        await createUniqueIndexes(Model, project.collections[collectionIndex].model);
+      }
+
+      await deleteProjectById(projectId);
+      await deleteProjectByApiKeyCache(project.publishableKey);
+      await deleteProjectByApiKeyCache(project.secretKey);
+      await setProjectById(projectId, project.toObject());
+
+      emitEvent(req.user._id, 'collection_updated', { collectionName, isUsersCollection: collectionName === 'users' }, projectId);
+    } else {
+      await project.save();
     }
-
-    await project.save();
-
-    const connection = await getConnection(projectId);
-    const finalCollectionName = project.resources.db.isExternal
-      ? collectionName
-      : `${project._id}_${collectionName}`;
-
-    clearCompiledModel(connection, finalCollectionName);
-
-    const Model = getCompiledModel(
-      connection,
-      project.collections[collectionIndex],
-      projectId,
-      project.resources.db.isExternal,
-    );
-
-    if (project.collections[collectionIndex].model) {
-      await createUniqueIndexes(Model, project.collections[collectionIndex].model);
-    }
-
-    await deleteProjectById(projectId);
-    await deleteProjectByApiKeyCache(project.publishableKey);
-    await deleteProjectByApiKeyCache(project.secretKey);
-    await setProjectById(projectId, project.toObject());
     
     const projectObj = sanitizeProjectResponse(project.toObject());
-
-    emitEvent(req.user._id, 'collection_updated', { collectionName, isUsersCollection: collectionName === 'users' }, projectId);
 
     return res.status(200).json({
       success: true,
