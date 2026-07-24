@@ -229,6 +229,43 @@ async function createUniqueIndexes(Model, fields = []) {
     }
   }
 
+  // Pre-validate duplicates for all fields requiring index creation or recreation to leave existing indexes untouched on failure
+  for (const field of fields) {
+    if (!field.unique) continue;
+    if (!UNIQUE_SUPPORTED_TYPES_SET.has(field.type)) continue;
+
+    const normalizedKey = normalizeKey(field.key);
+    if (!normalizedKey) continue;
+
+    const indexName = `unique_${normalizedKey}_1`;
+    const existingIndex = existingIndexes.find((idx) => idx.name === indexName);
+
+    if (existingIndex) {
+      const isExistingPartial = !!existingIndex.partialFilterExpression;
+      const isDesiredPartial = !field.required;
+      if (isExistingPartial === isDesiredPartial) {
+        continue;
+      }
+    }
+
+    const duplicates = await findDuplicates(
+      Model,
+      normalizedKey,
+      !!field.required,
+    );
+
+    if (duplicates.length > 0) {
+      const examples = duplicates
+        .slice(0, 3)
+        .map((d) => JSON.stringify(d._id))
+        .join(", ");
+
+      throw new Error(
+        `Cannot create unique index on '${normalizedKey}'. ${duplicates.length} duplicate values exist.${examples ? ` Examples: ${examples}` : ""}`,
+      );
+    }
+  }
+
   try {
     for (const field of fields) {
       if (!field.unique) continue;
@@ -250,23 +287,6 @@ async function createUniqueIndexes(Model, fields = []) {
         } else {
           continue;
         }
-      }
-
-      const duplicates = await findDuplicates(
-        Model,
-        normalizedKey,
-        !!field.required,
-      );
-
-      if (duplicates.length > 0) {
-        const examples = duplicates
-          .slice(0, 3)
-          .map((d) => JSON.stringify(d._id))
-          .join(", ");
-
-        throw new Error(
-          `Cannot create unique index on '${normalizedKey}'. ${duplicates.length} duplicate values exist.${examples ? ` Examples: ${examples}` : ""}`,
-        );
       }
 
       const indexOptions = {

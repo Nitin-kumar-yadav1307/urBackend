@@ -1016,6 +1016,9 @@ module.exports.updateCollection = async (req, res, next) => {
     if (err instanceof z.ZodError) {
       return next(new AppError(400, err.issues?.[0]?.message || "Validation failed"));
     }
+    if (err.message && err.message.startsWith("Cannot create unique index on")) {
+      err.status = 422;
+    }
     const statusCode = err.status || err.statusCode || 500;
     const message = (statusCode >= 400 && statusCode < 500)
       ? err.message
