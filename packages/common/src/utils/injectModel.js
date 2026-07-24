@@ -196,6 +196,16 @@ async function findDuplicates(Model, fieldKey, isRequired) {
   ]);
 }
 
+async function safeDropIndex(Model, name) {
+  try {
+    await Model.collection.dropIndex(name);
+  } catch (err) {
+    if (err.code !== 27 && !/index not found/i.test(err.message) && !/does not exist/i.test(err.message)) {
+      throw err;
+    }
+  }
+}
+
 async function createUniqueIndexes(Model, fields = []) {
   const createdIndexes = [];
 
@@ -219,18 +229,6 @@ async function createUniqueIndexes(Model, fields = []) {
     }
   }
 
-  // Drop stale unique indexes
-  for (const index of existingIndexes) {
-    const name = index.name;
-    if (name.startsWith("unique_") && name.endsWith("_1") && !schemaUniqueKeys.has(name)) {
-      try {
-        await Model.collection.dropIndex(name);
-      } catch (dropErr) {
-        // ignore
-      }
-    }
-  }
-
   try {
     for (const field of fields) {
       if (!field.unique) continue;
@@ -238,6 +236,21 @@ async function createUniqueIndexes(Model, fields = []) {
 
       const normalizedKey = normalizeKey(field.key);
       if (!normalizedKey) continue;
+
+      const indexName = `unique_${normalizedKey}_1`;
+      const existingIndex = existingIndexes.find((idx) => idx.name === indexName);
+
+      if (existingIndex) {
+        const isExistingPartial = !!existingIndex.partialFilterExpression;
+        const isDesiredPartial = !field.required;
+
+        if (isExistingPartial !== isDesiredPartial) {
+          await safeDropIndex(Model, indexName);
+          existingIndexNames.delete(indexName);
+        } else {
+          continue;
+        }
+      }
 
       const duplicates = await findDuplicates(
         Model,
@@ -255,8 +268,6 @@ async function createUniqueIndexes(Model, fields = []) {
           `Cannot create unique index on '${normalizedKey}'. ${duplicates.length} duplicate values exist.${examples ? ` Examples: ${examples}` : ""}`,
         );
       }
-
-      const indexName = `unique_${normalizedKey}_1`;
 
       const indexOptions = {
         unique: true,
@@ -277,9 +288,17 @@ async function createUniqueIndexes(Model, fields = []) {
         createdIndexes.push(createdName);
       }
     }
+
+    // Drop stale unique indexes ONLY after all index creation/validation succeeds
+    for (const index of existingIndexes) {
+      const name = index.name;
+      if (name.startsWith("unique_") && name.endsWith("_1") && !schemaUniqueKeys.has(name)) {
+        await safeDropIndex(Model, name);
+      }
+    }
   } catch (err) {
     for (const indexName of createdIndexes) {
-      await Model.collection.dropIndex(indexName).catch(() => {});
+      await safeDropIndex(Model, indexName).catch(() => {});
     }
     throw err;
   }

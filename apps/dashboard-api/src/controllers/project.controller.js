@@ -1016,7 +1016,11 @@ module.exports.updateCollection = async (req, res, next) => {
     if (err instanceof z.ZodError) {
       return next(new AppError(400, err.issues?.[0]?.message || "Validation failed"));
     }
-    return next(new AppError(err.status || 400, err.message));
+    const statusCode = err.status || err.statusCode || 500;
+    const message = (statusCode >= 400 && statusCode < 500)
+      ? err.message
+      : "An unexpected error occurred while updating the collection schema.";
+    return next(new AppError(statusCode, message));
   }
 };
 
