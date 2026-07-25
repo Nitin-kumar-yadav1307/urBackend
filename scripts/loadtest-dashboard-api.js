@@ -19,6 +19,11 @@ const target = (args.target || process.env.DASHBOARD_API_URL || 'http://localhos
 const connections = parseInt(args.connections || '50', 10);
 const duration = parseInt(args.duration || '10', 10);
 
+const email = args.email || 'developer@example.com';
+const password = args.password || 'password123';
+const token = args.token || '';
+const skipAuth = args.skipAuth === 'true' || args.skipAuth === true;
+
 console.log('====================================================');
 console.log('🚀 urBackend Dashboard API Load Testing Suite');
 console.log('====================================================');
@@ -57,10 +62,37 @@ async function runBenchmark(name, opts) {
 
 async function startLoadTest() {
     // Test 1: Dashboard Health Check Endpoint
-    await runBenchmark('Dashboard Health Check (GET /api/health)', {
+    await runBenchmark('1. Dashboard Health Check (GET /api/health)', {
         url: `${target}/api/health`,
         method: 'GET',
     });
+
+    // Test 2: Developer Auth Login
+    if (!skipAuth) {
+        await runBenchmark('2. Developer Auth Login (POST /api/auth/login)', {
+            url: `${target}/api/auth/login`,
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+            },
+            body: {
+                email,
+                password,
+            },
+        });
+    }
+
+    // Test 3: Admin Projects List
+    if (token) {
+        await runBenchmark('3. Admin Projects List (GET /api/projects)', {
+            url: `${target}/api/projects`,
+            method: 'GET',
+            headers: {
+                'authorization': `Bearer ${token}`,
+                'accept': 'application/json',
+            },
+        });
+    }
 
     console.log('🎉 Dashboard Load Testing Complete!');
 }
