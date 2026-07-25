@@ -18,14 +18,7 @@ const {
 } = require('../controllers/auth.controller');
 
 
-const { authLimiter } = require('../middlewares/auth_limiter');
-const rateLimit = require('express-rate-limit');
-const dashboardLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 1000,
-    message: { error: "Dashboard usage limit exceeded. Slow down!" },
-    skip: (req) => process.env.NODE_ENV === 'development',
-});
+const { authLimiter, publicLimiter: dashboardLimiter } = require('../middlewares/auth_limiter');
 
 
 router.post('/register', authLimiter, register);
