@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "concurrently -c \"cyan,magenta,yellow,green\" -n \"DASHBOARD,PUBLIC,WEB,CONSUMER\" \"npm run dev --workspace=dashboard-api\" \"npm run dev --workspace=public-api\" \"npm run dev --workspace=web-dashboard\" \"npm run dev --workspace=consumer\"",
     "build": "npm run build --workspaces --if-present",
+    "loadtest:public": "node scripts/loadtest-public-api.js",
+    "loadtest:dashboard": "node scripts/loadtest-dashboard-api.js",
     "prepare": "husky || node -e \"\""
   },
   "lint-staged": {
@@ -20,6 +22,7 @@
     ]
   },
   "devDependencies": {
+    "autocannon": "^7.15.0",
     "concurrently": "9.2.1",
     "husky": "9.1.7",
     "lint-staged": "17.0.5"
