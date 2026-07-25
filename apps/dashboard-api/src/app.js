@@ -88,7 +88,10 @@ app.use((req, res, next) => {
     const authHeader = req.headers.authorization || '';
     const isPATRequest = authHeader.startsWith('Bearer ubpat_');
 
-    if (req.path === '/api/billing/webhook' || isCliRoute || isPATRequest) {
+    const bypassKey = process.env.LOADTEST_BYPASS_KEY;
+    const isLoadTestBypass = bypassKey && req.headers['x-bypass-rate-limit'] === bypassKey;
+
+    if (req.path === '/api/billing/webhook' || isCliRoute || isPATRequest || isLoadTestBypass) {
         return next();
     }
     csrfProtection(req, res, next);
