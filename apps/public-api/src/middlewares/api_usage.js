@@ -15,8 +15,8 @@ const rateLimiterMiddleware = rateLimit({
 });
 
 const limiter = (req, res, next) => {
-    const bypassKey = process.env.LOADTEST_BYPASS_KEY || 'urbackend_loadtest_secret';
-    if (req.headers['x-bypass-rate-limit'] === bypassKey || process.env.BYPASS_RATE_LIMIT === 'true') {
+    const bypassKey = process.env.LOADTEST_BYPASS_KEY;
+    if (bypassKey && req.headers['x-bypass-rate-limit'] === bypassKey) {
         return next();
     }
     return rateLimiterMiddleware(req, res, next);

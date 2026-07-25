@@ -26,6 +26,8 @@ const password = args.password || 'password123';
 const skipAuth = args.skipAuth === 'true' || args.skipAuth === true;
 const skipData = args.skipData === 'true' || args.skipData === true;
 
+const bypassKey = args.bypassKey || process.env.LOADTEST_BYPASS_KEY;
+
 const keyType = apiKey.startsWith('sk_live_') ? 'Secret Key (sk_live_)' : apiKey.startsWith('pk_live_') ? 'Publishable Key (pk_live_)' : 'Custom Key';
 
 console.log('====================================================');
@@ -36,6 +38,7 @@ console.log(`⚡ Connections : ${connections} VUs (Virtual Users)`);
 console.log(`⏱️ Duration   : ${duration} seconds`);
 console.log(`🔑 Key Type    : ${keyType}`);
 console.log(`📁 Collection  : ${collection}`);
+console.log(`🛡️ Rate Bypass : ${bypassKey ? 'Enabled' : 'Disabled (Standard Rate Limits Active)'}`);
 console.log('====================================================\n');
 
 async function runBenchmark(name, opts) {
@@ -48,7 +51,7 @@ async function runBenchmark(name, opts) {
                 connections,
                 duration,
                 headers: {
-                    'x-bypass-rate-limit': process.env.LOADTEST_BYPASS_KEY || 'urbackend_loadtest_secret',
+                    ...(bypassKey ? { 'x-bypass-rate-limit': bypassKey } : {}),
                     ...(opts.headers || {}),
                 },
                 body: opts.body ? JSON.stringify(opts.body) : undefined,
