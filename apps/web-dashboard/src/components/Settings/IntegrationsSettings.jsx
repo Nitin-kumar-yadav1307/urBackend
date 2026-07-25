@@ -1,35 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Database, Shield, Mail, HardDrive, CheckCircle, Server, Copy,
-    Key, Lock, Check, ExternalLink, RefreshCw
+    Database, Shield, Mail, HardDrive, Check, Copy, Server
 } from 'lucide-react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
-import { API_URL } from '../../config';
-
-const inputStyle = {
-    width: '100%',
-    padding: '7px 10px',
-    background: 'var(--color-bg-input)',
-    border: '1px solid var(--color-border)',
-    borderRadius: '4px',
-    color: '#fff',
-    fontSize: '0.8rem',
-};
-
-function FormField({ label, hint, children }) {
-    return (
-        <div className="form-group">
-            {label && (
-                <label className="form-label" style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                    {label}
-                </label>
-            )}
-            {children}
-            {hint && <small style={{ display: 'block', marginTop: '5px', fontSize: '0.68rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>{hint}</small>}
-        </div>
-    );
-}
+import { PUBLIC_API_URL } from '../../config';
+import { FormField } from './formPrimitives';
+import { inputStyle } from '../../utils/styles';
+import DatabaseConfigForm from './DatabaseConfigForm';
+import StorageConfigForm from './StorageConfigForm';
+import MailTemplatesForm from './MailTemplatesForm';
 
 function IntegrationSectionCard({ title, description, icon: Icon, iconColor = 'var(--color-primary)', accentColor, children, style = {} }) {
     return (
@@ -57,26 +37,20 @@ function IntegrationSectionCard({ title, description, icon: Icon, iconColor = 'v
     );
 }
 
-export default function IntegrationsSettings(props) {
-    const {
-        project,
-        projectId,
-        onProjectUpdate,
-        role,
-        DatabaseConfigForm: DatabaseForm,
-        StorageConfigForm: StorageForm,
-        MailTemplatesForm: MailTemplates,
-        hasResendKey,
-        resendKeyValue,
-        setResendKeyValue,
-        resendFromEmailValue,
-        setResendFromEmailValue,
-        resendKeyLoading,
-        handleResendKeySave,
-    } = props;
-
+export default function IntegrationsSettings({
+    project,
+    projectId,
+    onProjectUpdate,
+    role,
+    hasResendKey,
+    resendKeyValue,
+    setResendKeyValue,
+    resendFromEmailValue,
+    setResendFromEmailValue,
+    resendKeyLoading,
+    handleResendKeySave,
+}) {
     const isViewer = role === 'viewer';
-    const PUBLIC_API_URL = API_URL || 'https://api.urbackend.com';
 
     // Auth Providers State
     const [authProviders, setAuthProviders] = useState({
@@ -133,11 +107,19 @@ export default function IntegrationsSettings(props) {
         }
     };
 
-    const copyToClipboard = (text, type) => {
-        navigator.clipboard.writeText(text);
-        setCopiedUrl(type);
-        toast.success('Callback URL copied!');
-        setTimeout(() => setCopiedUrl(null), 2000);
+    const copyToClipboard = async (text, type) => {
+        if (!navigator?.clipboard) {
+            toast.error('Clipboard access is not available.');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedUrl(type);
+            toast.success('Callback URL copied!');
+            setTimeout(() => setCopiedUrl(null), 2000);
+        } catch {
+            toast.error('Failed to copy to clipboard.');
+        }
     };
 
     return (
@@ -153,7 +135,7 @@ export default function IntegrationsSettings(props) {
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {/* Primary MongoDB */}
-                    <DatabaseForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
+                    <DatabaseConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
 
                     {/* Redis (Coming Soon) */}
                     <div className="glass-card" style={{ padding: '1rem', borderRadius: '8px', border: '1px dashed var(--color-border)', opacity: 0.7 }}>
@@ -256,6 +238,7 @@ export default function IntegrationsSettings(props) {
                                     />
                                     <button
                                         type="button"
+                                        aria-label="Copy GitHub callback URL"
                                         className="btn btn-secondary"
                                         onClick={() => copyToClipboard(githubCallbackUrl, 'github')}
                                         style={{ height: '32px', fontSize: '0.75rem', padding: '0 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -332,6 +315,7 @@ export default function IntegrationsSettings(props) {
                                     />
                                     <button
                                         type="button"
+                                        aria-label="Copy Google redirect URI"
                                         className="btn btn-secondary"
                                         onClick={() => copyToClipboard(googleCallbackUrl, 'google')}
                                         style={{ height: '32px', fontSize: '0.75rem', padding: '0 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -463,7 +447,7 @@ export default function IntegrationsSettings(props) {
                     </div>
 
                     {/* Mail Templates Sub-form */}
-                    <MailTemplates projectId={projectId} role={role} />
+                    <MailTemplatesForm projectId={projectId} role={role} />
                 </div>
             </IntegrationSectionCard>
 
@@ -475,7 +459,7 @@ export default function IntegrationsSettings(props) {
                 iconColor="#34d399"
                 accentColor="#34d399"
             >
-                <StorageForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
+                <StorageConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
             </IntegrationSectionCard>
 
         </div>
