@@ -59,18 +59,46 @@ async function runBenchmark(name, opts) {
 
 async function startLoadTest() {
     // Test 1: Health Check Endpoint
-    await runBenchmark('Health Check Endpoint (GET /api/health)', {
+    await runBenchmark('1. Health Check Endpoint (GET /api/health)', {
         url: `${target}/api/health`,
         method: 'GET',
     });
 
-    // Test 2: API Key Auth & Data Read Endpoint
-    await runBenchmark('Data Collection Read (GET /api/data/posts)', {
+    // Test 2: API Key Auth & Data Collection Read (RLS + DB Query)
+    await runBenchmark('2. Data Collection Read (GET /api/data/posts)', {
         url: `${target}/api/data/posts?limit=10`,
         method: 'GET',
         headers: {
             'x-api-key': apiKey,
             'accept': 'application/json',
+        },
+    });
+
+    // Test 3: User Auth Login (Bcrypt Hash & JWT Signing Load)
+    await runBenchmark('3. User Auth Login (POST /api/userAuth/login)', {
+        url: `${target}/api/userAuth/login`,
+        method: 'POST',
+        headers: {
+            'x-api-key': apiKey,
+            'content-type': 'application/json',
+        },
+        body: {
+            email: 'loadtest@example.com',
+            password: 'password123',
+        },
+    });
+
+    // Test 4: Data Write / Document Insert (POST /api/data/posts)
+    await runBenchmark('4. Document Insert (POST /api/data/posts)', {
+        url: `${target}/api/data/posts`,
+        method: 'POST',
+        headers: {
+            'x-api-key': apiKey,
+            'content-type': 'application/json',
+        },
+        body: {
+            title: 'Load Test Post',
+            content: 'Benchmarking database write performance',
         },
     });
 
