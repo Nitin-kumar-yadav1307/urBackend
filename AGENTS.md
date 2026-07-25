@@ -8,6 +8,8 @@ Main apps:
 - `apps/dashboard-api`: admin/project management API for the dashboard
 - `apps/public-api`: public project API for data, auth, storage
 - `apps/web-dashboard`: React/Vite dashboard
+- `apps/consumer`: Consumer Worker for background jobs and webhooks
+- `apps/python-service`: Python AI Microservice (FastAPI/Groq)
 - `packages/common`: shared models, validation, middleware, encryption, DB/model utilities
 
 SDKs:
@@ -17,6 +19,13 @@ SDKs:
 - `sdks/urbackend-cli` : Official CLI to Manage urbackend projects
 
 Workspace scripts are defined in [package.json](/package.json).
+
+## Production Deployment Endpoints & Domains
+
+- **Frontend Landing**: `https://urbackend.bitbros.in`
+- **Dashboard App**: `https://app.urbackend.bitbros.in`
+- **Dashboard API (Internal/Admin)**: `https://api.urbackend.bitbros.in`
+- **Public API (SDK & User Auth)**: `https://api.ub.bitbros.in`
 
 ## Important project rules
 
@@ -151,6 +160,12 @@ cd apps/web-dashboard
 npm run build
 ```
 
+Run python service tests:
+```bash
+cd apps/python-service
+pytest
+```
+
 Run SDK tests:
 ```bash
 # JS Core SDK
@@ -169,6 +184,7 @@ pytest
 Before shipping auth, RLS, or schema changes:
 - run `apps/public-api` tests
 - run `apps/dashboard-api` tests
+- run `apps/python-service` tests
 - run `@urbackend/sdk` tests
 - run `@urbackend/react` tests
 - run `apps/web-dashboard` lint
