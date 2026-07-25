@@ -47,7 +47,10 @@ async function runBenchmark(name, opts) {
                 method: opts.method || 'GET',
                 connections,
                 duration,
-                headers: opts.headers || {},
+                headers: {
+                    'x-bypass-rate-limit': process.env.LOADTEST_BYPASS_KEY || 'urbackend_loadtest_secret',
+                    ...(opts.headers || {}),
+                },
                 body: opts.body ? JSON.stringify(opts.body) : undefined,
             },
             (err, result) => {
