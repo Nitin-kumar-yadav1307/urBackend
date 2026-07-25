@@ -22,7 +22,7 @@ const duration = parseInt(args.duration || '10', 10);
 const email = args.email || 'developer@example.com';
 const password = args.password || 'password123';
 const token = args.token || '';
-const skipAuth = args.skipAuth === 'true' || args.skipAuth === true;
+const bypassKey = args.bypassKey || process.env.LOADTEST_BYPASS_KEY;
 
 console.log('====================================================');
 console.log('🚀 urBackend Dashboard API Load Testing Suite');
@@ -30,6 +30,7 @@ console.log('====================================================');
 console.log(`📍 Target URL  : ${target}`);
 console.log(`⚡ Connections : ${connections} VUs (Virtual Users)`);
 console.log(`⏱️ Duration   : ${duration} seconds`);
+console.log(`🛡️ Rate Bypass : ${bypassKey ? 'Enabled' : 'Disabled (Standard Rate Limits Active)'}`);
 console.log('====================================================\n');
 
 async function runBenchmark(name, opts) {
@@ -41,7 +42,10 @@ async function runBenchmark(name, opts) {
                 method: opts.method || 'GET',
                 connections,
                 duration,
-                headers: opts.headers || {},
+                headers: {
+                    ...(bypassKey ? { 'x-bypass-rate-limit': bypassKey } : {}),
+                    ...(opts.headers || {}),
+                },
                 body: opts.body ? JSON.stringify(opts.body) : undefined,
             },
             (err, result) => {
