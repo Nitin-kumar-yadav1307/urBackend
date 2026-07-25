@@ -2,12 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
-import { Shield, X, AlertCircle, Monitor, LogOut, Key } from 'lucide-react';
+import { Shield, X, AlertCircle, Monitor, LogOut, Key, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 import AuthHeader from '../components/Auth/AuthHeader';
-import SocialAuthConfig from '../components/Auth/SocialAuthConfig';
-import SocialAuthModal from '../components/Auth/SocialAuthModal';
 import UserTable from '../components/Auth/UserTable';
 import Pagination from '../components/Database/Pagination';
 import SectionHeader from '../components/Dashboard/SectionHeader';
@@ -52,17 +50,10 @@ export default function Auth() {
     const [project, setProject] = useState(null);
     const [isEnabling, setIsEnabling] = useState(false);
     const [isTogglingSignup, setIsTogglingSignup] = useState(false);
-    const [isSavingProviders, setIsSavingProviders] = useState(false);
-    const [isSocialAuthModalOpen, setIsSocialAuthModalOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditUsersSchemaModalOpen, setIsEditUsersSchemaModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null); // user being edited
     const latestUsersRequestId = useRef(0);
-    const [selectedProvider, setSelectedProvider] = useState('github');
-    const [authProviders, setAuthProviders] = useState({
-        github: { enabled: false, clientId: '', clientSecret: '', hasClientSecret: false },
-        google: { enabled: false, clientId: '', clientSecret: '', hasClientSecret: false }
-    });
 
     const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
     const [sessionsTargetUser, setSessionsTargetUser] = useState(null);
@@ -73,11 +64,6 @@ export default function Auth() {
     const [resetPasswordUser, setResetPasswordUser] = useState(null);
     const [newPassword, setNewPassword] = useState('');
     const [isResetLoading, setIsResetLoading] = useState(false);
-
-    // Config
-    const siteUrl = project?.siteUrl || '';
-    const githubCallbackUrl = `${PUBLIC_API_URL}/api/userAuth/social/github/callback`;
-    const googleCallbackUrl = `${PUBLIC_API_URL}/api/userAuth/social/google/callback`;
 
     const myMember = project?.members?.find(m => {
         const memberId = typeof m.user === 'object' ? m.user?._id : m.user;
@@ -113,7 +99,6 @@ export default function Auth() {
 
                 if (isMounted) {
                     setProject(projectResult.data);
-                    if (projectResult.data?.authProviders) setAuthProviders(projectResult.data.authProviders);
                     if (projectResult.data?.isAuthEnabled) {
                         const requestId = ++latestUsersRequestId.current;
                         const usersRes = await api.get(
@@ -156,36 +141,6 @@ export default function Auth() {
         } catch (err) { 
             toast.error(err.response?.data?.message || "Failed to enable auth"); 
         } finally { setIsEnabling(false); }
-    };
-
-    const handleProviderFieldChange = (provider, field, value) => {
-        setAuthProviders((prev) => ({
-            ...prev,
-            [provider]: { ...prev[provider], [field]: value }
-        }));
-    };
-
-    const handleSaveProviders = async () => {
-        setIsSavingProviders(true);
-        try {
-            const payload = {
-                github: {
-                    enabled: !!authProviders.github.enabled,
-                    clientId: authProviders.github.clientId,
-                    ...(authProviders.github.clientSecret ? { clientSecret: authProviders.github.clientSecret } : {})
-                },
-                google: {
-                    enabled: !!authProviders.google.enabled,
-                    clientId: authProviders.google.clientId,
-                    ...(authProviders.google.clientSecret ? { clientSecret: authProviders.google.clientSecret } : {})
-                }
-            };
-            const res = await api.patch(`/api/projects/${projectId}/auth/providers`, payload);
-            setAuthProviders(res.data.authProviders);
-            toast.success('Social auth saved');
-            setIsSocialAuthModalOpen(false);
-        } catch { toast.error('Failed to save settings'); }
-        finally { setIsSavingProviders(false); }
     };
 
     const handleTogglePublicSignup = async (enable) => {
@@ -304,21 +259,6 @@ export default function Auth() {
                 hasUserCollection={hasUserCollection}
                 onConfigureFields={() => navigate(`/project/${projectId}/database?collection=users`)}
                 onAddUser={isViewer ? null : () => setIsAddModalOpen(true)}
-            />
-
-            {/* Social Auth Modal */}
-            <SocialAuthModal 
-                isOpen={isSocialAuthModalOpen}
-                onClose={() => setIsSocialAuthModalOpen(false)}
-                selectedProvider={selectedProvider}
-                setSelectedProvider={setSelectedProvider}
-                authProviders={authProviders}
-                handleProviderFieldChange={handleProviderFieldChange}
-                handleSaveProviders={handleSaveProviders}
-                isSavingProviders={isSavingProviders}
-                siteUrl={siteUrl}
-                githubCallbackUrl={githubCallbackUrl}
-                googleCallbackUrl={googleCallbackUrl}
             />
 
             {/* Add / Edit User Drawer */}
@@ -464,11 +404,26 @@ export default function Auth() {
                             </label>
                         </div>
 
-                        <SocialAuthConfig 
-                            authProviders={authProviders}
-                            onOpenModal={() => setIsSocialAuthModalOpen(true)}
-                            setSelectedProvider={setSelectedProvider}
-                        />
+                        <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '12px', marginBottom: '1.25rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                                <div>
+                                    <h4 style={{ fontSize: '0.88rem', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Shield size={16} color="var(--color-primary)" /> OAuth2 & Social Providers
+                                    </h4>
+                                    <p style={{ margin: '4px 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.75rem', lineHeight: '1.5' }}>
+                                        Configure GitHub, Google, and third-party login integrations in Project Settings.
+                                    </p>
+                                </div>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => navigate(`/project/${projectId}/settings?tab=integrations`)}
+                                    style={{ height: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                                >
+                                    <ExternalLink size={13} />
+                                    Integrations
+                                </button>
+                            </div>
+                        </div>
                         
                         <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '12px' }}>
                             <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '8px' }}>Security Policy</h4>

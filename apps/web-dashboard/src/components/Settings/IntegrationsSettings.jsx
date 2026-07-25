@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-    Database, Shield, Mail, HardDrive, Check, Copy, Server
+    Shield, Database, Mail, HardDrive, Check, Copy, Search, X, Eye, EyeOff,
+    ExternalLink, CheckCircle, Info, Lock
 } from 'lucide-react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -11,31 +12,57 @@ import DatabaseConfigForm from './DatabaseConfigForm';
 import StorageConfigForm from './StorageConfigForm';
 import MailTemplatesForm from './MailTemplatesForm';
 
-function IntegrationSectionCard({ title, description, icon: Icon, iconColor = 'var(--color-primary)', accentColor, children, style = {} }) {
-    return (
-        <div className="glass-card" style={{ borderRadius: '8px', position: 'relative', overflow: 'hidden', ...style }}>
-            {accentColor && (
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: accentColor }} />
-            )}
-            <div style={{ padding: '1.25rem', paddingLeft: accentColor ? '1.5rem' : '1.25rem' }}>
-                {title && (
-                    <div style={{ marginBottom: '1.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {Icon && <Icon size={18} color={iconColor} />}
-                            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>{title}</h3>
-                        </div>
-                        {description && (
-                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0', lineHeight: 1.4 }}>
-                                {description}
-                            </p>
-                        )}
-                    </div>
-                )}
-                {children}
-            </div>
-        </div>
-    );
-}
+/* ─── SVG Brand Icons ─── */
+const Icons = {
+    GitHub: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+        </svg>
+    ),
+    Google: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.27v3.15C3.25 21.3 7.31 24 12 24z" />
+            <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.27C.46 8.2.01 10.04.01 12c0 1.96.45 3.8 1.26 5.42l4.01-3.15z" />
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.58l4.01 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+        </svg>
+    ),
+    Apple: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.09c.68-.83 1.14-1.98.99-3.14-.99.04-2.19.66-2.9 1.48-.63.73-1.18 1.9-.99 3.03 1.11.09 2.22-.54 2.9-1.37z" />
+        </svg>
+    ),
+    Discord: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#5865F2">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+        </svg>
+    ),
+    MongoDB: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#13AA52">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm1.19 19.467c-.244.184-.717.382-1.19.382-.473 0-.946-.198-1.19-.382C8.75 17.87 6 13.9 6 10.5 6 7.185 8.686 4.5 12 4.5s6 2.685 6 6c0 3.4-2.75 7.37-4.81 8.967z" />
+        </svg>
+    ),
+    Redis: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#DC382D">
+            <path d="M22.023 13.682l-9.047 3.51a2.53 2.53 0 01-1.952 0l-9.047-3.51a1.27 1.27 0 01-.802-1.186v-3.99c0-.522.316-.992.802-1.186l9.047-3.51a2.53 2.53 0 011.952 0l9.047 3.51c.486.194.802.664.802 1.186v3.99c0 .522-.316.992-.802 1.186z" />
+        </svg>
+    ),
+    Resend: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 3h18a2 2 0 012 2v14a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2zm0 4v12h18V7l-9 5.5L3 7zm9 3.5L20.4 5H3.6L12 10.5z" />
+        </svg>
+    ),
+    Supabase: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#3ECF8E">
+            <path d="M13.35 24v-9.67h8.17L10.65 0v9.67H2.48L13.35 24z" />
+        </svg>
+    ),
+    AWS: () => (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF9900">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+        </svg>
+    )
+};
 
 export default function IntegrationsSettings({
     project,
@@ -51,6 +78,7 @@ export default function IntegrationsSettings({
     handleResendKeySave,
 }) {
     const isViewer = role === 'viewer';
+    const siteUrl = project?.siteUrl || '';
 
     // Auth Providers State
     const [authProviders, setAuthProviders] = useState({
@@ -58,10 +86,14 @@ export default function IntegrationsSettings({
         google: { enabled: false, clientId: '', clientSecret: '', hasClientSecret: false }
     });
     const [isSavingProviders, setIsSavingProviders] = useState(false);
-    const [activeAuthTab, setActiveAuthTab] = useState('github');
-    const [copiedUrl, setCopiedUrl] = useState(null);
+    const [selectedProviderModal, setSelectedProviderModal] = useState(null); // 'github' | 'google' | 'mongodb' | 'resend' | 'storage'
+    const [searchTerm, setSearchTerm] = useState('');
 
-    const siteUrl = project?.siteUrl || '';
+    // Modal Form States for Active Social Provider
+    const [modalForm, setModalForm] = useState({ enabled: false, clientId: '', clientSecret: '' });
+    const [showSecret, setShowSecret] = useState(false);
+    const [copiedUrl, setCopiedUrl] = useState(false);
+
     const githubCallbackUrl = `${PUBLIC_API_URL}/api/userAuth/social/github/callback`;
     const googleCallbackUrl = `${PUBLIC_API_URL}/api/userAuth/social/google/callback`;
 
@@ -72,344 +104,228 @@ export default function IntegrationsSettings({
         }
     }, [project?.authProviders]);
 
-    const handleProviderFieldChange = (provider, field, value) => {
-        setAuthProviders((prev) => ({
-            ...prev,
-            [provider]: { ...prev[provider], [field]: value }
-        }));
+    const openOAuthModal = (providerKey) => {
+        const prov = authProviders[providerKey] || { enabled: false, clientId: '', clientSecret: '' };
+        setModalForm({
+            enabled: !!prov.enabled,
+            clientId: prov.clientId || '',
+            clientSecret: ''
+        });
+        setShowSecret(false);
+        setCopiedUrl(false);
+        setSelectedProviderModal(providerKey);
     };
 
-    const handleSaveProviders = async () => {
+    const handleSaveOAuthModal = async () => {
+        if (!selectedProviderModal) return;
         setIsSavingProviders(true);
         try {
+            const updatedProviderData = {
+                enabled: !!modalForm.enabled,
+                clientId: modalForm.clientId,
+                ...(modalForm.clientSecret ? { clientSecret: modalForm.clientSecret } : {})
+            };
+
             const payload = {
-                github: {
+                github: selectedProviderModal === 'github' ? updatedProviderData : {
                     enabled: !!authProviders.github.enabled,
                     clientId: authProviders.github.clientId,
-                    ...(authProviders.github.clientSecret ? { clientSecret: authProviders.github.clientSecret } : {})
                 },
-                google: {
+                google: selectedProviderModal === 'google' ? updatedProviderData : {
                     enabled: !!authProviders.google.enabled,
                     clientId: authProviders.google.clientId,
-                    ...(authProviders.google.clientSecret ? { clientSecret: authProviders.google.clientSecret } : {})
                 }
             };
+
             const res = await api.patch(`/api/projects/${projectId}/auth/providers`, payload);
             setAuthProviders(res.data.authProviders);
             if (onProjectUpdate) {
                 onProjectUpdate(prev => ({ ...prev, authProviders: res.data.authProviders }));
             }
-            toast.success('Auth provider settings saved!');
+            toast.success(`${selectedProviderModal === 'github' ? 'GitHub' : 'Google'} OAuth settings updated!`);
+            setSelectedProviderModal(null);
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed to save auth provider settings');
+            toast.error(err.response?.data?.message || 'Failed to update provider settings');
         } finally {
             setIsSavingProviders(false);
         }
     };
 
-    const copyToClipboard = async (text, type) => {
+    const copyToClipboard = async (text) => {
         if (!navigator?.clipboard) {
             toast.error('Clipboard access is not available.');
             return;
         }
         try {
             await navigator.clipboard.writeText(text);
-            setCopiedUrl(type);
-            toast.success('Callback URL copied!');
-            setTimeout(() => setCopiedUrl(null), 2000);
+            setCopiedUrl(true);
+            toast.success('OAuth Callback URL copied!');
+            setTimeout(() => setCopiedUrl(false), 2000);
         } catch {
             toast.error('Failed to copy to clipboard.');
         }
     };
 
+    // Filter providers based on search input
+    const oauthProvidersList = useMemo(() => {
+        const list = [
+            { id: 'github', name: 'GitHub', icon: Icons.GitHub, enabled: authProviders.github.enabled, configured: authProviders.github.hasClientSecret },
+            { id: 'google', name: 'Google', icon: Icons.Google, enabled: authProviders.google.enabled, configured: authProviders.google.hasClientSecret },
+            { id: 'apple', name: 'Apple', icon: Icons.Apple, disabled: true, statusText: 'Coming Soon' },
+            { id: 'discord', name: 'Discord', icon: Icons.Discord, disabled: true, statusText: 'Coming Soon' }
+        ];
+
+        if (!searchTerm.trim()) return list;
+        return list.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [authProviders, searchTerm]);
+
+    const activeCallbackUrl = selectedProviderModal === 'google' ? googleCallbackUrl : githubCallbackUrl;
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
-            {/* 1. DATABASES SECTION */}
-            <IntegrationSectionCard
-                title="Databases"
-                description="Manage primary & caching databases for your project context."
-                icon={Database}
-                iconColor="var(--color-primary)"
-                accentColor="var(--color-primary)"
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {/* Primary MongoDB */}
-                    <DatabaseConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
-
-                    {/* Redis (Coming Soon) */}
-                    <div className="glass-card" style={{ padding: '1rem', borderRadius: '8px', border: '1px dashed var(--color-border)', opacity: 0.7 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Server size={16} color="#ef4444" />
-                                <div>
-                                    <h4 style={{ fontSize: '0.82rem', fontWeight: 600, margin: 0 }}>Redis Cache</h4>
-                                    <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                                        High performance memory cache & pub/sub engine.
-                                    </p>
-                                </div>
-                            </div>
-                            <span style={{ fontSize: '0.68rem', background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', padding: '2px 8px', borderRadius: '999px', fontWeight: 600 }}>
-                                Coming Soon
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </IntegrationSectionCard>
-
-            {/* 2. AUTH INTEGRATIONS SECTION */}
-            <IntegrationSectionCard
-                title="Authentication Providers"
-                description="Enable third-party social logins (GitHub, Google OAuth) for your public users."
-                icon={Shield}
-                iconColor="#3b82f6"
-                accentColor="#3b82f6"
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    
-                    {/* Site URL warning check */}
-                    {!siteUrl && (
-                        <div style={{ padding: '10px 12px', background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: '6px', fontSize: '0.75rem', color: '#eab308' }}>
-                            ⚠️ <strong>Site URL is not set:</strong> Please set your app's frontend URL in the <em>General Settings</em> so OAuth redirects to <code>/auth/callback</code> correctly.
-                        </div>
-                    )}
-
-                    {/* Auth Provider Selector Tabs */}
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', gap: '8px' }}>
-                        {[
-                            { id: 'github', label: 'GitHub OAuth', enabled: authProviders.github.enabled, configured: authProviders.github.hasClientSecret },
-                            { id: 'google', label: 'Google OAuth', enabled: authProviders.google.enabled, configured: authProviders.google.hasClientSecret }
-                        ].map((prov) => (
-                            <button
-                                key={prov.id}
-                                onClick={() => setActiveAuthTab(prov.id)}
-                                style={{
-                                    padding: '8px 14px',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    borderBottom: activeAuthTab === prov.id ? '2px solid var(--color-primary)' : '2px solid transparent',
-                                    color: activeAuthTab === prov.id ? '#fff' : 'var(--color-text-muted)',
-                                    fontSize: '0.8rem',
-                                    fontWeight: activeAuthTab === prov.id ? 600 : 400,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}
-                            >
-                                <span>{prov.label}</span>
-                                {prov.enabled && (
-                                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
-                                )}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Active Provider Form */}
-                    {activeAuthTab === 'github' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <h4 style={{ fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>GitHub OAuth Integration</h4>
-                                    <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                                        Allow users to log in with their GitHub account.
-                                    </p>
-                                </div>
-                                <label className="switch" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={!!authProviders.github.enabled}
-                                        onChange={(e) => handleProviderFieldChange('github', 'enabled', e.target.checked)}
-                                        disabled={isViewer}
-                                    />
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: authProviders.github.enabled ? '#22c55e' : 'var(--color-text-muted)' }}>
-                                        {authProviders.github.enabled ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                </label>
-                            </div>
-
-                            <FormField label="Authorization Callback URL (Read-only)" hint="Add this exact URL into your GitHub Developer Application settings.">
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={githubCallbackUrl}
-                                        style={{ ...inputStyle, fontFamily: 'monospace', background: 'rgba(0,0,0,0.2)', color: 'var(--color-text-muted)' }}
-                                    />
-                                    <button
-                                        type="button"
-                                        aria-label="Copy GitHub callback URL"
-                                        className="btn btn-secondary"
-                                        onClick={() => copyToClipboard(githubCallbackUrl, 'github')}
-                                        style={{ height: '32px', fontSize: '0.75rem', padding: '0 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                        {copiedUrl === 'github' ? <Check size={12} color="#22c55e" /> : <Copy size={12} />}
-                                    </button>
-                                </div>
-                            </FormField>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <FormField label="Client ID">
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. Ov23li..."
-                                        value={authProviders.github.clientId || ''}
-                                        onChange={(e) => handleProviderFieldChange('github', 'clientId', e.target.value)}
-                                        style={{ ...inputStyle, fontFamily: 'monospace' }}
-                                        disabled={isViewer}
-                                    />
-                                </FormField>
-
-                                <FormField
-                                    label={
-                                        <span>
-                                            Client Secret{' '}
-                                            <span style={{ fontSize: '0.65rem', color: authProviders.github.hasClientSecret ? '#22c55e' : '#f97316' }}>
-                                                • {authProviders.github.hasClientSecret ? 'Configured (encrypted)' : 'Not set'}
-                                            </span>
-                                        </span>
-                                    }
-                                >
-                                    <input
-                                        type="password"
-                                        placeholder={authProviders.github.hasClientSecret ? '••••••••••••••••' : 'Enter client secret'}
-                                        value={authProviders.github.clientSecret || ''}
-                                        onChange={(e) => handleProviderFieldChange('github', 'clientSecret', e.target.value)}
-                                        style={{ ...inputStyle, fontFamily: 'monospace' }}
-                                        disabled={isViewer}
-                                    />
-                                </FormField>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeAuthTab === 'google' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <h4 style={{ fontSize: '0.85rem', fontWeight: 600, margin: 0 }}>Google OAuth Integration</h4>
-                                    <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
-                                        Allow users to log in with Google accounts.
-                                    </p>
-                                </div>
-                                <label className="switch" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={!!authProviders.google.enabled}
-                                        onChange={(e) => handleProviderFieldChange('google', 'enabled', e.target.checked)}
-                                        disabled={isViewer}
-                                    />
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: authProviders.google.enabled ? '#22c55e' : 'var(--color-text-muted)' }}>
-                                        {authProviders.google.enabled ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                </label>
-                            </div>
-
-                            <FormField label="Authorized Redirect URI (Read-only)" hint="Add this exact URI into your Google Cloud Console OAuth 2.0 Credentials.">
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input
-                                        type="text"
-                                        readOnly
-                                        value={googleCallbackUrl}
-                                        style={{ ...inputStyle, fontFamily: 'monospace', background: 'rgba(0,0,0,0.2)', color: 'var(--color-text-muted)' }}
-                                    />
-                                    <button
-                                        type="button"
-                                        aria-label="Copy Google redirect URI"
-                                        className="btn btn-secondary"
-                                        onClick={() => copyToClipboard(googleCallbackUrl, 'google')}
-                                        style={{ height: '32px', fontSize: '0.75rem', padding: '0 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                        {copiedUrl === 'google' ? <Check size={12} color="#22c55e" /> : <Copy size={12} />}
-                                    </button>
-                                </div>
-                            </FormField>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <FormField label="Client ID">
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. 12345-abc.apps.googleusercontent.com"
-                                        value={authProviders.google.clientId || ''}
-                                        onChange={(e) => handleProviderFieldChange('google', 'clientId', e.target.value)}
-                                        style={{ ...inputStyle, fontFamily: 'monospace' }}
-                                        disabled={isViewer}
-                                    />
-                                </FormField>
-
-                                <FormField
-                                    label={
-                                        <span>
-                                            Client Secret{' '}
-                                            <span style={{ fontSize: '0.65rem', color: authProviders.google.hasClientSecret ? '#22c55e' : '#f97316' }}>
-                                                • {authProviders.google.hasClientSecret ? 'Configured (encrypted)' : 'Not set'}
-                                            </span>
-                                        </span>
-                                    }
-                                >
-                                    <input
-                                        type="password"
-                                        placeholder={authProviders.google.hasClientSecret ? '••••••••••••••••' : 'Enter client secret'}
-                                        value={authProviders.google.clientSecret || ''}
-                                        onChange={(e) => handleProviderFieldChange('google', 'clientSecret', e.target.value)}
-                                        style={{ ...inputStyle, fontFamily: 'monospace' }}
-                                        disabled={isViewer}
-                                    />
-                                </FormField>
-                            </div>
-                        </div>
-                    )}
-
-                    {!isViewer && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-                            <button
-                                onClick={handleSaveProviders}
-                                className="btn btn-primary"
-                                disabled={isSavingProviders}
-                                style={{ height: '30px', fontSize: '0.75rem', padding: '0 14px' }}
-                            >
-                                {isSavingProviders ? 'Saving Auth Settings...' : 'Save Auth Settings'}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </IntegrationSectionCard>
-
-            {/* 3. MAIL INTEGRATIONS SECTION */}
-            <IntegrationSectionCard
-                title="Mail & Templates"
-                description="Configure transactional email delivery providers and customize email templates."
-                icon={Mail}
-                iconColor="#c084fc"
-                accentColor="#a855f7"
-                style={{ borderColor: 'rgba(168,85,247,0.2)' }}
-            >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {/* Provider Selection Info */}
-                    <div style={{ padding: '10px 12px', background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#c084fc' }}>Active Provider: Resend.com (BYOK)</span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '2px' }}>
-                                SendGrid, AWS SES & urMail Engine support are in development.
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Resend BYOK Card */}
-                    <div className="glass-card" style={{ padding: '1rem', borderRadius: '8px' }}>
-                        <h4 style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0 0 8px 0' }}>Resend.com API Key</h4>
-                        <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
-                            Upload a per-project Resend API key to send mail from your custom domain.
+            {/* 1. OAUTH2 PROVIDERS GRID (APPWRITE STYLE) */}
+            <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>OAuth2 Providers</h3>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0' }}>
+                            Enable third-party social logins for your application users.
                         </p>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                            <FormField label={
-                                <span>
-                                    Resend API Key{' '}
-                                    <span style={{ fontWeight: 600, color: hasResendKey ? '#22c55e' : '#f97316', fontSize: '0.65rem' }}>
-                                        · {hasResendKey ? 'Configured' : 'Not configured'}
+                    </div>
+
+                    {/* Provider Search Filter */}
+                    <div style={{ position: 'relative', width: '220px' }}>
+                        <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                        <input
+                            type="text"
+                            placeholder="Search OAuth2 providers"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ ...inputStyle, paddingLeft: '30px', height: '32px', fontSize: '0.75rem' }}
+                        />
+                    </div>
+                </div>
+
+                {!siteUrl && (
+                    <div style={{ padding: '10px 12px', background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: '6px', fontSize: '0.75rem', color: '#eab308', marginBottom: '1rem' }}>
+                        ⚠️ <strong>Site URL is not set:</strong> Please set your app's site URL in the <em>General Settings</em> tab so OAuth redirects to <code>/auth/callback</code> correctly.
+                    </div>
+                )}
+
+                {/* Provider Grid Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                    {oauthProvidersList.map((prov) => {
+                        const ProviderIcon = prov.icon;
+                        const isConfigured = prov.configured || prov.enabled;
+                        return (
+                            <div
+                                key={prov.id}
+                                onClick={() => !prov.disabled && openOAuthModal(prov.id)}
+                                style={{
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '12px',
+                                    padding: '1.25rem',
+                                    cursor: prov.disabled ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justify: 'space-between',
+                                    minHeight: '110px',
+                                    opacity: prov.disabled ? 0.6 : 1,
+                                    transition: 'all 0.2s ease',
+                                }}
+                                className={!prov.disabled ? "provider-card-hover" : ""}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <ProviderIcon />
+                                    </div>
+                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#fff' }}>{prov.name}</span>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{
+                                        fontSize: '0.7rem',
+                                        padding: '2px 8px',
+                                        borderRadius: '999px',
+                                        fontWeight: 600,
+                                        background: prov.disabled ? 'rgba(255,255,255,0.06)' : prov.enabled ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                                        color: prov.disabled ? 'var(--color-text-muted)' : prov.enabled ? '#22c55e' : 'var(--color-text-muted)',
+                                        border: prov.enabled ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--color-border)'
+                                    }}>
+                                        {prov.statusText || (prov.enabled ? 'enabled' : isConfigured ? 'configured' : 'disabled')}
                                     </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* 2. DATABASES SECTION */}
+            <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 4px 0' }}>Databases</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
+                    Primary database clusters & caching layers.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(19,170,82,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Icons.MongoDB />
+                            </div>
+                            <div>
+                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>MongoDB</h4>
+                                <span style={{ fontSize: '0.68rem', color: project?.resources?.db?.isExternal ? '#22c55e' : 'var(--color-text-muted)' }}>
+                                    {project?.resources?.db?.isExternal ? 'External Connected' : 'Default Managed'}
                                 </span>
-                            }>
+                            </div>
+                        </div>
+                        <DatabaseConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
+                    </div>
+
+                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', opacity: 0.6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(220,56,45,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Icons.Redis />
+                            </div>
+                            <div>
+                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>Redis Cache</h4>
+                                <span style={{ fontSize: '0.68rem', color: '#ef4444', fontWeight: 600 }}>Coming Soon</span>
+                            </div>
+                        </div>
+                        <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                            In-memory caching and message queues for real-time applications.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. MAIL SECTION */}
+            <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 4px 0' }}>Mail Delivery & Templates</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
+                    Transactional email providers and dynamic template engine.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(192,132,252,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Icons.Resend />
+                                </div>
+                                <div>
+                                    <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600 }}>Resend.com (BYOK API Key)</h4>
+                                    <span style={{ fontSize: '0.7rem', color: hasResendKey ? '#22c55e' : 'var(--color-text-muted)' }}>
+                                        {hasResendKey ? '• Configured (Encrypted at rest)' : '• Not configured'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            <FormField label="Resend API Key">
                                 <input
                                     type="password"
                                     className="input-field"
@@ -420,7 +336,7 @@ export default function IntegrationsSettings({
                                     disabled={isViewer}
                                 />
                             </FormField>
-                            <FormField label="Default From Address" hint={<>Blank defaults to <code>onboarding@resend.dev</code></>}>
+                            <FormField label="Default From Address" hint={<>Defaults to <code>onboarding@resend.dev</code></>}>
                                 <input
                                     type="text"
                                     className="input-field"
@@ -433,12 +349,12 @@ export default function IntegrationsSettings({
                             </FormField>
                         </div>
                         {!isViewer && (
-                            <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
                                 <button
                                     onClick={handleResendKeySave}
                                     className="btn btn-primary"
                                     disabled={resendKeyLoading || (!resendKeyValue.trim() && resendFromEmailValue.trim() === (project?.resendFromEmail || ""))}
-                                    style={{ height: '30px', fontSize: '0.75rem', padding: '0 14px' }}
+                                    style={{ height: '32px', fontSize: '0.75rem', padding: '0 14px' }}
                                 >
                                     {resendKeyLoading ? "Saving..." : "Save Mail Settings"}
                                 </button>
@@ -446,22 +362,165 @@ export default function IntegrationsSettings({
                         )}
                     </div>
 
-                    {/* Mail Templates Sub-form */}
                     <MailTemplatesForm projectId={projectId} role={role} />
                 </div>
-            </IntegrationSectionCard>
+            </div>
 
-            {/* 4. STORAGE INTEGRATIONS SECTION */}
-            <IntegrationSectionCard
-                title="Storage Engine (BYOS)"
-                description="Connect external storage providers for public & private file bucket uploads."
-                icon={HardDrive}
-                iconColor="#34d399"
-                accentColor="#34d399"
-            >
+            {/* 4. STORAGE ENGINES */}
+            <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 4px 0' }}>Storage Engines (BYOS)</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
+                    Connect external Supabase, AWS S3, or Cloudflare R2 object storage.
+                </p>
                 <StorageConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
-            </IntegrationSectionCard>
+            </div>
 
+            {/* ─── APPWRITE STYLE OAUTH2 PROVIDER SETTINGS MODAL ─── */}
+            {selectedProviderModal && (
+                <div
+                    className="modal-overlay"
+                    style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+                    onClick={() => setSelectedProviderModal(null)}
+                >
+                    <div
+                        className="glass-card modal-content"
+                        style={{ width: '100%', maxWidth: '520px', position: 'relative', padding: '1.5rem', borderRadius: '14px', border: '1px solid var(--color-border)' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Close button */}
+                        <button
+                            className="btn-icon"
+                            style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                            onClick={() => setSelectedProviderModal(null)}
+                            aria-label="Close modal"
+                        >
+                            <X size={18} />
+                        </button>
+
+                        {/* Modal Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+                            <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {selectedProviderModal === 'github' ? <Icons.GitHub /> : <Icons.Google />}
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>
+                                    {selectedProviderModal === 'github' ? 'GitHub' : 'Google'} OAuth2 settings
+                                </h3>
+                            </div>
+                        </div>
+
+                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            To use {selectedProviderModal === 'github' ? 'GitHub' : 'Google'} authentication in your application, fill in this form.
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            
+                            {/* Enable Toggle Switch */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Enable Provider</span>
+                                <label className="switch" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={modalForm.enabled}
+                                        onChange={(e) => setModalForm(p => ({ ...p, enabled: e.target.checked }))}
+                                        disabled={isViewer}
+                                    />
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: modalForm.enabled ? '#22c55e' : 'var(--color-text-muted)' }}>
+                                        {modalForm.enabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* Client ID */}
+                            <FormField label="Client ID">
+                                <input
+                                    type="text"
+                                    placeholder={selectedProviderModal === 'github' ? 'e.g. Ov23li...' : 'e.g. 12345-abc.apps.googleusercontent.com'}
+                                    value={modalForm.clientId}
+                                    onChange={(e) => setModalForm(p => ({ ...p, clientId: e.target.value }))}
+                                    style={{ ...inputStyle, fontFamily: 'monospace' }}
+                                    disabled={isViewer}
+                                />
+                            </FormField>
+
+                            {/* Client Secret */}
+                            <FormField label="Client Secret" hint={authProviders[selectedProviderModal]?.hasClientSecret ? "Leave blank to keep existing encrypted secret." : "Enter secret value."}>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showSecret ? 'text' : 'password'}
+                                        placeholder={authProviders[selectedProviderModal]?.hasClientSecret ? '••••••••••••••••' : 'Enter client secret'}
+                                        value={modalForm.clientSecret}
+                                        onChange={(e) => setModalForm(p => ({ ...p, clientSecret: e.target.value }))}
+                                        style={{ ...inputStyle, fontFamily: 'monospace', paddingRight: '36px' }}
+                                        disabled={isViewer}
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label="Toggle secret visibility"
+                                        onClick={() => setShowSecret(!showSecret)}
+                                        style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 0 }}
+                                    >
+                                        {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                                    </button>
+                                </div>
+                            </FormField>
+
+                            {/* Callout Box for Redirect URI */}
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '12px' }}>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', color: 'var(--color-text-muted)', fontSize: '0.73rem', lineHeight: 1.4, marginBottom: '8px' }}>
+                                    <Info size={14} style={{ marginTop: '2px', flexShrink: 0, color: 'var(--color-primary)' }} />
+                                    <span>To complete set up, add this OAuth2 redirect URI to your {selectedProviderModal === 'github' ? 'GitHub app' : 'Google Cloud Console'} configuration.</span>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={activeCallbackUrl}
+                                        style={{ ...inputStyle, fontFamily: 'monospace', fontSize: '0.72rem', background: 'rgba(0,0,0,0.3)', color: 'var(--color-text-muted)' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label={`Copy ${selectedProviderModal === 'github' ? 'GitHub' : 'Google'} OAuth callback URL`}
+                                        className="btn btn-secondary"
+                                        onClick={() => copyToClipboard(activeCallbackUrl)}
+                                        style={{ height: '32px', padding: '0 10px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
+                                    >
+                                        {copiedUrl ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Action Buttons */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1.5rem' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => setSelectedProviderModal(null)}
+                                style={{ height: '34px', fontSize: '0.78rem', padding: '0 14px' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveOAuthModal}
+                                className="btn btn-primary"
+                                disabled={isSavingProviders || isViewer}
+                                style={{ height: '34px', fontSize: '0.78rem', padding: '0 16px', background: 'var(--color-primary)' }}
+                            >
+                                {isSavingProviders ? 'Updating...' : 'Update Settings'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                .provider-card-hover:hover {
+                    border-color: rgba(255, 255, 255, 0.25) !important;
+                    background: rgba(255, 255, 255, 0.05) !important;
+                    transform: translateY(-2px);
+                }
+            `}</style>
         </div>
     );
 }
