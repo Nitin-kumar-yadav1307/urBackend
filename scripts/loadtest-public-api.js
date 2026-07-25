@@ -19,7 +19,8 @@ const args = process.argv.slice(2).reduce((acc, arg) => {
 const target = (args.target || process.env.PUBLIC_API_URL || 'http://localhost:5001').replace(/\/$/, '');
 const connections = parseInt(args.connections || '50', 10);
 const duration = parseInt(args.duration || '10', 10);
-const apiKey = args.apiKey || process.env.TEST_API_KEY || 'demo-api-key';
+const apiKey = args.apiKey || args.pk || args.sk || process.env.TEST_API_KEY || process.env.PUBLIC_KEY || 'pk_live_demo_key';
+const keyType = apiKey.startsWith('sk_live_') ? 'Secret Key (sk_live_)' : apiKey.startsWith('pk_live_') ? 'Publishable Key (pk_live_)' : 'Custom Key';
 
 console.log('====================================================');
 console.log('🚀 urBackend Public API Load Testing Suite');
@@ -27,6 +28,7 @@ console.log('====================================================');
 console.log(`📍 Target URL  : ${target}`);
 console.log(`⚡ Connections : ${connections} VUs (Virtual Users)`);
 console.log(`⏱️ Duration   : ${duration} seconds`);
+console.log(`🔑 Key Type    : ${keyType}`);
 console.log('====================================================\n');
 
 async function runBenchmark(name, opts) {
