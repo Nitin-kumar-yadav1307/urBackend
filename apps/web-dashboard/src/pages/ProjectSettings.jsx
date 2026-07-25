@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import {
     Trash2, AlertTriangle, Save, CheckCircle, Copy, Server, Globe, Plus, X,
-    Settings, HardDrive, Database, Mail, Shield, Eye, Pencil
+    Settings, HardDrive, Database, Mail, Shield, Eye, Pencil, Sliders
 } from "lucide-react";
 import { API_URL } from "../config";
 import ConfirmationModal from "./ConfirmationModal";
 import SectionHeader from "../components/Dashboard/SectionHeader";
+import IntegrationsSettings from "../components/Settings/IntegrationsSettings";
 
 /* ─── Reusable compact form-field wrapper ─── */
 function FormField({ label, hint, children }) {
@@ -61,6 +62,10 @@ export default function ProjectSettings() {
     const { projectId } = useParams();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tabParam = searchParams.get('tab');
+
+    const [activeTab, setActiveTab] = useState(tabParam === 'integrations' ? 'integrations' : 'general');
     const [showModal, setShowModal] = useState(false);
 
     const [project, setProject] = useState(null);
@@ -74,6 +79,17 @@ export default function ProjectSettings() {
     const [newName, setNewName] = useState("");
     const [siteUrl, setSiteUrl] = useState("");
     const [renaming, setRenaming] = useState(false);
+
+    useEffect(() => {
+        if (tabParam === 'integrations' || tabParam === 'general') {
+            Promise.resolve().then(() => setActiveTab(tabParam));
+        }
+    }, [tabParam]);
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setSearchParams({ tab });
+    };
 
     useEffect(() => {
         const fetchProject = async () => {
@@ -190,7 +206,7 @@ export default function ProjectSettings() {
         <div className="container" style={{ maxWidth: '860px', margin: '0 auto', paddingBottom: '3rem' }}>
 
             {/* Page header */}
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: 'rgba(62, 207, 142, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(62, 207, 142, 0.15)' }}>
                     <Settings size={16} color="var(--color-primary)" />
                 </div>
@@ -202,87 +218,75 @@ export default function ProjectSettings() {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Top Navigation Tabs */}
+            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem' }}>
+                <button
+                    onClick={() => handleTabChange('general')}
+                    style={{
+                        padding: '10px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: activeTab === 'general' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                        color: activeTab === 'general' ? '#fff' : 'var(--color-text-muted)',
+                        fontSize: '0.82rem',
+                        fontWeight: activeTab === 'general' ? 600 : 400,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                    }}
+                >
+                    <Sliders size={14} /> General
+                </button>
 
-                {/* General Information */}
-                <div>
-                    <SectionHeader title="General" />
-                    <SettingsCard title="Project Info" icon={Settings} iconColor="var(--color-primary)">
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'end' }}>
-                            <FormField label="Project Name">
-                                <input
-                                    type="text"
-                                    className="input-field"
-                                    value={newName}
-                                    onChange={(e) => setNewName(e.target.value)}
-                                    style={inputStyle}
-                                    disabled={isViewer}
-                                />
-                            </FormField>
-                            <FormField
-                                label="Site URL"
-                                hint={<>Used by Social Auth to redirect to <code>/auth/callback</code></>}
-                            >
-                                <input
-                                    type="url"
-                                    className="input-field"
-                                    value={siteUrl}
-                                    onChange={(e) => setSiteUrl(e.target.value)}
-                                    placeholder="https://your-app.com"
-                                    style={inputStyle}
-                                    disabled={isViewer}
-                                />
-                            </FormField>
-                        </div>
-                        {!isViewer && (
-                            <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
-                                <button
-                                    onClick={handleRename}
-                                    className="btn btn-primary"
-                                    disabled={renaming || (newName === project?.name && siteUrl === (project?.siteUrl || ""))}
-                                    style={{ height: '30px', fontSize: '0.75rem', padding: '0 14px' }}
-                                >
-                                    {renaming ? "Saving..." : "Save Changes"}
-                                </button>
-                            </div>
-                        )}
-                    </SettingsCard>
-                </div>
+                <button
+                    onClick={() => handleTabChange('integrations')}
+                    style={{
+                        padding: '10px 16px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: activeTab === 'integrations' ? '2px solid var(--color-primary)' : '2px solid transparent',
+                        color: activeTab === 'integrations' ? '#fff' : 'var(--color-text-muted)',
+                        fontSize: '0.82rem',
+                        fontWeight: activeTab === 'integrations' ? 600 : 400,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                    }}
+                >
+                    <Database size={14} /> Integrations & Services
+                </button>
+            </div>
 
-                {/* Mail */}
-                <div>
-                    <SectionHeader title="Mail" />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <SettingsCard title="Custom Mail (Resend BYOK)" icon={Mail} iconColor="#c084fc" accentColor="#a855f7" style={{ borderColor: 'rgba(168,85,247,0.2)' }}>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.5 }}>
-                                Upload a per-project Resend API key to send mail from your own account. The key is encrypted at rest and never exposed after saving.
-                            </p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <FormField label={
-                                    <span>
-                                        Resend API Key{' '}
-                                        <span style={{ fontWeight: 600, color: hasResendKey ? '#22c55e' : '#f97316', fontSize: '0.65rem' }}>
-                                            · {hasResendKey ? 'Configured' : 'Not configured'}
-                                        </span>
-                                    </span>
-                                }>
-                                    <input
-                                        type="password"
-                                        className="input-field"
-                                        placeholder="Paste new key to update"
-                                        value={resendKeyValue}
-                                        onChange={(e) => setResendKeyValue(e.target.value)}
-                                        style={{ ...inputStyle, fontFamily: 'monospace' }}
-                                        disabled={isViewer}
-                                    />
-                                </FormField>
-                                <FormField label="Default From Address" hint={<>Blank defaults to <code>onboarding@resend.dev</code></>}>
+            {/* TAB CONTENT */}
+            {activeTab === 'general' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {/* General Information */}
+                    <div>
+                        <SectionHeader title="General" />
+                        <SettingsCard title="Project Info" icon={Settings} iconColor="var(--color-primary)">
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'end' }}>
+                                <FormField label="Project Name">
                                     <input
                                         type="text"
                                         className="input-field"
-                                        placeholder="Acme <info@acme.com>"
-                                        value={resendFromEmailValue}
-                                        onChange={(e) => setResendFromEmailValue(e.target.value)}
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        style={inputStyle}
+                                        disabled={isViewer}
+                                    />
+                                </FormField>
+                                <FormField
+                                    label="Site URL"
+                                    hint={<>Used by Social Auth to redirect to <code>/auth/callback</code></>}
+                                >
+                                    <input
+                                        type="url"
+                                        className="input-field"
+                                        value={siteUrl}
+                                        onChange={(e) => setSiteUrl(e.target.value)}
+                                        placeholder="https://your-app.com"
                                         style={inputStyle}
                                         disabled={isViewer}
                                     />
@@ -291,67 +295,79 @@ export default function ProjectSettings() {
                             {!isViewer && (
                                 <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end' }}>
                                     <button
-                                        onClick={handleResendKeySave}
+                                        onClick={handleRename}
                                         className="btn btn-primary"
-                                        disabled={resendKeyLoading || (!resendKeyValue.trim() && resendFromEmailValue.trim() === (project?.resendFromEmail || ""))}
+                                        disabled={renaming || (newName === project?.name && siteUrl === (project?.siteUrl || ""))}
                                         style={{ height: '30px', fontSize: '0.75rem', padding: '0 14px' }}
                                     >
-                                        {resendKeyLoading ? "Saving..." : "Save Mail Settings"}
+                                        {renaming ? "Saving..." : "Save Changes"}
                                     </button>
                                 </div>
                             )}
                         </SettingsCard>
-
-                        <MailTemplatesForm projectId={projectId} role={role} />
                     </div>
-                </div>
 
-                {/* External Configuration */}
-                <div>
-                    <SectionHeader title="Integrations" />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <AllowedDomainsForm project={project} projectId={projectId} onProjectUpdate={setProject} role={role} />
-                        <DatabaseConfigForm project={project} projectId={projectId} onProjectUpdate={setProject} role={role} />
-                        <StorageConfigForm project={project} projectId={projectId} onProjectUpdate={setProject} role={role} />
-                    </div>
-                </div>
-
-                {/* Danger Zone */}
-                {isOwner && (
+                    {/* Allowed Domains (CORS) */}
                     <div>
-                        <SectionHeader title="Danger Zone" />
-                        <div className="glass-card" style={{ borderRadius: '8px', border: '1px solid rgba(234,84,85,0.25)', background: 'rgba(234,84,85,0.02)', padding: '1rem' }}>
-                            <div style={{ display: 'flex', gap: '7px', alignItems: 'center', marginBottom: '0.75rem', color: '#ea5455' }}>
-                                <AlertTriangle size={14} />
-                                <h3 style={{ fontSize: '0.85rem', fontWeight: 600 }}>Delete Project</h3>
-                            </div>
-                            <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem', fontSize: '0.75rem', lineHeight: 1.5 }}>
-                                This will permanently delete <strong style={{ color: '#fff' }}>{project?.name}</strong> and all associated data including collections, files, and users. This action cannot be undone.
-                            </p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'end', maxWidth: '480px' }}>
-                                <FormField label={<>Type <strong style={{ textDecoration: 'underline', color: '#ea5455' }}>{project?.name}</strong> to confirm</>}>
-                                    <input
-                                        type="text"
-                                        className="input-field"
-                                        placeholder={project?.name}
-                                        value={deleteConfirm}
-                                        onChange={(e) => setDeleteConfirm(e.target.value)}
-                                        style={{ ...inputStyle, border: '1px solid rgba(234,84,85,0.3)' }}
-                                    />
-                                </FormField>
-                                <button
-                                    onClick={() => setShowModal(true)}
-                                    className="btn"
-                                    disabled={deleteConfirm !== project?.name}
-                                    style={{ height: '30px', fontSize: '0.75rem', padding: '0 12px', background: '#ea5455', color: '#fff', border: 'none', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '0' }}
-                                >
-                                    <Trash2 size={12} /> Delete
-                                </button>
+                        <SectionHeader title="Security & Access" />
+                        <AllowedDomainsForm project={project} projectId={projectId} onProjectUpdate={setProject} role={role} />
+                    </div>
+
+                    {/* Danger Zone */}
+                    {isOwner && (
+                        <div>
+                            <SectionHeader title="Danger Zone" />
+                            <div className="glass-card" style={{ borderRadius: '8px', border: '1px solid rgba(234,84,85,0.25)', background: 'rgba(234,84,85,0.02)', padding: '1rem' }}>
+                                <div style={{ display: 'flex', gap: '7px', alignItems: 'center', marginBottom: '0.75rem', color: '#ea5455' }}>
+                                    <AlertTriangle size={14} />
+                                    <h3 style={{ fontSize: '0.85rem', fontWeight: 600 }}>Delete Project</h3>
+                                </div>
+                                <p style={{ color: 'var(--color-text-muted)', marginBottom: '1rem', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                                    This will permanently delete <strong style={{ color: '#fff' }}>{project?.name}</strong> and all associated data including collections, files, and users. This action cannot be undone.
+                                </p>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px', alignItems: 'end', maxWidth: '480px' }}>
+                                    <FormField label={<>Type <strong style={{ textDecoration: 'underline', color: '#ea5455' }}>{project?.name}</strong> to confirm</>}>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder={project?.name}
+                                            value={deleteConfirm}
+                                            onChange={(e) => setDeleteConfirm(e.target.value)}
+                                            style={{ ...inputStyle, border: '1px solid rgba(234,84,85,0.3)' }}
+                                        />
+                                    </FormField>
+                                    <button
+                                        onClick={() => setShowModal(true)}
+                                        className="btn"
+                                        disabled={deleteConfirm !== project?.name}
+                                        style={{ height: '30px', fontSize: '0.75rem', padding: '0 12px', background: '#ea5455', color: '#fff', border: 'none', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', marginBottom: '0' }}
+                                    >
+                                        <Trash2 size={12} /> Delete
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            ) : (
+                /* INTEGRATIONS TAB */
+                <IntegrationsSettings
+                    project={project}
+                    projectId={projectId}
+                    onProjectUpdate={setProject}
+                    role={role}
+                    DatabaseConfigForm={DatabaseConfigForm}
+                    StorageConfigForm={StorageConfigForm}
+                    MailTemplatesForm={MailTemplatesForm}
+                    hasResendKey={hasResendKey}
+                    resendKeyValue={resendKeyValue}
+                    setResendKeyValue={setResendKeyValue}
+                    resendFromEmailValue={resendFromEmailValue}
+                    setResendFromEmailValue={setResendFromEmailValue}
+                    resendKeyLoading={resendKeyLoading}
+                    handleResendKeySave={handleResendKeySave}
+                />
+            )}
 
             {showModal && (
                 <ConfirmationModal
