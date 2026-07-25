@@ -861,22 +861,6 @@ module.exports.createCollection = async (req, res) => {
     return { project, connection, compiledCollectionName, collectionExistedBefore, projectId, collectionName };
   };
 
-  if (!req.user.onboarding?.completed) {
-    const projectId = sanitizeObjectId(req.body.projectId);
-    const project = await Project.findOne({ _id: projectId, owner: req.user._id });
-    if (project) {
-      const customCol = project.collections.find(c => c.name !== 'users');
-      if (customCol) {
-        await markDeveloperOnboardingStep(req.user._id, 'collectionCreated', { collectionId: customCol._id });
-        const projectObj = project.toObject();
-        delete projectObj.publishableKey;
-        delete projectObj.secretKey;
-        delete projectObj.jwtSecret;
-        return res.status(201).json(projectObj);
-      }
-    }
-  }
-
   let session = null;
   try {
     session = await mongoose.startSession();
