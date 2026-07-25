@@ -109,6 +109,18 @@ async function startLoadTest() {
 
     // Test 4: Data Write / Document Insert
     if (!skipData) {
+        let insertBody = {
+            Title: 'Load Test Post',
+            userId: '6a650c2b6c4cae6fbf3204e6'
+        };
+        if (args.payload) {
+            try {
+                insertBody = typeof args.payload === 'string' ? JSON.parse(args.payload) : args.payload;
+            } catch (e) {
+                console.warn('⚠️ Failed to parse --payload JSON. Using default payload.');
+            }
+        }
+
         await runBenchmark(`4. Document Insert (POST /api/data/${collection})`, {
             url: `${target}/api/data/${collection}`,
             method: 'POST',
@@ -116,10 +128,7 @@ async function startLoadTest() {
                 'x-api-key': apiKey,
                 'content-type': 'application/json',
             },
-            body: {
-                title: 'Load Test Post',
-                content: 'Benchmarking database write performance',
-            },
+            body: insertBody,
         });
     }
 
