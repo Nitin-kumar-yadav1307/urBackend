@@ -22,6 +22,7 @@ const duration = parseInt(args.duration || '10', 10);
 const email = args.email || 'developer@example.com';
 const password = args.password || 'password123';
 const token = args.token || '';
+const skipAuth = args.skipAuth === 'true' || args.skipAuth === true;
 const bypassKey = args.bypassKey || process.env.LOADTEST_BYPASS_KEY;
 
 console.log('====================================================');
