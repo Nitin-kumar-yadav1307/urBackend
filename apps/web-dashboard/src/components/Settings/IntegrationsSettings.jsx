@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Shield, Database, Mail, HardDrive, Check, Copy, Search, X, Eye, EyeOff,
-    ExternalLink, CheckCircle, Info, Lock
+    CheckCircle, Info, Server
 } from 'lucide-react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -51,18 +51,23 @@ const Icons = {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M3 3h18a2 2 0 012 2v14a2 2 0 01-2 2H3a2 2 0 01-2-2V5a2 2 0 012-2zm0 4v12h18V7l-9 5.5L3 7zm9 3.5L20.4 5H3.6L12 10.5z" />
         </svg>
-    ),
-    Supabase: () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="#3ECF8E">
-            <path d="M13.35 24v-9.67h8.17L10.65 0v9.67H2.48L13.35 24z" />
-        </svg>
-    ),
-    AWS: () => (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF9900">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-        </svg>
     )
 };
+
+const normalizeAuthProviders = (raw) => ({
+    github: {
+        enabled: !!raw?.github?.enabled,
+        clientId: raw?.github?.clientId || '',
+        clientSecret: raw?.github?.clientSecret || '',
+        hasClientSecret: !!raw?.github?.hasClientSecret
+    },
+    google: {
+        enabled: !!raw?.google?.enabled,
+        clientId: raw?.google?.clientId || '',
+        clientSecret: raw?.google?.clientSecret || '',
+        hasClientSecret: !!raw?.google?.hasClientSecret
+    }
+});
 
 export default function IntegrationsSettings({
     project,
@@ -81,28 +86,38 @@ export default function IntegrationsSettings({
     const siteUrl = project?.siteUrl || '';
 
     // Auth Providers State
-    const [authProviders, setAuthProviders] = useState({
-        github: { enabled: false, clientId: '', clientSecret: '', hasClientSecret: false },
-        google: { enabled: false, clientId: '', clientSecret: '', hasClientSecret: false }
-    });
+    const [authProviders, setAuthProviders] = useState(() => normalizeAuthProviders(project?.authProviders));
     const [isSavingProviders, setIsSavingProviders] = useState(false);
-    const [selectedProviderModal, setSelectedProviderModal] = useState(null); // 'github' | 'google' | 'mongodb' | 'resend' | 'storage'
+    const [selectedProviderModal, setSelectedProviderModal] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Modal Form States for Active Social Provider
+    // Modal Form States
     const [modalForm, setModalForm] = useState({ enabled: false, clientId: '', clientSecret: '' });
     const [showSecret, setShowSecret] = useState(false);
     const [copiedUrl, setCopiedUrl] = useState(false);
+
+    const closeButtonRef = useRef(null);
 
     const githubCallbackUrl = `${PUBLIC_API_URL}/api/userAuth/social/github/callback`;
     const googleCallbackUrl = `${PUBLIC_API_URL}/api/userAuth/social/google/callback`;
 
     useEffect(() => {
         if (project?.authProviders) {
-            const providers = project.authProviders;
-            Promise.resolve().then(() => setAuthProviders(providers));
+            const normalized = normalizeAuthProviders(project.authProviders);
+            Promise.resolve().then(() => setAuthProviders(normalized));
         }
     }, [project?.authProviders]);
+
+    useEffect(() => {
+        if (!selectedProviderModal) return;
+        closeButtonRef.current?.focus();
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') setSelectedProviderModal(null);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedProviderModal]);
 
     const openOAuthModal = (providerKey) => {
         const prov = authProviders[providerKey] || { enabled: false, clientId: '', clientSecret: '' };
@@ -118,6 +133,20 @@ export default function IntegrationsSettings({
 
     const handleSaveOAuthModal = async () => {
         if (!selectedProviderModal) return;
+
+        // Validation: when enabling, clientId and clientSecret (new or existing) are required
+        if (modalForm.enabled) {
+            if (!modalForm.clientId.trim()) {
+                toast.error("Client ID is required when enabling a provider.");
+                return;
+            }
+            const existingHasSecret = authProviders[selectedProviderModal]?.hasClientSecret;
+            if (!modalForm.clientSecret.trim() && !existingHasSecret) {
+                toast.error("Client Secret is required when enabling a provider.");
+                return;
+            }
+        }
+
         setIsSavingProviders(true);
         try {
             const updatedProviderData = {
@@ -138,9 +167,10 @@ export default function IntegrationsSettings({
             };
 
             const res = await api.patch(`/api/projects/${projectId}/auth/providers`, payload);
-            setAuthProviders(res.data.authProviders);
+            const normalized = normalizeAuthProviders(res.data.authProviders);
+            setAuthProviders(normalized);
             if (onProjectUpdate) {
-                onProjectUpdate(prev => ({ ...prev, authProviders: res.data.authProviders }));
+                onProjectUpdate(prev => ({ ...prev, authProviders: normalized }));
             }
             toast.success(`${selectedProviderModal === 'github' ? 'GitHub' : 'Google'} OAuth settings updated!`);
             setSelectedProviderModal(null);
@@ -166,7 +196,6 @@ export default function IntegrationsSettings({
         }
     };
 
-    // Filter providers based on search input
     const oauthProvidersList = useMemo(() => {
         const list = [
             { id: 'github', name: 'GitHub', icon: Icons.GitHub, enabled: authProviders.github.enabled, configured: authProviders.github.hasClientSecret },
@@ -184,7 +213,7 @@ export default function IntegrationsSettings({
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
-            {/* 1. OAUTH2 PROVIDERS GRID (APPWRITE STYLE) */}
+            {/* 1. OAUTH2 PROVIDERS GRID */}
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <div>
@@ -194,7 +223,6 @@ export default function IntegrationsSettings({
                         </p>
                     </div>
 
-                    {/* Provider Search Filter */}
                     <div style={{ position: 'relative', width: '220px' }}>
                         <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                         <input
@@ -213,7 +241,6 @@ export default function IntegrationsSettings({
                     </div>
                 )}
 
-                {/* Provider Grid Cards */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                     {oauthProvidersList.map((prov) => {
                         const ProviderIcon = prov.icon;
@@ -221,7 +248,16 @@ export default function IntegrationsSettings({
                         return (
                             <div
                                 key={prov.id}
+                                role="button"
+                                tabIndex={prov.disabled ? -1 : 0}
+                                aria-disabled={prov.disabled}
                                 onClick={() => !prov.disabled && openOAuthModal(prov.id)}
+                                onKeyDown={(e) => {
+                                    if (!prov.disabled && (e.key === 'Enter' || e.key === ' ')) {
+                                        e.preventDefault();
+                                        openOAuthModal(prov.id);
+                                    }
+                                }}
                                 style={{
                                     background: 'rgba(255,255,255,0.02)',
                                     border: '1px solid var(--color-border)',
@@ -230,7 +266,7 @@ export default function IntegrationsSettings({
                                     cursor: prov.disabled ? 'not-allowed' : 'pointer',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    justify: 'space-between',
+                                    justifyContent: 'space-between',
                                     minHeight: '110px',
                                     opacity: prov.disabled ? 0.6 : 1,
                                     transition: 'all 0.2s ease',
@@ -265,41 +301,7 @@ export default function IntegrationsSettings({
 
             {/* 2. DATABASES SECTION */}
             <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 4px 0' }}>Databases</h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
-                    Primary database clusters & caching layers.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(19,170,82,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icons.MongoDB />
-                            </div>
-                            <div>
-                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>MongoDB</h4>
-                                <span style={{ fontSize: '0.68rem', color: project?.resources?.db?.isExternal ? '#22c55e' : 'var(--color-text-muted)' }}>
-                                    {project?.resources?.db?.isExternal ? 'External Connected' : 'Default Managed'}
-                                </span>
-                            </div>
-                        </div>
-                        <DatabaseConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
-                    </div>
-
-                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', opacity: 0.6 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(220,56,45,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icons.Redis />
-                            </div>
-                            <div>
-                                <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>Redis Cache</h4>
-                                <span style={{ fontSize: '0.68rem', color: '#ef4444', fontWeight: 600 }}>Coming Soon</span>
-                            </div>
-                        </div>
-                        <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                            In-memory caching and message queues for real-time applications.
-                        </p>
-                    </div>
-                </div>
+                <DatabaseConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
             </div>
 
             {/* 3. MAIL SECTION */}
@@ -368,16 +370,15 @@ export default function IntegrationsSettings({
 
             {/* 4. STORAGE ENGINES */}
             <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 4px 0' }}>Storage Engines (BYOS)</h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
-                    Connect external Supabase, AWS S3, or Cloudflare R2 object storage.
-                </p>
                 <StorageConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
             </div>
 
             {/* ─── APPWRITE STYLE OAUTH2 PROVIDER SETTINGS MODAL ─── */}
             {selectedProviderModal && (
                 <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="oauth-modal-title"
                     className="modal-overlay"
                     style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
                     onClick={() => setSelectedProviderModal(null)}
@@ -389,6 +390,7 @@ export default function IntegrationsSettings({
                     >
                         {/* Close button */}
                         <button
+                            ref={closeButtonRef}
                             className="btn-icon"
                             style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
                             onClick={() => setSelectedProviderModal(null)}
@@ -403,7 +405,7 @@ export default function IntegrationsSettings({
                                 {selectedProviderModal === 'github' ? <Icons.GitHub /> : <Icons.Google />}
                             </div>
                             <div>
-                                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>
+                                <h3 id="oauth-modal-title" style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>
                                     {selectedProviderModal === 'github' ? 'GitHub' : 'Google'} OAuth2 settings
                                 </h3>
                             </div>

@@ -411,7 +411,7 @@ export default function Auth() {
                                         <Shield size={16} color="var(--color-primary)" /> OAuth2 & Social Providers
                                     </h4>
                                     <p style={{ margin: '4px 0 0 0', color: 'var(--color-text-muted)', fontSize: '0.75rem', lineHeight: '1.5' }}>
-                                        Configure GitHub, Google, and third-party login integrations in Project Settings.
+                                        Configure GitHub, Google, and third-party login integrations in <strong>Settings → Integrations & Services</strong>.
                                     </p>
                                 </div>
                                 <button
