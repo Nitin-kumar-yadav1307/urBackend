@@ -21,9 +21,30 @@ const TEMPLATES = [
 A minimal React app demonstrating \`@urbackend/react\` components.
 
 ## Setup
+
+### Option 1: Full Clone
 \`\`\`bash
 git clone https://github.com/geturbackend/urBackend.git
 cd urBackend/examples/react-sdk-demo
+npm install
+\`\`\`
+
+### Option 2: Sparse Checkout (Recommended)
+Clone only this template folder without downloading the entire repository:
+\`\`\`bash
+# Clone repository without files
+git clone --no-checkout --depth 1 https://github.com/geturbackend/urBackend.git react-sdk-demo
+cd react-sdk-demo
+
+# Enable sparse-checkout
+git sparse-checkout init --cone
+
+# Checkout only the react-sdk-demo template folder
+git sparse-checkout set examples/react-sdk-demo
+
+# Download the files
+git checkout main
+
 npm install
 \`\`\`
 
@@ -107,6 +128,30 @@ git checkout main
 A full Twitter/X.com clone built on urBackend.
 
 ## Setup
+
+### Option 1: Full Clone
+\`\`\`bash
+git clone https://github.com/geturbackend/urBackend.git
+cd urBackend/examples/social-demo
+\`\`\`
+
+### Option 2: Sparse Checkout (Recommended)
+Clone only this template folder without downloading the entire repository:
+\`\`\`bash
+# Clone repository without files
+git clone --no-checkout --depth 1 https://github.com/geturbackend/urBackend.git social-demo
+cd social-demo
+
+# Enable sparse-checkout
+git sparse-checkout init --cone
+
+# Checkout only the social-demo template folder
+git sparse-checkout set examples/social-demo
+
+# Download the files
+git checkout main
+\`\`\`
+
 1. Enable Auth with GitHub/Google social login
 2. Create required collections: \`posts\`, \`profiles\`, \`comments\`, \`likes\`, \`follows\`
 3. Configure RLS for each collection
@@ -130,10 +175,31 @@ A full Twitter/X.com clone built on urBackend.
 A CLI-based demo of the urbackend Python SDK.
 
 ## Setup
+
+### Option 1: Full Clone
 \`\`\`bash
 git clone https://github.com/geturbackend/urBackend.git
 cd urBackend/examples/python-sdk-demo
+\`\`\`
 
+### Option 2: Sparse Checkout (Recommended)
+Clone only this template folder without downloading the entire repository:
+\`\`\`bash
+# Clone repository without files
+git clone --no-checkout --depth 1 https://github.com/geturbackend/urBackend.git python-sdk-demo
+cd python-sdk-demo
+
+# Enable sparse-checkout
+git sparse-checkout init --cone
+
+# Checkout only the python-sdk-demo template folder
+git sparse-checkout set examples/python-sdk-demo
+
+# Download the files
+git checkout main
+\`\`\`
+
+\`\`\`bash
 pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your API keys
