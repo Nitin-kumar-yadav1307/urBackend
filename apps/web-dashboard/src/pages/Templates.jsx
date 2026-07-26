@@ -44,11 +44,15 @@ git sparse-checkout set examples/react-sdk-demo
 
 # Download the files
 git checkout main
+\`\`\`
 
+After cloning, navigate to the template directory and install dependencies:
+\`\`\`bash
+cd examples/react-sdk-demo
 npm install
 \`\`\`
 
-1. Copy \`VITE_URBACKEND_PK\` from your project's API keys
+1. Copy \`VITE_UR_PUBLIC_KEY\` from your project's API keys and place it in the client \`.env\` file
 2. Run \`npm run dev\` to start the development server
 `
   },
@@ -91,6 +95,11 @@ git sparse-checkout set examples/sdk-kanban
 
 # Download the files
 git checkout main
+\`\`\`
+
+After cloning, navigate to the template directory and set up the project:
+\`\`\`bash
+cd examples/sdk-kanban
 \`\`\`
 
 1. Enable Auth in your urBackend project
@@ -152,10 +161,25 @@ git sparse-checkout set examples/social-demo
 git checkout main
 \`\`\`
 
+After cloning, navigate to the template directory and set up the project:
+\`\`\`bash
+cd examples/social-demo
+\`\`\`
+
 1. Enable Auth with GitHub/Google social login
 2. Create required collections: \`posts\`, \`profiles\`, \`comments\`, \`likes\`, \`follows\`
 3. Configure RLS for each collection
-4. Deploy or run locally.
+4. Configure environment variables:
+   - Copy \`client/.env.example\` to \`client/.env\` and set \`VITE_PUBLIC_KEY=pk_live_...\`
+   - Copy \`server/.env.example\` to \`server/.env\` and set \`API_KEY=sk_live_...\`
+5. Run the application:
+   \`\`\`bash
+   # Terminal 1: Start proxy server
+   cd server && npm install && npm start
+
+   # Terminal 2: Start client
+   cd client && npm install && npm run dev
+   \`\`\`
 `
   },
   {
@@ -197,6 +221,11 @@ git sparse-checkout set examples/python-sdk-demo
 
 # Download the files
 git checkout main
+\`\`\`
+
+After cloning, navigate to the template directory and set up the project:
+\`\`\`bash
+cd examples/python-sdk-demo
 \`\`\`
 
 \`\`\`bash
