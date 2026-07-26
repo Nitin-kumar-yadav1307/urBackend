@@ -1,7 +1,11 @@
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, ExternalLink } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const SocialAuthConfig = ({ authProviders, onOpenModal, setSelectedProvider }) => {
+  const navigate = useNavigate();
+  const { projectId } = useParams();
+
   return (
     <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '12px', marginBottom: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.25rem' }}>
@@ -13,9 +17,19 @@ const SocialAuthConfig = ({ authProviders, onOpenModal, setSelectedProvider }) =
             Configure third-party login providers for your application.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={onOpenModal} style={{ height: '32px', fontSize: '0.75rem' }}>
-          Open Settings
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate(`/project/${projectId}/settings?tab=integrations`)}
+            style={{ height: '32px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+          >
+            <ExternalLink size={13} />
+            Integrations
+          </button>
+          <button className="btn btn-primary" onClick={onOpenModal} style={{ height: '32px', fontSize: '0.75rem' }}>
+            Open Settings
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>

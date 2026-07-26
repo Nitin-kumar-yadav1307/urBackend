@@ -1,0 +1,104 @@
+---
+import { Zap, Box, Check, Terminal, Menu, X, ArrowRight } from 'lucide-react';
+
+const NAV_ITEMS = [
+  { label: 'Features', href: '/#client-services', icon: Zap },
+  { label: 'Use Cases', href: '/#use-cases', icon: Box },
+  { label: 'Pricing', href: '/pricing', icon: Check },
+  { label: 'Docs', href: 'https://docs.ub.bitbros.in', icon: Terminal, external: true }
+];
+---
+
+<nav class="nav-glass" id="main-nav">
+  <div class="nav-container">
+    <div class="nav-logo">
+      <a href="/" style="display: flex; align-items: center; gap: 0.75rem; text-decoration: none;">
+        <img src="/LOGO_SQ.png" alt="urBackend" style="height: 32px; width: auto;" />
+        <span class="nav-logo-text">urBackend</span>
+      </a>
+    </div>
+
+    <div class="nav-links">
+      {NAV_ITEMS.map((item) => {
+        const IconComponent = item.icon;
+        return item.external ? (
+          <a href={item.href} class="nav-link" target="_blank" rel="noopener noreferrer">
+            <IconComponent size={14} />
+            <span>{item.label}</span>
+          </a>
+        ) : (
+          <a href={item.href} class="nav-link">
+            <IconComponent size={14} />
+            <span>{item.label}</span>
+          </a>
+        );
+      })}
+    </div>
+
+    <div class="nav-actions">
+      <a href="https://app.urbackend.bitbros.in/login" class="nav-btn-ghost">Log in</a>
+      <a href="https://app.urbackend.bitbros.in/signup" class="nav-btn-primary">
+        <span>Get Started</span>
+        <ArrowRight size={16} />
+      </a>
+      <button class="mobile-menu-btn" id="mobile-menu-toggle" aria-label="Toggle menu">
+        <Menu id="menu-icon-open" />
+        <X id="menu-icon-close" style={{ display: 'none' }} />
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div id="pricing-mobile-menu" class="mobile-menu-overlay">
+  <a href="/#client-services" class="mobile-menu-link">Features</a>
+  <a href="/#use-cases" class="mobile-menu-link">Use Cases</a>
+  <a href="/pricing" class="mobile-menu-link">Pricing</a>
+  <a href="https://docs.ub.bitbros.in" target="_blank" rel="noopener noreferrer" class="mobile-menu-link">Docs</a>
+  <div class="mobile-menu-divider"></div>
+  <a href="https://app.urbackend.bitbros.in/login" class="mobile-menu-sub-link">Log in</a>
+  <a href="https://app.urbackend.bitbros.in/signup" class="btn btn-primary mobile-menu-action">Start for Free</a>
+</div>
+
+<script>
+  const nav = document.getElementById('main-nav');
+  const toggleBtn = document.getElementById('mobile-menu-toggle');
+  const mobileMenu = document.getElementById('pricing-mobile-menu');
+  const iconOpen = document.getElementById('menu-icon-open');
+  const iconClose = document.getElementById('menu-icon-close');
+  const mobileLinks = mobileMenu?.querySelectorAll('a');
+
+  // Scroll effect
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 20) {
+      nav?.classList.add('nav-scrolled');
+    } else {
+      nav?.classList.remove('nav-scrolled');
+    }
+  });
+
+  // Mobile menu toggle
+  let isMenuOpen = false;
+  
+  function toggleMenu() {
+    isMenuOpen = !isMenuOpen;
+    if (isMenuOpen) {
+      mobileMenu?.classList.add('open');
+      if (iconOpen) iconOpen.style.display = 'none';
+      if (iconClose) iconClose.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    } else {
+      mobileMenu?.classList.remove('open');
+      if (iconOpen) iconOpen.style.display = 'block';
+      if (iconClose) iconClose.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  }
+
+  toggleBtn?.addEventListener('click', toggleMenu);
+  
+  mobileLinks?.forEach(link => {
+    link.addEventListener('click', () => {
+      if (isMenuOpen) toggleMenu();
+    });
+  });
+</script>

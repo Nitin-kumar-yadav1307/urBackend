@@ -12,6 +12,7 @@ jest.mock('../middlewares/authMiddleware', () =>
 // Mock auth_limiter to pass all requests through.
 jest.mock('../middlewares/auth_limiter', () => ({
     authLimiter: jest.fn((_req, _res, next) => next()),
+    publicLimiter: jest.fn((_req, _res, next) => next()),
 }));
 
 // Mock express-rate-limit so dashboardLimiter also passes all requests.

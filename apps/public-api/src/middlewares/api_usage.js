@@ -2,9 +2,9 @@ const rateLimit = require('express-rate-limit');
 const { Log, redis, ApiAnalytics, getDayKey, DEFAULT_DAILY_TTL_SECONDS, incrWithTtlAtomic } = require('@urbackend/common');
 
 // Rate Limiter 
-const limiter = rateLimit({
+const rateLimiterMiddleware = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
     message: { error: "Too many requests, please try again later." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -13,6 +13,14 @@ const limiter = rateLimit({
         trustProxy: false
     }
 });
+
+const limiter = (req, res, next) => {
+    const bypassKey = process.env.LOADTEST_BYPASS_KEY;
+    if (bypassKey && req.headers['x-bypass-rate-limit'] === bypassKey) {
+        return next();
+    }
+    return rateLimiterMiddleware(req, res, next);
+};
 
 // Logger with API analytics
 const logger = (req, res, next) => {

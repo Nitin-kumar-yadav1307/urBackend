@@ -1,0 +1,446 @@
+---
+import BaseLayout from '../layouts/Base.astro';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+import Hyperspeed from '../components/Hyperspeed/Hyperspeed.jsx';
+import MagicBento from '../components/MagicBento/MagicBento.jsx';
+import StudioReplay from '../components/StudioReplay.jsx';
+import OrbitSection from '../components/OrbitSection.jsx';
+import { ArrowRight, Terminal, Database, HardDrive, Zap, Layers, Smartphone, Globe as GlobeIcon, Code, ChevronDown, ChevronUp } from 'lucide-react';
+
+const HYPERSPEED_OPTIONS = {
+    distortion: 'turbulentDistortion',
+    length: 400,
+    roadWidth: 10,
+    islandWidth: 2,
+    lanesPerRoad: 3,
+    fov: 90,
+    fovSpeedUp: 150,
+    speedUp: 2,
+    carLightsFade: 0.4,
+    totalSideLightSticks: 20,
+    lightPairsPerRoadWay: 40,
+    shoulderLinesWidthPercentage: 0.05,
+    brokenLinesWidthPercentage: 0.1,
+    brokenLinesLengthPercentage: 0.5,
+    lightStickWidth: [0.12, 0.5],
+    lightStickHeight: [1.3, 1.7],
+    movingAwaySpeed: [60, 80],
+    movingCloserSpeed: [-120, -160],
+    carLightsLength: [12, 80],
+    carLightsRadius: [0.05, 0.14],
+    carWidthPercentage: [0.3, 0.5],
+    carShiftX: [-0.8, 0.8],
+    carFloorSeparation: [0, 5],
+    colors: {
+        roadColor: 0x080808,
+        islandColor: 0x0a0a0a,
+        background: 0x000000,
+        shoulderLines: 0x00f5d4,
+        brokenLines: 0x00f5d4,
+        leftCars: [0x00f5d4, 0x00ffd8, 0x00b4ab],
+        rightCars: [0x00f5d4, 0x028090, 0x00ffd8],
+        sticks: 0x00f5d4
+    }
+};
+
+const FAQ_ITEMS = [
+    { q: 'Is it really free?', a: 'Yes. The Developer Beta tier is permanently free — create a project, connect your MongoDB cluster, and ship APIs with no credit card required.' },
+    { q: 'Is urBackend production-ready?', a: 'We are currently in Public Beta and actively testing with real-world use cases. While the core architecture is built on battle-tested technologies like Express.js and MongoDB, we recommend using it for side projects, MVPs, and internal tools as we continue to refine the platform.' },
+    { q: 'Can I use this with React or Next.js?', a: 'Yes. urBackend outputs standard REST APIs that work with any frontend or mobile framework. For Next.js, call the API from server-side routes to keep your API key secure.' },
+    { q: 'How does it handle security?', a: 'Industry-standard encryption at rest, automatic API key validation, JWT-based user sessions with refresh token rotation, and row-level security enforced on every read and write.' },
+    { q: 'Can I export my data?', a: 'Your data is yours. Since you connect your own MongoDB cluster, you always have direct access. Export at any time — no lock-in.' },
+    { q: 'What is BYOM?', a: 'Bring Your Own MongoDB. Instead of using our managed cluster, you point urBackend at your existing Atlas or self-hosted MongoDB instance. You keep full ownership of the data while we provide the API layer, auth, and schema validation on top.' }
+];
+---
+
+<BaseLayout 
+  title="urBackend | MongoDB-Native Backend-as-a-Service" 
+  description="Supabase for NoSQL. Turn your MongoDB into a production-ready backend with REST APIs, authentication, file storage, and email — zero backend code."
+>
+  <div class="landing-page">
+    <!-- Grid Background -->
+    <div class="grid-bg">
+      <div class="hero-lines"></div>
+      <div class="hero-particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+      </div>
+    </div>
+
+    <Navbar />
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+      <div class="hyperspeed-wrapper">
+        <Hyperspeed client:load effectOptions={HYPERSPEED_OPTIONS} />
+      </div>
+      <div class="hero-glow"></div>
+
+      <div class="hero-split">
+        <div class="hero-split-left">
+          <div class="status-pill">
+            <div class="status-dot"></div>
+            <span>v0.10.1 &mdash; Now in Public Beta</span>
+          </div>
+
+          <h1 class="hero-heading">
+            <span class="text-gradient-primary">Supabase</span> for NoSQL.
+            <br />
+            Bring your MongoDB, get instant APIs.
+          </h1>
+
+          <p class="hero-sub">
+            urBackend is an open-source BaaS that turns your MongoDB into a production-ready backend
+            with <strong>REST APIs</strong>, <strong>authentication</strong>, <strong>file storage</strong>, and <strong>email</strong> — zero backend code.
+          </p>
+
+          <div class="hero-ctas" style="margin-bottom: 2.5rem;">
+            <a href="https://app.urbackend.bitbros.in/signup" class="btn-hero-primary">
+              <span>Get Started Free</span>
+              <ArrowRight size={18} strokeWidth={2.5} />
+            </a>
+            <a href="https://app.urbackend.bitbros.in/login" class="btn-hero-secondary">
+              <Terminal size={18} strokeWidth={2} />
+              <span>Go to Console</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Client App Services Showcase Section -->
+    <div id="client-services" class="services-showcase-section">
+      <div class="section-glow" style="top: 20%; left: 50%; transform: translateX(-50%); background: radial-gradient(circle, rgba(0, 245, 212, 0.05) 0%, transparent 60%);"></div>
+      <div class="services-grid-bg"></div>
+      <div class="services-container">
+        <div class="services-header">
+          <span class="section-badge">Client SDK Services</span>
+          <h2 class="section-title">Built-in Powers for Your App Users</h2>
+          <p class="section-desc">
+            Don't waste time rebuilding boilerplate. urBackend provides premium, secure client-facing services out of the box.
+          </p>
+        </div>
+
+        <MagicBento
+          client:visible
+          textAutoHide={true}
+          enableStars={false}
+          enableSpotlight={true}
+          enableBorderGlow={true}
+          enableTilt={false}
+          enableMagnetism={true}
+          clickEffect={true}
+          spotlightRadius={300}
+          particleCount={12}
+          glowColor="0, 245, 212"
+        />
+      </div>
+    </div>
+
+    <!-- BYOM Section -->
+    <div id="byom-callout" class="byom-callout-section">
+      <div class="section-glow" style="top: 0%; left: 50%; transform: translateX(-50%); background: radial-gradient(circle, rgba(0, 245, 212, 0.08) 0%, transparent 70%);"></div>
+      <div class="byom-grid-bg"></div>
+      <div style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1;">
+        <div style="text-align: center; margin-bottom: 3rem;">
+          <span class="section-badge">Infrastructure</span>
+          <h2 class="section-title">Bring Your Own Infrastructure</h2>
+          <p class="section-desc">Connect your existing MongoDB or buckets and get instant APIs without vendor lock-in.</p>
+        </div>
+
+        <div class="byom-pipeline">
+          <div class="byom-pipe-node">
+            <div class="byom-pipe-icon">
+              <Database size={28} />
+            </div>
+            <div class="byom-pipe-label">Your Database</div>
+            <div class="byom-pipe-sub">MongoDB Atlas / Self-Hosted</div>
+            <div class="byom-pipe-glow"></div>
+          </div>
+          <div class="byom-pipe-connector">
+            <div class="byom-pipe-track">
+              <div class="byom-pipe-particle" style="animation-delay: 0s;"></div>
+              <div class="byom-pipe-particle" style="animation-delay: 0.6s;"></div>
+              <div class="byom-pipe-particle" style="animation-delay: 1.2s;"></div>
+            </div>
+          </div>
+          <div class="byom-pipe-node byom-pipe-center">
+            <div class="byom-pipe-icon byom-center-icon">
+              <Zap size={28} />
+            </div>
+            <div class="byom-pipe-label">urBackend Engine</div>
+            <div class="byom-pipe-sub">BaaS Middleware Layer</div>
+            <div class="byom-pipe-ring"></div>
+          </div>
+          <div class="byom-pipe-connector">
+            <div class="byom-pipe-track">
+              <div class="byom-pipe-particle" style="animation-delay: 0.3s;"></div>
+              <div class="byom-pipe-particle" style="animation-delay: 0.9s;"></div>
+              <div class="byom-pipe-particle" style="animation-delay: 1.5s;"></div>
+            </div>
+          </div>
+          <div class="byom-pipe-node">
+            <div class="byom-pipe-icon">
+              <Terminal size={28} />
+            </div>
+            <div class="byom-pipe-label">Instant APIs</div>
+            <div class="byom-pipe-sub">REST · Auth · Storage · Email</div>
+            <div class="byom-pipe-glow"></div>
+          </div>
+        </div>
+
+        <!-- Studio Interactive Window -->
+        <StudioReplay client:visible />
+
+        <div class="byom-cards">
+          <div class="byom-card">
+            <div class="byom-card-border"></div>
+            <div class="byom-card-icon byom-card-icon-db">
+              <Database size={28} />
+            </div>
+            <h3 class="byom-card-title">BYO Database</h3>
+            <p class="byom-card-desc">
+              Connect your self-hosted MongoDB or Atlas cluster. We provide the instant API layer, auth, and validation schema, while you keep full ownership of the data.
+            </p>
+            <div class="byom-card-tags">
+              <span>MongoDB Atlas</span>
+              <span>Self-Hosted</span>
+            </div>
+          </div>
+
+          <div class="byom-card">
+            <div class="byom-card-border"></div>
+            <div class="byom-card-icon byom-card-icon-storage">
+              <HardDrive size={28} />
+            </div>
+            <h3 class="byom-card-title">BYO Storage</h3>
+            <p class="byom-card-desc">
+              Link your Supabase Storage, AWS S3, or Cloudflare R2 buckets. We handle upload tokens, permissions, and CDN delivery automatically.
+            </p>
+            <div class="byom-card-tags">
+              <span>Supabase</span>
+              <span>AWS S3</span>
+              <span>Cloudflare R2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orbit integration Section -->
+    <OrbitSection client:visible />
+
+    <!-- How it works -->
+    <div id="how-it-works" style="padding: 6rem 0; background: #030303; border-top: 1px solid rgba(255, 255, 255, 0.08); position: relative; overflow: hidden;">
+      <div class="section-glow" style="top: -10%; right: -10%; background: radial-gradient(circle, rgba(64,158,255,0.06) 0%, transparent 70%);"></div>
+      <div style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1;">
+        <div style="text-align: center; margin-bottom: 5rem;">
+          <h2 class="section-title">Backend Architecture, Simplified.</h2>
+          <p class="section-desc">We handle the complex infrastructure so you can ship professional apps faster.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+          <div class="step-card" style="position: relative; overflow: hidden; z-index: 1;">
+            <div style="position: absolute; top: -30px; right: -15px; font-size: 10rem; font-weight: 900; color: rgba(255, 255, 255, 0.05); z-index: 0; line-height: 1; pointer-events: none; user-select: none;">1</div>
+            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; position: relative; z-index: 2;">Init Project</h3>
+            <p style="color: #888; line-height: 1.6; position: relative; z-index: 2;">
+              Instantly provision a dedicated, isolated backend environment.
+              We set up your MongoDB cluster, Storage buckets, and API Gateway automatically.
+            </p>
+          </div>
+          <div class="step-card" style="position: relative; overflow: hidden; z-index: 1;">
+            <div style="position: absolute; top: -30px; right: -15px; font-size: 10rem; font-weight: 900; color: rgba(255, 255, 255, 0.05); z-index: 0; line-height: 1; pointer-events: none; user-select: none;">2</div>
+            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; position: relative; z-index: 2;">Design Schema</h3>
+            <p style="color: #888; line-height: 1.6; position: relative; z-index: 2;">
+              Use our Visual Builder to model your data.
+              We strictly validate your JSON Schema and handle complex relationships behind the scenes.
+            </p>
+          </div>
+          <div class="step-card" style="position: relative; overflow: hidden; z-index: 1;">
+            <div style="position: absolute; top: -30px; right: -15px; font-size: 10rem; font-weight: 900; color: rgba(255, 255, 255, 0.05); z-index: 0; line-height: 1; pointer-events: none; user-select: none;">3</div>
+            <h3 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; position: relative; z-index: 2;">Connect API</h3>
+            <p style="color: #888; line-height: 1.6; position: relative; z-index: 2;">
+              Your secure REST endpoints are live instantly.
+              Connect from React, Vue, or Mobile apps using standard HTTP methods with low latency.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Use Cases -->
+    <div id="use-cases" style="padding: 8rem 0; background: #000; border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+      <div style="max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
+        <div style="text-align: center; margin-bottom: 5rem;">
+          <h2 class="section-title">Build Anything.</h2>
+          <p class="section-desc">Scalable infrastructure for every type of application.</p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 6rem;">
+          <div class="use-case-card">
+            <Layers strokeWidth={1.5} size={32} color="#facc15" style={{ marginBottom: '1.5rem' }} />
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: #fff;">SaaS Platforms</h3>
+            <p style="color: #a1a1aa; line-height: 1.6;">Handle complex data relationships, multi-tenant auth, and subscriptions securely.</p>
+          </div>
+          <div class="use-case-card">
+            <Smartphone strokeWidth={1.5} size={32} color="#409EFF" style={{ marginBottom: '1.5rem' }} />
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: #fff;">Mobile Backends</h3>
+            <p style="color: #a1a1aa; line-height: 1.6;">Serve data to Flutter or React Native apps with lightweight, fast JSON responses.</p>
+          </div>
+          <div class="use-case-card">
+            <GlobeIcon strokeWidth={1.5} size={32} color="#FFBD2E" style={{ marginBottom: '1.5rem' }} />
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: #fff;">Content Sites</h3>
+            <p style="color: #a1a1aa; line-height: 1.6;">Power blogs, portfolios, and e-commerce catalogs without CMS bloat.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OSS Strip -->
+    <div class="oss-strip" style="padding: 4rem 0; background: #030303; border-top: 1px solid rgba(255,255,255,0.05);">
+      <div style="max-width: 800px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.5rem; opacity: 0.8;">
+        <a href="https://github.com/geturbackend" target="_blank" rel="noopener noreferrer" class="oss-badge" style="display: flex; align-items: center; gap: 8px; color: #fff; text-decoration: none; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.1);">
+          <Code size={16} color="#00f5d4" />
+          <span style="font-size: 0.9rem; font-weight: 600;">Open Source Core</span>
+        </a>
+        <span style="color: #666;">&bull;</span>
+        <div style="display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-size: 0.9rem;">
+          <span>Backed by NSoC 2026</span>
+        </div>
+        <span style="color: #666;">&bull;</span>
+        <div style="display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-size: 0.9rem;">
+          <span>MIT Licensed</span>
+        </div>
+        <span style="color: #666;">&bull;</span>
+        <div style="display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-size: 0.9rem;">
+          <span>No Vendor Lock-in</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ Section -->
+    <div id="faq" style="padding: 8rem 0; background: #030303; border-top: 1px solid rgba(255, 255, 255, 0.05); position: relative; overflow: hidden;">
+      <div class="section-glow" style="top: 50%; left: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(64,158,255,0.04) 0%, transparent 70%);"></div>
+      <div style="max-width: 800px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1;">
+        <div style="text-align: center; margin-bottom: 4rem;">
+          <h2 class="section-title">Common Questions</h2>
+        </div>
+
+        <div class="faq-list">
+          {FAQ_ITEMS.map((faq, index) => (
+            <div class="faq-item">
+              <button class="faq-question" type="button" aria-expanded="false" data-index={index}>
+                <span>{faq.q}</span>
+                <ChevronDown size={20} color="#666" class="faq-chevron" />
+              </button>
+              <div class="faq-answer-wrapper" style="display: none;">
+                <div class="faq-answer">{faq.a}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="cta-section">
+      <div class="cta-container">
+        <div class="cta-badge">
+          <Zap size={16} strokeWidth={2.5} />
+          <span>Start Building Today</span>
+        </div>
+        
+        <h2 class="cta-heading">Ship faster. Scale smarter.</h2>
+        
+        <p class="cta-description">
+          Your MongoDB. Instant REST APIs. Built-in Auth. Zero backend hassle.
+        </p>
+        
+        <div class="cta-buttons">
+          <a href="https://app.urbackend.bitbros.in/signup" class="cta-btn-primary">
+            <span>Get Started Free</span>
+            <ArrowRight size={18} strokeWidth={2.5} />
+          </a>
+          <a href="https://app.urbackend.bitbros.in/login" class="cta-btn-secondary">
+            <Terminal size={18} strokeWidth={2} />
+            <span>Go to Console</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <Footer />
+  </div>
+</BaseLayout>
+
+<script>
+  // FAQ Accordion Script
+  const faqItems = document.querySelectorAll('.faq-item');
+  faqItems.forEach(item => {
+    const question = item.querySelector('.faq-question');
+    const answerWrapper = item.querySelector('.faq-answer-wrapper') as HTMLElement;
+    const chevron = item.querySelector('.faq-chevron');
+
+    question?.addEventListener('click', () => {
+      const isExpanded = question.getAttribute('aria-expanded') === 'true';
+      
+      // Close all other items
+      faqItems.forEach(otherItem => {
+        if (otherItem !== item) {
+          const otherQ = otherItem.querySelector('.faq-question');
+          const otherA = otherItem.querySelector('.faq-answer-wrapper') as HTMLElement;
+          const otherChevron = otherItem.querySelector('.faq-chevron') as HTMLElement;
+          otherQ?.setAttribute('aria-expanded', 'false');
+          if (otherA) otherA.style.display = 'none';
+          if (otherChevron) otherChevron.style.transform = 'rotate(0deg)';
+        }
+      });
+
+      if (isExpanded) {
+        question.setAttribute('aria-expanded', 'false');
+        if (answerWrapper) answerWrapper.style.display = 'none';
+        if (chevron) (chevron as HTMLElement).style.transform = 'rotate(0deg)';
+      } else {
+        question.setAttribute('aria-expanded', 'true');
+        if (answerWrapper) answerWrapper.style.display = 'block';
+        if (chevron) (chevron as HTMLElement).style.transform = 'rotate(180deg)';
+      }
+    });
+  });
+</script>
+
+<style>
+  .hyperspeed-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .faq-chevron {
+    transition: transform 0.2s ease;
+  }
+  .faq-answer-wrapper {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+  }
+  .faq-question {
+    width: 100%;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+</style>
