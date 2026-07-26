@@ -14,7 +14,7 @@ A minimal Python application demonstrating the `urbackend` Python SDK for databa
 ```bash
 # Clone the repo
 git clone https://github.com/geturbackend/urBackend.git
-cd examples/python-sdk-demo
+cd urBackend/examples/python-sdk-demo
 
 # Create virtual environment
 python -m venv venv

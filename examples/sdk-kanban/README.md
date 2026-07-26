@@ -9,7 +9,14 @@ A modern Kanban Board application demonstrating the official `@urbackend/sdk`.
 
 ## 🚀 Getting Started
 
-### 1. Dashboard Setup
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/geturbackend/urBackend.git
+cd urBackend/examples/sdk-kanban
+```
+
+### 2. Dashboard Setup
 1.  **Enable Auth**: Go to 'Auth' in your urBackend project and toggle it on.
 2.  **Create Collections**:
     - `boards`: Add field `name` (String, Required) and `ownerId` (String, Required).
@@ -18,7 +25,7 @@ A modern Kanban Board application demonstrating the official `@urbackend/sdk`.
     - `boards`: Set Mode to `private`, ownerField to `ownerId`.
     - `tasks`: Set Mode to `private`, ownerField to `ownerId`.
 
-### 2. Environment Variables
+### 3. Environment Variables
 
 #### Server (`server/.env`)
 ```env
@@ -32,7 +39,7 @@ VITE_URBACKEND_PK=pk_live_...
 VITE_NOTIFY_SERVER_URL=http://localhost:4001
 ```
 
-### 3. Installation & Run
+### 4. Installation & Run
 
 ```bash
 # Terminal 1: Server
