@@ -745,16 +745,30 @@ module.exports.updateExternalConfig = async (req, res) => {
       }
     }
 
-    if (storageUrl && storageKey) {
-      const storageConfig = {
-        storageUrl,
-        storageKey,
-        storageProvider: storageProvider || "supabase",
-      };
-      updateData["resources.storage.config"] = encrypt(
-        JSON.stringify(storageConfig),
-      );
-      updateData["resources.storage.isExternal"] = true;
+    if (storageProvider === "supabase" || (!storageProvider && storageUrl && storageKey)) {
+      if (storageUrl && storageKey) {
+        const storageConfig = {
+          storageUrl,
+          storageKey,
+          storageProvider: "supabase",
+        };
+        updateData["resources.storage.config"] = encrypt(JSON.stringify(storageConfig));
+        updateData["resources.storage.isExternal"] = true;
+      }
+    } else if (["s3", "cloudflare_r2", "gcs"].includes(storageProvider)) {
+      if (validatedData.s3AccessKeyId && validatedData.s3SecretAccessKey && validatedData.s3Bucket) {
+        const storageConfig = {
+          storageProvider,
+          accessKeyId: validatedData.s3AccessKeyId,
+          secretAccessKey: validatedData.s3SecretAccessKey,
+          region: validatedData.s3Region,
+          endpoint: validatedData.s3Endpoint,
+          bucket: validatedData.s3Bucket,
+          publicUrlHost: validatedData.publicUrlHost,
+        };
+        updateData["resources.storage.config"] = encrypt(JSON.stringify(storageConfig));
+        updateData["resources.storage.isExternal"] = true;
+      }
     }
 
     const project = await Project.findOneAndUpdate(
