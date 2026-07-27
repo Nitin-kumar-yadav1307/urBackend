@@ -2,68 +2,8 @@
 
 const mongoose = require('mongoose');
 
-/**
- * PROJECT_TEMPLATES — inline copy of just the templates createProject uses.
- * We keep this in the test so we never pull in the real @urbackend/common
- * (which initialises Redis, BullMQ, GC timers — all blow up in CI).
- */
-const PROJECT_TEMPLATES = {
-  'sdk-kanban': {
-    name: 'Kanban Board',
-    description: 'Full-featured Kanban board with drag-and-drop tasks.',
-    isAuthEnabled: true,
-    collections: [
-      {
-        name: 'boards',
-        rls: 'private',
-        model: [{ key: 'title', type: 'String', required: true }],
-      },
-      {
-        name: 'tasks',
-        rls: 'private',
-        model: [
-          { key: 'boardId', type: 'Ref', required: true },
-          { key: 'title', type: 'String', required: true },
-          { key: 'status', type: 'String', required: true, default: 'todo' },
-        ],
-      },
-    ],
-  },
-};
-
 /* ------------------------------------------------------------------ */
-/*  Real Zod — needed for schema validation inside createProject      */
-/* ------------------------------------------------------------------ */
-const { z } = require('zod');
-
-/*  Reconstruct the real createProjectSchema so parse() actually works */
-const createProjectSchema = z.object({
-  name: z.string().min(1, 'Project name is required'),
-  description: z.string().optional(),
-  templateId: z.string().optional(),
-  siteUrl: z.preprocess(
-    (val) => (val === '' || val === null ? undefined : val),
-    z
-      .string()
-      .url('Invalid Site URL format')
-      .refine((url) => {
-        try {
-          const parsed = new URL(url);
-          return (
-            parsed.protocol === 'https:' ||
-            (parsed.protocol === 'http:' &&
-              ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname))
-          );
-        } catch {
-          return false;
-        }
-      }, 'Site URL must use HTTPS (or http://localhost for local development)')
-      .optional(),
-  ),
-});
-
-/* ------------------------------------------------------------------ */
-/*  Mock @urbackend/common — NO jest.requireActual to avoid side-     */
+/*  Mock @urbackend/common — NO jest.requireActual('@urbackend/common') to avoid side- */
 /*  effects (Redis, BullMQ queues, GC timers, email service, etc.)    */
 /* ------------------------------------------------------------------ */
 const mockSave = jest.fn();
@@ -88,24 +28,20 @@ MockProject.countDocuments = mockCountDocuments;
 // For spying / instanceof checks
 MockProject.schema = { obj: {} };
 
-jest.mock('@urbackend/common', () => ({
-  Project: MockProject,
-  PROJECT_TEMPLATES,
-  createProjectSchema,
-  generateApiKey: jest.fn(() => 'test_api_key'),
-  hashApiKey: jest.fn(() => 'hashed_key'),
-  encrypt: jest.fn(() => ({ encrypted: 'enc', iv: 'iv', tag: 'tag' })),
-  markDeveloperOnboardingStep: jest.fn().mockResolvedValue(),
-  AppError: class AppError extends Error {
-    constructor(statusCode, message, error = null) {
-      super(message);
-      this.name = 'AppError';
-      this.statusCode = statusCode;
-      this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
-      this.error = error || (statusCode >= 500 ? 'Internal Server Error' : 'Error');
-      this.isOperational = true;
-    }
-  },
+jest.mock('@urbackend/common', () => {
+  const { PROJECT_TEMPLATES } = jest.requireActual('@urbackend/common/src/utils/templates');
+  const { createProjectSchema } = jest.requireActual('@urbackend/common/src/utils/input.validation');
+  const AppError = jest.requireActual('@urbackend/common/src/utils/AppError');
+
+  return {
+    Project: MockProject,
+    PROJECT_TEMPLATES,
+    createProjectSchema,
+    generateApiKey: jest.fn(() => 'test_api_key'),
+    hashApiKey: jest.fn(() => 'hashed_key'),
+    encrypt: jest.fn(() => ({ encrypted: 'enc', iv: 'iv', tag: 'tag' })),
+    markDeveloperOnboardingStep: jest.fn().mockResolvedValue(),
+    AppError,
   // Stubs for other imports used at module-level by project.controller.js
   Developer: { findById: jest.fn() },
   Log: { aggregate: jest.fn() },
@@ -144,7 +80,8 @@ jest.mock('@urbackend/common', () => ({
   updateAuthProvidersSchema: { parse: jest.fn((v) => v) },
   decrypt: jest.fn(() => 'decrypted'),
   getS3CompatibleStorage: jest.fn(),
-}));
+  };
+});
 
 jest.mock('../utils/emitEvent', () => ({
   emitEvent: jest.fn(),
@@ -252,6 +189,15 @@ describe('Project Controller - Clone Template', () => {
     await createProject(req, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'Validation failed'
+      })
+    );
+    const responseObj = res.json.mock.calls[0][0];
+    expect(responseObj.data).toBeDefined();
+    expect(Array.isArray(responseObj.data)).toBe(true);
   });
 
   it('should enforce project limit when set', async () => {
@@ -262,6 +208,11 @@ describe('Project Controller - Clone Template', () => {
     await createProject(req, res);
 
     expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      message: 'Project limit reached (2). Please upgrade your plan to create more projects.',
+      data: {}
+    });
   });
 
   it('should add users collection with auth-enabled template', async () => {
@@ -306,5 +257,33 @@ describe('Project Controller - Clone Template', () => {
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ success: true, message: 'Project created successfully' })
     );
+  });
+
+  it('should handle mid-transaction failures correctly', async () => {
+    const mockSession = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      abortTransaction: jest.fn().mockResolvedValue(),
+      endSession: jest.fn()
+    };
+    mongoose.startSession.mockResolvedValue(mockSession);
+
+    // Make the operation fail mid-transaction
+    req.body = { name: 'Transactional Project' };
+    mockSave.mockRejectedValueOnce(new Error('Mid-transaction database failure'));
+
+    await createProject(req, res);
+
+    expect(mockSession.startTransaction).toHaveBeenCalled();
+    expect(mockSession.commitTransaction).not.toHaveBeenCalled();
+    expect(mockSession.abortTransaction).toHaveBeenCalled();
+    expect(mockSession.endSession).toHaveBeenCalled();
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      success: false,
+      data: {},
+      message: 'Internal server error'
+    });
   });
 });
