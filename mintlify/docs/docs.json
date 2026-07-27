@@ -15,7 +15,10 @@
   "favicon": "https://media.brand.dev/98c8a636-fed2-4095-a2d6-1ed768aca5dd.png",
   "seo": {
     "metatags": {
-      "google-site-verification": "o5KNQ9R-ummCVpBGTiPWtBLvDPdVm-uxMuIQXmj3mlU"
+      "google-site-verification": [
+        "o5KNQ9R-ummCVpBGTiPWtBLvDPdVm-uxMuIQXmj3mlU",
+        "7EMPCEhVMV-pX3iYSiRSjNI6d5aLL2csbeDQySbOMV4"
+      ]
     }
   },
   "navbar": {
