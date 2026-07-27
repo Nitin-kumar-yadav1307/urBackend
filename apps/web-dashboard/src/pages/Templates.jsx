@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ExternalLink, CheckCircle, ArrowLeft, Github, Code, Rocket, FileJson, Server, Smartphone, LayoutGrid, CopyPlus, Loader2 } from 'lucide-react';
+import { Copy, ExternalLink, CheckCircle, ArrowLeft, Github, Code, Rocket, FileJson, Server, Smartphone, LayoutGrid, CopyPlus, Loader2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 
@@ -291,6 +291,7 @@ function Templates() {
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [isCloning, setIsCloning] = useState(false);
+  const [clonedProject, setClonedProject] = useState(null);
 
   const sdks = ['all', ...new Set(TEMPLATES.map(t => t.sdk))];
 
@@ -325,13 +326,13 @@ function Templates() {
       });
       toast.success('Project cloned successfully!');
       
-      const newProjectId = res.data.data?._id || res.data._id;
+      const newProjectData = res.data.data || res.data;
       
       setCloneTemplate(null);
       setProjectName('');
       setProjectDescription('');
       
-      navigate(`/project/${newProjectId}`);
+      setClonedProject(newProjectData);
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to clone project');
     } finally {
@@ -623,6 +624,80 @@ function Templates() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {clonedProject && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, overflowY: 'auto', padding: '2rem'
+        }}>
+          <div style={{
+            background: 'var(--color-bg-card)', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '550px', border: '1px solid var(--color-border)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <div style={{
+                width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem auto'
+              }}>
+                <CheckCircle size={36} color="var(--color-success)" />
+              </div>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 700, margin: '0 0 0.5rem', color: 'var(--color-text-main)' }}>Project Cloned!</h2>
+              <p style={{ color: 'var(--color-text-muted)', margin: 0, fontSize: '0.95rem' }}><strong style={{ color: 'var(--color-text-main)' }}>{clonedProject.name}</strong> has been successfully initialized.</p>
+            </div>
+
+            {clonedProject.apiKeysLocked ? (
+              <div style={{ backgroundColor: 'rgba(62, 207, 142, 0.08)', border: '1px solid rgba(62, 207, 142, 0.25)', borderRadius: '8px', padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '15px' }}>
+                <AlertTriangle color="var(--color-primary)" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong style={{ color: 'var(--color-primary)', display: 'block', marginBottom: '4px' }}>Your backend is ready</strong>
+                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
+                    API keys unlock after email verification.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '1.25rem', marginBottom: '2rem', display: 'flex', gap: '15px' }}>
+                  <AlertTriangle color="#ef4444" size={24} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#ef4444', display: 'block', marginBottom: '4px', fontSize: '0.95rem' }}>Save these API Keys immediately</strong>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
+                      For security reasons, these keys will <strong>only be shown once</strong>. If you lose them, you will need to regenerate them.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', color: 'var(--color-primary)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>Publishable API Key (Frontend safe)</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ fontFamily: 'monospace', backgroundColor: 'var(--color-bg-input)', color: 'var(--color-primary)', overflowX: 'auto', whiteSpace: 'nowrap', flex: 1, padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.9rem' }}>
+                      {clonedProject.publishableKey}
+                    </div>
+                    <button onClick={() => { navigator.clipboard.writeText(clonedProject.publishableKey); toast.success("Copied to clipboard!"); }} className="btn btn-secondary" style={{ padding: '0 14px' }}><Copy size={16} /></button>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '2rem' }}>
+                  <label style={{ display: 'block', color: 'var(--color-error)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>Secret API Key (Backend only)</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ fontFamily: 'monospace', backgroundColor: 'var(--color-bg-input)', color: 'var(--color-error)', overflowX: 'auto', whiteSpace: 'nowrap', flex: 1, padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.9rem' }}>
+                      {clonedProject.secretKey}
+                    </div>
+                    <button onClick={() => { navigator.clipboard.writeText(clonedProject.secretKey); toast.success("Copied to clipboard!"); }} className="btn btn-secondary" style={{ padding: '0 14px' }}><Copy size={16} /></button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+              <button onClick={() => navigate(`/project/${clonedProject._id}`)} className="btn btn-primary" style={{ width: '100%', padding: '12px', fontSize: '1rem', fontWeight: 600, justifyContent: 'center' }}>
+                Go to Project Dashboard
+              </button>
+            </div>
           </div>
         </div>
       )}
