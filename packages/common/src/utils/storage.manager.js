@@ -97,6 +97,9 @@ function createS3Adapter(config) {
                                 } 
                             };
                         }
+                        if (config.storageProvider === 'gcs') {
+                            return { data: { publicUrl: `https://storage.googleapis.com/${activeBucket}/${path}` } };
+                        }
                         return { data: { publicUrl: `https://${activeBucket}.s3.${config.region}.amazonaws.com/${path}` } };
                     }
                 };
@@ -136,9 +139,12 @@ async function getStorage(project) {
                 }
                 client = createClient(config.storageUrl, config.storageKey);
             } 
-            else if (provider === 's3' || provider === 'cloudflare_r2') {
+            else if (provider === 's3' || provider === 'cloudflare_r2' || provider === 'gcs') {
                 if (!config.accessKeyId || !config.secretAccessKey || !config.bucket) {
-                    throw new Error("Incomplete S3/R2 storage config");
+                    throw new Error("Incomplete S3/R2/GCS storage config");
+                }
+                if (provider === 'gcs' && !config.endpoint) {
+                    config.endpoint = 'https://storage.googleapis.com';
                 }
                 client = createS3Adapter(config);
             } else {
@@ -189,10 +195,11 @@ async function getPresignedUploadUrl(project, filePath, contentType, size) {
         return { signedUrl: data.signedUrl, token: data.token };
     }
 
-    // S3 or Cloudflare R2
+    // S3, Cloudflare R2, or Google Cloud Storage
+    const endpoint = config.endpoint || (provider === "gcs" ? "https://storage.googleapis.com" : undefined);
     const s3Client = new S3Client({
         region: config.region || "auto",
-        endpoint: config.endpoint,
+        endpoint,
         forcePathStyle: true,
         credentials: {
             accessKeyId: config.accessKeyId,
@@ -249,10 +256,11 @@ async function verifyUploadedFile(project, filePath) {
         return actualSize;
     }
 
-    // S3 / R2 — just ask "does this object exist and what's its size?"
+    // S3 / R2 / GCS — just ask "does this object exist and what's its size?"
+    const endpoint = config.endpoint || (provider === "gcs" ? "https://storage.googleapis.com" : undefined);
     const s3Client = new S3Client({
         region: config.region || "auto",
-        endpoint: config.endpoint,
+        endpoint,
         forcePathStyle: true,
         credentials: {
             accessKeyId: config.accessKeyId,
@@ -343,11 +351,11 @@ async function getS3CompatibleStorage(project) {
         };
     }
 
-    // AWS S3 / CLOUDFLARE R2
-    if (provider === "s3" || provider === "cloudflare_r2") {
-
+    // AWS S3 / CLOUDFLARE R2 / GCS
+    if (provider === "s3" || provider === "cloudflare_r2" || provider === "gcs") {
+        const targetEndpoint = config.endpoint || (provider === "gcs" ? "https://storage.googleapis.com" : undefined);
         if (
-            !config.endpoint ||
+            !targetEndpoint ||
             !config.accessKeyId ||
             !config.secretAccessKey
         ) {
@@ -358,7 +366,7 @@ async function getS3CompatibleStorage(project) {
 
         const s3Client = new S3Client({
             region: config.region || "auto",
-            endpoint: config.endpoint,
+            endpoint: targetEndpoint,
             forcePathStyle: true,
             credentials: {
                 accessKeyId: config.accessKeyId,

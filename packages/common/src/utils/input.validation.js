@@ -102,6 +102,7 @@ module.exports.updateOnboardingSchema = z
 module.exports.createProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
   description: z.string().optional(),
+  templateId: z.string().optional(),
   siteUrl: z.preprocess(
     (val) => (val === "" || val === null ? undefined : val),
     z

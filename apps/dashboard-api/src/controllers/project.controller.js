@@ -40,7 +40,7 @@ const { verifyUploadedFile } = require("@urbackend/common");
 const { getPublicIp } = require("@urbackend/common");
 const { clearCompiledModel } = require("@urbackend/common");
 const { createUniqueIndexes, ApiAnalytics, MailLog } = require("@urbackend/common");
-const { getProjectAccessQuery, getProjectRole, Invitation } = require("@urbackend/common");
+const { getProjectAccessQuery, getProjectRole, Invitation, PROJECT_TEMPLATES } = require("@urbackend/common");
 const { emitEvent } = require('../utils/emitEvent');
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SAFETY_MAX_BYTES = 100 * 1024 * 1024;
@@ -268,7 +268,7 @@ const bestEffortDeleteUploadedObject = async (project, filePath) => {
 
 module.exports.createProject = async (req, res) => {
   const executeOperation = async (session) => {
-    const { name, description, siteUrl } = createProjectSchema.parse(req.body);
+    const { name, description, siteUrl, templateId } = createProjectSchema.parse(req.body);
 
 
     if (req.projectLimit !== undefined) {
@@ -295,7 +295,7 @@ module.exports.createProject = async (req, res) => {
 
     const newProject = new Project({
       name,
-      description,
+      description: description || "",
       owner: req.user._id,
       publishableKey: rawPublishableKey,
       secretKey: hashedSecretKey,
@@ -304,6 +304,33 @@ module.exports.createProject = async (req, res) => {
       jwtSecret: rawJwtSecret,
       siteUrl: siteUrl || "",
     });
+
+    if (templateId && PROJECT_TEMPLATES[templateId]) {
+      const template = PROJECT_TEMPLATES[templateId];
+      if (template.isAuthEnabled) {
+        newProject.isAuthEnabled = true;
+        // The default users collection is appended later or explicitly, let's see. 
+        // Wait, does 'users' collection get automatically added if isAuthEnabled is set?
+        // Let's add it explicitly if not present.
+      }
+      if (template.collections && template.collections.length > 0) {
+        newProject.collections = template.collections.map(col => ({
+          name: col.name,
+          model: col.model,
+          rls: col.rls
+        }));
+      }
+      if (newProject.isAuthEnabled && !newProject.collections.some(c => c.name === 'users')) {
+        newProject.collections.push({
+          name: 'users',
+          rls: 'private',
+          model: [
+            { key: 'email', type: 'String', required: true, unique: true },
+            { key: 'password', type: 'String', required: true }
+          ]
+        });
+      }
+    }
     
     const saveOpts = session ? { session } : {};
     await newProject.save(saveOpts);
