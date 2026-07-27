@@ -40,7 +40,7 @@ const { verifyUploadedFile } = require("@urbackend/common");
 const { getPublicIp } = require("@urbackend/common");
 const { clearCompiledModel } = require("@urbackend/common");
 const { createUniqueIndexes, ApiAnalytics, MailLog } = require("@urbackend/common");
-const { getProjectAccessQuery, getProjectRole, Invitation } = require("@urbackend/common");
+const { getProjectAccessQuery, getProjectRole, Invitation, PROJECT_TEMPLATES } = require("@urbackend/common");
 const { emitEvent } = require('../utils/emitEvent');
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SAFETY_MAX_BYTES = 100 * 1024 * 1024;
@@ -268,7 +268,7 @@ const bestEffortDeleteUploadedObject = async (project, filePath) => {
 
 module.exports.createProject = async (req, res) => {
   const executeOperation = async (session) => {
-    const { name, description, siteUrl } = createProjectSchema.parse(req.body);
+    const { name, description, siteUrl, templateId } = createProjectSchema.parse(req.body);
 
 
     if (req.projectLimit !== undefined) {
@@ -279,9 +279,7 @@ module.exports.createProject = async (req, res) => {
       );
 
       if (currentCount >= req.projectLimit) {
-        const error = new Error(`Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`);
-        error.status = 403;
-        throw error;
+        throw new AppError(`Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`, 403);
       }
     }
 
@@ -295,7 +293,7 @@ module.exports.createProject = async (req, res) => {
 
     const newProject = new Project({
       name,
-      description,
+      description: description || "",
       owner: req.user._id,
       publishableKey: rawPublishableKey,
       secretKey: hashedSecretKey,
@@ -304,6 +302,33 @@ module.exports.createProject = async (req, res) => {
       jwtSecret: rawJwtSecret,
       siteUrl: siteUrl || "",
     });
+
+    if (templateId && PROJECT_TEMPLATES[templateId]) {
+      const template = PROJECT_TEMPLATES[templateId];
+      if (template.isAuthEnabled) {
+        newProject.isAuthEnabled = true;
+        // The default users collection is appended later or explicitly, let's see. 
+        // Wait, does 'users' collection get automatically added if isAuthEnabled is set?
+        // Let's add it explicitly if not present.
+      }
+      if (template.collections && template.collections.length > 0) {
+        newProject.collections = template.collections.map(col => ({
+          name: col.name,
+          model: col.model,
+          rls: col.rls
+        }));
+      }
+      if (newProject.isAuthEnabled && !newProject.collections.some(c => c.name === 'users')) {
+        newProject.collections.push({
+          name: 'users',
+          rls: 'private',
+          model: [
+            { key: 'email', type: 'String', required: true, unique: true },
+            { key: 'password', type: 'String', required: true }
+          ]
+        });
+      }
+    }
     
     const saveOpts = session ? { session } : {};
     await newProject.save(saveOpts);
@@ -339,7 +364,7 @@ module.exports.createProject = async (req, res) => {
         console.error('[onboarding] Failed to mark projectCreated:', err.message);
       });
     emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-    return res.status(201).json(projectObj);
+    return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
   } catch (err) {
     if (session) {
       try { await session.abortTransaction(); } catch (e) {}
@@ -353,15 +378,19 @@ module.exports.createProject = async (req, res) => {
           console.error('[onboarding] Failed to mark projectCreated:', err.message);
         });
         emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-        return res.status(201).json(projectObj);
+        return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
       } catch (retryErr) {
-        if (retryErr instanceof z.ZodError) return res.status(400).json({ error: retryErr.issues });
-        return res.status(retryErr.status || 500).json({ error: retryErr.message });
+        if (retryErr instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: retryErr.issues });
+        const statusCode = retryErr.status || (retryErr instanceof AppError ? retryErr.statusCode : 500);
+        const message = statusCode === 500 ? "Internal server error" : retryErr.message;
+        return res.status(statusCode).json({ success: false, message: message });
       }
     }
 
-    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues });
-    return res.status(err.status || 500).json({ error: err.message });
+    if (err instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: err.issues });
+    const statusCode = err.status || (err instanceof AppError ? err.statusCode : 500);
+    const message = statusCode === 500 ? "Internal server error" : err.message;
+    return res.status(statusCode).json({ success: false, message: message });
   }
 };
 

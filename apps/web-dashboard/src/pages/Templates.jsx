@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, ExternalLink, CheckCircle, ArrowLeft, Github, Code, Rocket, FileJson, Server, Smartphone, LayoutGrid } from 'lucide-react';
+import { Copy, ExternalLink, CheckCircle, ArrowLeft, Github, Code, Rocket, FileJson, Server, Smartphone, LayoutGrid, CopyPlus, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../utils/api';
 
 const TEMPLATES = [
   {
@@ -286,6 +287,11 @@ function Templates() {
   const [selectedSdk, setSelectedSdk] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [cloneTemplate, setCloneTemplate] = useState(null);
+  const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
+  const [isCloning, setIsCloning] = useState(false);
+
   const sdks = ['all', ...new Set(TEMPLATES.map(t => t.sdk))];
 
   const filteredTemplates = TEMPLATES.filter(t => {
@@ -304,6 +310,33 @@ function Templates() {
    navigator.clipboard.writeText(cmd)
      .then(() => toast.success('Quickstart command copied!'))
       .catch(() => toast.error('Failed to copy command'));
+  };
+
+  const handleCloneProject = async (e) => {
+    e.preventDefault();
+    if (!projectName.trim() || !cloneTemplate) return;
+    
+    setIsCloning(true);
+    try {
+      const res = await api.post(`/api/projects`, {
+        name: projectName,
+        description: projectDescription,
+        templateId: cloneTemplate.id,
+      });
+      toast.success('Project cloned successfully!');
+      
+      const newProjectId = res.data.data?._id || res.data._id;
+      
+      setCloneTemplate(null);
+      setProjectName('');
+      setProjectDescription('');
+      
+      navigate(`/project/${newProjectId}`);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to clone project');
+    } finally {
+      setIsCloning(false);
+    }
   };
 
   return (
@@ -414,6 +447,14 @@ function Templates() {
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setCloneTemplate(template); }}
+                className="btn btn-primary"
+                style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <CopyPlus size={16} />
+                Clone Project
+              </button>
               {template.deployUrl && (
                 <a
                   href={template.deployUrl}
@@ -532,6 +573,59 @@ function Templates() {
           </div>
         </div>
       </div>
+
+      {/* Clone Modal */}
+      {cloneTemplate && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+        }}>
+          <div style={{
+            background: 'var(--color-bg-card)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '400px', border: '1px solid var(--color-border)'
+          }}>
+            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem', color: 'var(--color-text-main)' }}>
+              Clone {cloneTemplate.name}
+            </h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              Cloning automatically provisions the template's authentication setup and database collections. A Project Name is required.
+            </p>
+            <form onSubmit={handleCloneProject}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>Project Name <span style={{color: 'var(--color-error)'}}>*</span></label>
+                <input 
+                  type="text" 
+                  value={projectName} 
+                  onChange={e => setProjectName(e.target.value)} 
+                  className="input-field" 
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-main)' }} 
+                  placeholder="My Awesome App" 
+                  required 
+                  autoFocus 
+                />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>Description (optional)</label>
+                <input 
+                  type="text" 
+                  value={projectDescription} 
+                  onChange={e => setProjectDescription(e.target.value)} 
+                  className="input-field" 
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-input)', color: 'var(--color-text-main)' }} 
+                  placeholder="A short description..." 
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => { setCloneTemplate(null); setProjectName(''); setProjectDescription(''); }} disabled={isCloning}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={isCloning || !projectName.trim()}>
+                  {isCloning ? <Loader2 size={16} className="animate-spin" /> : 'Clone'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
