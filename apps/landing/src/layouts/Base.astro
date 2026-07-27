@@ -7,10 +7,12 @@ interface Props {
 }
 const { title, description, canonicalUrl, ogImage } = Astro.props;
 import '../styles/landing.css';
+import Analytics from '@vercel/analytics/astro';
 ---
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <Analytics />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/LOGO_SQ.png" />
