@@ -40,7 +40,7 @@ const { verifyUploadedFile } = require("@urbackend/common");
 const { getPublicIp } = require("@urbackend/common");
 const { clearCompiledModel } = require("@urbackend/common");
 const { createUniqueIndexes, ApiAnalytics, MailLog } = require("@urbackend/common");
-const { getProjectAccessQuery, getProjectRole, Invitation } = require("@urbackend/common");
+const { getProjectAccessQuery, getProjectRole, Invitation, PROJECT_TEMPLATES } = require("@urbackend/common");
 const { emitEvent } = require('../utils/emitEvent');
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SAFETY_MAX_BYTES = 100 * 1024 * 1024;
@@ -267,8 +267,24 @@ const bestEffortDeleteUploadedObject = async (project, filePath) => {
 };
 
 module.exports.createProject = async (req, res) => {
+  const finalizeProjectCreation = (projectObj, newProject) => {
+    markDeveloperOnboardingStep(req.user._id, 'projectCreated', { projectId: newProject._id })
+      .then(() => {
+        // Also reset subsequent steps since this is a new project
+        return Promise.all([
+          markDeveloperOnboardingStep(req.user._id, 'collectionCreated', { _reset: true }),
+          markDeveloperOnboardingStep(req.user._id, 'firstApiCall', { _reset: true })
+        ]);
+      })
+      .catch((err) => {
+        console.error('[onboarding] Failed to mark projectCreated:', err.message);
+      });
+    emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
+    return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
+  };
+
   const executeOperation = async (session) => {
-    const { name, description, siteUrl } = createProjectSchema.parse(req.body);
+    const { name, description, siteUrl, templateId } = createProjectSchema.parse(req.body);
 
 
     if (req.projectLimit !== undefined) {
@@ -279,9 +295,7 @@ module.exports.createProject = async (req, res) => {
       );
 
       if (currentCount >= req.projectLimit) {
-        const error = new Error(`Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`);
-        error.status = 403;
-        throw error;
+        throw new AppError(403, `Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`);
       }
     }
 
@@ -295,7 +309,7 @@ module.exports.createProject = async (req, res) => {
 
     const newProject = new Project({
       name,
-      description,
+      description: description || "",
       owner: req.user._id,
       publishableKey: rawPublishableKey,
       secretKey: hashedSecretKey,
@@ -304,6 +318,44 @@ module.exports.createProject = async (req, res) => {
       jwtSecret: rawJwtSecret,
       siteUrl: siteUrl || "",
     });
+
+    if (templateId && PROJECT_TEMPLATES[templateId]) {
+      const template = PROJECT_TEMPLATES[templateId];
+      if (template.isAuthEnabled) {
+        newProject.isAuthEnabled = true;
+      }
+      if (template.collections && template.collections.length > 0) {
+        newProject.collections = template.collections.map(col => {
+          const mode = typeof col.rls === 'string' ? col.rls : (col.rls?.mode || 'public-read');
+          const defaultRls = getDefaultRlsForCollection(col.name, col.model);
+          return {
+            name: col.name,
+            model: col.model,
+            rls: {
+              enabled: mode !== 'public-read',
+              mode,
+              ownerField: defaultRls.ownerField,
+              requireAuthForWrite: true
+            }
+          };
+        });
+      }
+      if (newProject.isAuthEnabled && !newProject.collections.some(c => c.name === 'users')) {
+        newProject.collections.push({
+          name: 'users',
+          rls: {
+            enabled: true,
+            mode: 'private',
+            ownerField: '_id',
+            requireAuthForWrite: true
+          },
+          model: [
+            { key: 'email', type: 'String', required: true, unique: true },
+            { key: 'password', type: 'String', required: true }
+          ]
+        });
+      }
+    }
     
     const saveOpts = session ? { session } : {};
     await newProject.save(saveOpts);
@@ -326,42 +378,41 @@ module.exports.createProject = async (req, res) => {
     
     await session.commitTransaction();
     session.endSession();
-    
-    markDeveloperOnboardingStep(req.user._id, 'projectCreated', { projectId: newProject._id })
-      .then(() => {
-        // Also reset subsequent steps since this is a new project
-        return Promise.all([
-          markDeveloperOnboardingStep(req.user._id, 'collectionCreated', { _reset: true }),
-          markDeveloperOnboardingStep(req.user._id, 'firstApiCall', { _reset: true })
-        ]);
-      })
-      .catch((err) => {
-        console.error('[onboarding] Failed to mark projectCreated:', err.message);
-      });
-    emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-    return res.status(201).json(projectObj);
+    return finalizeProjectCreation(projectObj, newProject);
   } catch (err) {
     if (session) {
-      try { await session.abortTransaction(); } catch (e) {}
+      try {
+        await session.abortTransaction();
+      } catch (e) {
+        console.error("Failed to abort transaction:", e.message);
+      }
       session.endSession();
     }
     
-    if (err.message && (err.message.includes("Transaction numbers are only allowed") || err.message.includes("buffering timed out"))) {
+    const isTransactionError = err.message && 
+      err.message.includes("Transaction numbers are only allowed") && 
+      (err.code === 20 || err.codeName === 'IllegalOperation');
+
+    if (isTransactionError) {
       try {
         const { projectObj, newProject } = await executeOperation(null);
-        markDeveloperOnboardingStep(req.user._id, 'projectCreated', { projectId: newProject._id }).catch((err) => {
-          console.error('[onboarding] Failed to mark projectCreated:', err.message);
-        });
-        emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-        return res.status(201).json(projectObj);
+        return finalizeProjectCreation(projectObj, newProject);
       } catch (retryErr) {
-        if (retryErr instanceof z.ZodError) return res.status(400).json({ error: retryErr.issues });
-        return res.status(retryErr.status || 500).json({ error: retryErr.message });
+        if (retryErr instanceof z.ZodError) {
+          return res.status(400).json({ success: false, data: retryErr.issues, message: "Validation failed" });
+        }
+        const statusCode = retryErr instanceof AppError ? retryErr.statusCode : 500;
+        const message = statusCode === 500 ? "Internal server error" : retryErr.message;
+        return res.status(statusCode).json({ success: false, data: {}, message });
       }
     }
 
-    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues });
-    return res.status(err.status || 500).json({ error: err.message });
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ success: false, data: err.issues, message: "Validation failed" });
+    }
+    const statusCode = err instanceof AppError ? err.statusCode : 500;
+    const message = statusCode === 500 ? "Internal server error" : err.message;
+    return res.status(statusCode).json({ success: false, data: {}, message });
   }
 };
 

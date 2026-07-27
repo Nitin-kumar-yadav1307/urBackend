@@ -28,8 +28,13 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
         Promise.resolve().then(() => {
             if (config.storageProvider === "supabase") {
                 setConfig(prev => ({ ...prev, s3AccessKeyId: "", s3SecretAccessKey: "", s3Region: "", s3Endpoint: "", s3Bucket: "", publicUrlHost: "" }));
-            } else if (["s3", "cloudflare_r2"].includes(config.storageProvider)) {
-                setConfig(prev => ({ ...prev, storageUrl: "", storageKey: "" }));
+            } else if (["s3", "cloudflare_r2", "gcs"].includes(config.storageProvider)) {
+                setConfig(prev => ({ 
+                    ...prev, 
+                    storageUrl: "", 
+                    storageKey: "",
+                    ...(config.storageProvider === "gcs" ? { s3Endpoint: "", publicUrlHost: "" } : {})
+                }));
             }
         });
     }, [config.storageProvider]);
@@ -40,6 +45,7 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
         if (config.storageProvider === "supabase" && (!config.storageUrl || !config.storageKey)) return toast.error("URL and Key are required");
         if (config.storageProvider === "s3" && (!config.s3AccessKeyId || !config.s3SecretAccessKey || !config.s3Region || !config.s3Bucket)) return toast.error("S3 keys, region, and bucket are required");
         if (config.storageProvider === "cloudflare_r2" && (!config.s3AccessKeyId || !config.s3SecretAccessKey || !config.s3Endpoint || !config.s3Bucket || !config.publicUrlHost)) return toast.error("R2 keys, endpoint, bucket, and publicUrlHost are required");
+        if (config.storageProvider === "gcs" && (!config.s3AccessKeyId || !config.s3SecretAccessKey || !config.s3Bucket)) return toast.error("GCS HMAC keys and bucket are required");
 
         setLoading(true);
         try {
@@ -80,7 +86,7 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
                     onCancel={() => setShowRemoveModal(false)}
                 />
             )}
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>Connect your own Supabase, AWS S3, or Cloudflare R2 storage bucket.</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>Connect your own Supabase, AWS S3, Cloudflare R2, or Google Cloud Storage (GCS) bucket.</p>
 
             {isConfigured && !showForm ? (
                 <div style={{ background: 'rgba(16,185,129,0.08)', padding: '10px 12px', borderRadius: '6px', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -111,6 +117,7 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
                             <option value="supabase">Supabase</option>
                             <option value="s3">AWS S3</option>
                             <option value="cloudflare_r2">Cloudflare R2</option>
+                            <option value="gcs">Google Cloud Storage (GCS)</option>
                         </select>
                     </div>
 
@@ -128,7 +135,7 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
                             </div>
                         )}
 
-                        {(config.storageProvider === "s3" || config.storageProvider === "cloudflare_r2") && (
+                        {["s3", "cloudflare_r2", "gcs"].includes(config.storageProvider) && (
                             <>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                     <div>
@@ -140,6 +147,11 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
                                             <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Region</label>
                                             <input type="text" name="s3Region" className="input-field" value={config.s3Region} onChange={handleChange} placeholder="ap-south-1" style={inputStyle} disabled={isViewer} />
                                         </div>
+                                    ) : config.storageProvider === "gcs" ? (
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>GCS XML API Endpoint</label>
+                                            <input type="text" name="s3Endpoint" className="input-field" value={config.s3Endpoint || "https://storage.googleapis.com"} onChange={handleChange} placeholder="https://storage.googleapis.com" style={inputStyle} disabled={isViewer} />
+                                        </div>
                                     ) : (
                                         <div>
                                             <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>S3 API Endpoint</label>
@@ -149,11 +161,15 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Access Key ID</label>
-                                        <input type="text" name="s3AccessKeyId" className="input-field" value={config.s3AccessKeyId} onChange={handleChange} placeholder="AKIA..." style={{ ...inputStyle, fontFamily: 'monospace' }} disabled={isViewer} />
+                                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                            {config.storageProvider === "gcs" ? "HMAC Access Key ID" : "Access Key ID"}
+                                        </label>
+                                        <input type="text" name="s3AccessKeyId" className="input-field" value={config.s3AccessKeyId} onChange={handleChange} placeholder={config.storageProvider === "gcs" ? "GOOG..." : "AKIA..."} style={{ ...inputStyle, fontFamily: 'monospace' }} disabled={isViewer} />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Secret Access Key</label>
+                                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                            {config.storageProvider === "gcs" ? "HMAC Secret Access Key" : "Secret Access Key"}
+                                        </label>
                                         <input type="password" name="s3SecretAccessKey" className="input-field" value={config.s3SecretAccessKey} onChange={handleChange} placeholder="wJalr..." style={{ ...inputStyle, fontFamily: 'monospace' }} disabled={isViewer} />
                                     </div>
                                 </div>
@@ -162,8 +178,10 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
                                         Public URL Host / CDN Domain{' '}
                                         <span style={{ color: 'var(--color-text-muted)', fontSize: '0.65rem', opacity: 0.8 }}>{config.storageProvider === "cloudflare_r2" ? "(Required)" : "(Optional)"}</span>
                                     </label>
-                                    <input type="text" name="publicUrlHost" className="input-field" value={config.publicUrlHost} onChange={handleChange} placeholder="https://cdn.my-company.com" style={inputStyle} disabled={isViewer} />
-                                    <small style={{ display: 'block', marginTop: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Custom domain or CDN (e.g. CloudFront, R2 Dev Domain)</small>
+                                    <input type="text" name="publicUrlHost" className="input-field" value={config.publicUrlHost} onChange={handleChange} placeholder={config.storageProvider === "gcs" ? "https://storage.googleapis.com/my-bucket" : "https://cdn.my-company.com"} style={inputStyle} disabled={isViewer} />
+                                    <small style={{ display: 'block', marginTop: '4px', fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                                        {config.storageProvider === "gcs" ? "Custom domain or default GCS public host" : "Custom domain or CDN (e.g. CloudFront, R2 Dev Domain)"}
+                                    </small>
                                 </div>
                             </>
                         )}
