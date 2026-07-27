@@ -267,6 +267,22 @@ const bestEffortDeleteUploadedObject = async (project, filePath) => {
 };
 
 module.exports.createProject = async (req, res) => {
+  const finalizeProjectCreation = (projectObj, newProject) => {
+    markDeveloperOnboardingStep(req.user._id, 'projectCreated', { projectId: newProject._id })
+      .then(() => {
+        // Also reset subsequent steps since this is a new project
+        return Promise.all([
+          markDeveloperOnboardingStep(req.user._id, 'collectionCreated', { _reset: true }),
+          markDeveloperOnboardingStep(req.user._id, 'firstApiCall', { _reset: true })
+        ]);
+      })
+      .catch((err) => {
+        console.error('[onboarding] Failed to mark projectCreated:', err.message);
+      });
+    emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
+    return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
+  };
+
   const executeOperation = async (session) => {
     const { name, description, siteUrl, templateId } = createProjectSchema.parse(req.body);
 
@@ -307,20 +323,18 @@ module.exports.createProject = async (req, res) => {
       const template = PROJECT_TEMPLATES[templateId];
       if (template.isAuthEnabled) {
         newProject.isAuthEnabled = true;
-        // The default users collection is appended later or explicitly, let's see. 
-        // Wait, does 'users' collection get automatically added if isAuthEnabled is set?
-        // Let's add it explicitly if not present.
       }
       if (template.collections && template.collections.length > 0) {
         newProject.collections = template.collections.map(col => {
           const mode = typeof col.rls === 'string' ? col.rls : (col.rls?.mode || 'public-read');
+          const defaultRls = getDefaultRlsForCollection(col.name, col.model);
           return {
             name: col.name,
             model: col.model,
             rls: {
               enabled: mode !== 'public-read',
               mode,
-              ownerField: col.name === 'users' ? '_id' : 'userId',
+              ownerField: defaultRls.ownerField,
               requireAuthForWrite: true
             }
           };
@@ -364,54 +378,41 @@ module.exports.createProject = async (req, res) => {
     
     await session.commitTransaction();
     session.endSession();
-    
-    markDeveloperOnboardingStep(req.user._id, 'projectCreated', { projectId: newProject._id })
-      .then(() => {
-        // Also reset subsequent steps since this is a new project
-        return Promise.all([
-          markDeveloperOnboardingStep(req.user._id, 'collectionCreated', { _reset: true }),
-          markDeveloperOnboardingStep(req.user._id, 'firstApiCall', { _reset: true })
-        ]);
-      })
-      .catch((err) => {
-        console.error('[onboarding] Failed to mark projectCreated:', err.message);
-      });
-    emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-    return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
+    return finalizeProjectCreation(projectObj, newProject);
   } catch (err) {
     if (session) {
-      try { await session.abortTransaction(); } catch (e) {}
+      try {
+        await session.abortTransaction();
+      } catch (e) {
+        console.error("Failed to abort transaction:", e.message);
+      }
       session.endSession();
     }
     
-    const isTransactionError = err.message && (
-      err.message.includes("Transaction numbers are only allowed") ||
-      err.message.includes("buffering timed out") ||
-      err.message.includes("standalone") ||
-      err.message.includes("replica set") ||
-      err.message.includes("Session")
-    );
+    const isTransactionError = err.message && 
+      err.message.includes("Transaction numbers are only allowed") && 
+      (err.code === 20 || err.codeName === 'IllegalOperation');
 
     if (isTransactionError) {
       try {
         const { projectObj, newProject } = await executeOperation(null);
-        markDeveloperOnboardingStep(req.user._id, 'projectCreated', { projectId: newProject._id }).catch((err) => {
-          console.error('[onboarding] Failed to mark projectCreated:', err.message);
-        });
-        emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-        return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
+        return finalizeProjectCreation(projectObj, newProject);
       } catch (retryErr) {
-        if (retryErr instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: retryErr.issues });
-        const statusCode = (retryErr instanceof AppError ? retryErr.statusCode : null) || 500;
+        if (retryErr instanceof z.ZodError) {
+          return res.status(400).json({ success: false, data: retryErr.issues, message: "Validation failed" });
+        }
+        const statusCode = retryErr instanceof AppError ? retryErr.statusCode : 500;
         const message = statusCode === 500 ? "Internal server error" : retryErr.message;
-        return res.status(statusCode).json({ success: false, message: message });
+        return res.status(statusCode).json({ success: false, data: {}, message });
       }
     }
 
-    if (err instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: err.issues });
-    const statusCode = (err instanceof AppError ? err.statusCode : null) || 500;
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ success: false, data: err.issues, message: "Validation failed" });
+    }
+    const statusCode = err instanceof AppError ? err.statusCode : 500;
     const message = statusCode === 500 ? "Internal server error" : err.message;
-    return res.status(statusCode).json({ success: false, message: message });
+    return res.status(statusCode).json({ success: false, data: {}, message });
   }
 };
 

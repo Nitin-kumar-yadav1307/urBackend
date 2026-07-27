@@ -174,7 +174,7 @@ describe('Project Controller - Clone Template', () => {
 
     // Simulate standalone MongoDB (no replica set) — triggers fallback path
     jest.spyOn(mongoose, 'startSession').mockRejectedValue(
-      new Error('Transaction numbers are only allowed on a replica set member or mongos'),
+      Object.assign(new Error('Transaction numbers are only allowed on a replica set member or mongos'), { code: 20 })
     );
 
     // Mock save to behave like Mongoose save
@@ -284,5 +284,27 @@ describe('Project Controller - Clone Template', () => {
     const passwordField = usersCol.model.find((f) => f.key === 'password');
     expect(emailField).toBeDefined();
     expect(passwordField).toBeDefined();
+  });
+
+  it('should create project successfully using transactional path', async () => {
+    const mockSession = {
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn().mockResolvedValue(),
+      abortTransaction: jest.fn().mockResolvedValue(),
+      endSession: jest.fn()
+    };
+    mongoose.startSession.mockResolvedValue(mockSession);
+
+    req.body = { name: 'Transactional Project' };
+    
+    await createProject(req, res);
+    
+    expect(mockSession.startTransaction).toHaveBeenCalled();
+    expect(mockSession.commitTransaction).toHaveBeenCalled();
+    expect(mockSession.endSession).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, message: 'Project created successfully' })
+    );
   });
 });
