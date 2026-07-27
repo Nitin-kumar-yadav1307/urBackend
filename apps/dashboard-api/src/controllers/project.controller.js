@@ -389,9 +389,12 @@ module.exports.createProject = async (req, res) => {
       session.endSession();
     }
     
-    const isTransactionError = err.message && 
-      err.message.includes("Transaction numbers are only allowed") && 
-      (err.code === 20 || err.codeName === 'IllegalOperation');
+    const isTransactionError = err.message && (
+      (err.message.includes("Transaction numbers are only allowed") && (err.code === 20 || err.codeName === 'IllegalOperation')) ||
+      err.message.includes("buffering timed out") ||
+      err.message.includes("Session") ||
+      err.message.includes("sessions are not supported")
+    );
 
     if (isTransactionError) {
       try {
