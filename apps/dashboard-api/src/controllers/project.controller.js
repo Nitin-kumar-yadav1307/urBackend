@@ -279,7 +279,7 @@ module.exports.createProject = async (req, res) => {
       );
 
       if (currentCount >= req.projectLimit) {
-        throw new AppError(`Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`, 403);
+        throw new AppError(403, `Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`);
       }
     }
 
@@ -402,14 +402,14 @@ module.exports.createProject = async (req, res) => {
         return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
       } catch (retryErr) {
         if (retryErr instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: retryErr.issues });
-        const statusCode = retryErr.status || (retryErr instanceof AppError ? retryErr.statusCode : 500);
+        const statusCode = (retryErr instanceof AppError ? retryErr.statusCode : null) || 500;
         const message = statusCode === 500 ? "Internal server error" : retryErr.message;
         return res.status(statusCode).json({ success: false, message: message });
       }
     }
 
     if (err instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: err.issues });
-    const statusCode = err.status || (err instanceof AppError ? err.statusCode : 500);
+    const statusCode = (err instanceof AppError ? err.statusCode : null) || 500;
     const message = statusCode === 500 ? "Internal server error" : err.message;
     return res.status(statusCode).json({ success: false, message: message });
   }
