@@ -9,9 +9,5 @@ import vercel from '@astrojs/vercel';
 export default defineConfig({
   site: 'https://urbackend.bitbros.in',
   integrations: [react(), sitemap()],
-  adapter: vercel({
-    webAnalytics: {
-      enabled: true
-    }
-  })
+  adapter: vercel()
 });
