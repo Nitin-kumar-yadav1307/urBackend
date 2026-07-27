@@ -312,16 +312,29 @@ module.exports.createProject = async (req, res) => {
         // Let's add it explicitly if not present.
       }
       if (template.collections && template.collections.length > 0) {
-        newProject.collections = template.collections.map(col => ({
-          name: col.name,
-          model: col.model,
-          rls: col.rls
-        }));
+        newProject.collections = template.collections.map(col => {
+          const mode = typeof col.rls === 'string' ? col.rls : (col.rls?.mode || 'public-read');
+          return {
+            name: col.name,
+            model: col.model,
+            rls: {
+              enabled: mode !== 'public-read',
+              mode,
+              ownerField: col.name === 'users' ? '_id' : 'userId',
+              requireAuthForWrite: true
+            }
+          };
+        });
       }
       if (newProject.isAuthEnabled && !newProject.collections.some(c => c.name === 'users')) {
         newProject.collections.push({
           name: 'users',
-          rls: 'private',
+          rls: {
+            enabled: true,
+            mode: 'private',
+            ownerField: '_id',
+            requireAuthForWrite: true
+          },
           model: [
             { key: 'email', type: 'String', required: true, unique: true },
             { key: 'password', type: 'String', required: true }

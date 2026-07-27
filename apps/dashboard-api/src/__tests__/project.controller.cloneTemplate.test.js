@@ -80,7 +80,8 @@ describe("Project Controller - Clone Template", () => {
     expect(collectionNames).toContain("users");
 
     const boardsCol = responseObj.data.collections.find(c => c.name === "boards");
-    expect(boardsCol.rls).toBe("private");
+    const mode = typeof boardsCol.rls === "string" ? boardsCol.rls : boardsCol.rls?.mode;
+    expect(mode).toBe("private");
   });
 
   it("should ignore invalid templateId and create a normal project", async () => {
