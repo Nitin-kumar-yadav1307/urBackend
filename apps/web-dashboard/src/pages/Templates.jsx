@@ -190,14 +190,18 @@ function Templates() {
         templateId: cloneTemplate.id,
       });
       toast.success('Project cloned successfully!');
-      navigate(`/project/${res.data._id}`);
+      
+      const newProjectId = res.data.data?._id || res.data._id;
+      
+      setCloneTemplate(null);
+      setProjectName('');
+      setProjectDescription('');
+      
+      navigate(`/project/${newProjectId}`);
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to clone project');
     } finally {
       setIsCloning(false);
-      setCloneTemplate(null);
-      setProjectName('');
-      setProjectDescription('');
     }
   };
 
@@ -445,9 +449,12 @@ function Templates() {
           <div style={{
             background: 'var(--color-bg-card)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '400px', border: '1px solid var(--color-border)'
           }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.2rem', color: 'var(--color-text-main)' }}>
+            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem', color: 'var(--color-text-main)' }}>
               Clone {cloneTemplate.name}
             </h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              Cloning automatically provisions the template's authentication setup and database collections. A Project Name is required.
+            </p>
             <form onSubmit={handleCloneProject}>
               <div style={{ marginBottom: '1rem' }}>
                 <label className="form-label" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>Project Name <span style={{color: 'var(--color-error)'}}>*</span></label>
@@ -474,7 +481,7 @@ function Templates() {
                 />
               </div>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setCloneTemplate(null)} disabled={isCloning}>
+                <button type="button" className="btn btn-secondary" onClick={() => { setCloneTemplate(null); setProjectName(''); setProjectDescription(''); }} disabled={isCloning}>
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={isCloning || !projectName.trim()}>

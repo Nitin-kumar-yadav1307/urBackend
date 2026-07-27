@@ -29,7 +29,12 @@ export default function StorageConfigForm({ project, projectId, onProjectUpdate,
             if (config.storageProvider === "supabase") {
                 setConfig(prev => ({ ...prev, s3AccessKeyId: "", s3SecretAccessKey: "", s3Region: "", s3Endpoint: "", s3Bucket: "", publicUrlHost: "" }));
             } else if (["s3", "cloudflare_r2", "gcs"].includes(config.storageProvider)) {
-                setConfig(prev => ({ ...prev, storageUrl: "", storageKey: "" }));
+                setConfig(prev => ({ 
+                    ...prev, 
+                    storageUrl: "", 
+                    storageKey: "",
+                    ...(config.storageProvider === "gcs" ? { s3Endpoint: "", publicUrlHost: "" } : {})
+                }));
             }
         });
     }, [config.storageProvider]);

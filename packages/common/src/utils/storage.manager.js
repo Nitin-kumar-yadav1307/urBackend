@@ -355,7 +355,7 @@ async function getS3CompatibleStorage(project) {
     if (provider === "s3" || provider === "cloudflare_r2" || provider === "gcs") {
         const targetEndpoint = config.endpoint || (provider === "gcs" ? "https://storage.googleapis.com" : undefined);
         if (
-            !targetEndpoint ||
+            (provider === "cloudflare_r2" && !targetEndpoint) ||
             !config.accessKeyId ||
             !config.secretAccessKey
         ) {

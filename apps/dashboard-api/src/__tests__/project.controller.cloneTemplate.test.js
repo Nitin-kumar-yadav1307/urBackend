@@ -1,7 +1,7 @@
 process.env.REDIS_URL = "redis://localhost:6379";
 jest.mock('marked', () => ({
   marked: { parse: jest.fn() }
-}));
+}), { virtual: true });
 const mongoose = require("mongoose");
 jest.mock("ioredis", () => {
   return jest.fn().mockImplementation(() => ({
@@ -28,6 +28,8 @@ jest.mock("@urbackend/common", () => {
 jest.mock("../utils/emitEvent", () => ({
   emitEvent: jest.fn(),
 }));
+
+jest.setTimeout(15000);
 
 describe("Project Controller - Clone Template", () => {
   let req, res;

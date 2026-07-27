@@ -279,9 +279,7 @@ module.exports.createProject = async (req, res) => {
       );
 
       if (currentCount >= req.projectLimit) {
-        const error = new Error(`Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`);
-        error.status = 403;
-        throw error;
+        throw new AppError(`Project limit reached (${req.projectLimit}). Please upgrade your plan to create more projects.`, 403);
       }
     }
 
@@ -366,7 +364,7 @@ module.exports.createProject = async (req, res) => {
         console.error('[onboarding] Failed to mark projectCreated:', err.message);
       });
     emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-    return res.status(201).json(projectObj);
+    return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
   } catch (err) {
     if (session) {
       try { await session.abortTransaction(); } catch (e) {}
@@ -380,15 +378,19 @@ module.exports.createProject = async (req, res) => {
           console.error('[onboarding] Failed to mark projectCreated:', err.message);
         });
         emitEvent(req.user._id, 'project_created', { projectName: projectObj.name }, newProject._id);
-        return res.status(201).json(projectObj);
+        return res.status(201).json({ success: true, data: projectObj, message: "Project created successfully" });
       } catch (retryErr) {
-        if (retryErr instanceof z.ZodError) return res.status(400).json({ error: retryErr.issues });
-        return res.status(retryErr.status || 500).json({ error: retryErr.message });
+        if (retryErr instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: retryErr.issues });
+        const statusCode = retryErr.status || (retryErr instanceof AppError ? retryErr.statusCode : 500);
+        const message = statusCode === 500 ? "Internal server error" : retryErr.message;
+        return res.status(statusCode).json({ success: false, message: message });
       }
     }
 
-    if (err instanceof z.ZodError) return res.status(400).json({ error: err.issues });
-    return res.status(err.status || 500).json({ error: err.message });
+    if (err instanceof z.ZodError) return res.status(400).json({ success: false, message: "Validation failed", error: err.issues });
+    const statusCode = err.status || (err instanceof AppError ? err.statusCode : 500);
+    const message = statusCode === 500 ? "Internal server error" : err.message;
+    return res.status(statusCode).json({ success: false, message: message });
   }
 };
 
