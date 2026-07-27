@@ -403,6 +403,7 @@ module.exports.createProject = async (req, res) => {
         }
         const statusCode = retryErr instanceof AppError ? retryErr.statusCode : 500;
         const message = statusCode === 500 ? "Internal server error" : retryErr.message;
+        if (statusCode === 500) console.error("createProject Retry Error:", retryErr);
         return res.status(statusCode).json({ success: false, data: {}, message });
       }
     }
@@ -412,6 +413,7 @@ module.exports.createProject = async (req, res) => {
     }
     const statusCode = err instanceof AppError ? err.statusCode : 500;
     const message = statusCode === 500 ? "Internal server error" : err.message;
+    if (statusCode === 500) console.error("createProject Error:", err);
     return res.status(statusCode).json({ success: false, data: {}, message });
   }
 };
