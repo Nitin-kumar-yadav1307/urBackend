@@ -40,7 +40,8 @@ function CreateProject() {
             const res = await api.post(`/api/projects`,
                 { name, description }
             );
-            const projectId = res.data?._id;
+            const projectData = res.data.data || res.data;
+            const projectId = projectData._id;
             
             if (provisionAuth && projectId) {
                 // Auto provision the users collection
@@ -57,11 +58,11 @@ function CreateProject() {
                 });
             }
 
-            setNewProject(res.data);
+            setNewProject(projectData);
             setActiveProjectId(projectId);
             toast.success("Project Created!");
             completeStep('create_project');
-            if (!res.data?.apiKeysLocked) completeStep('get_api_key');
+            if (!projectData.apiKeysLocked) completeStep('get_api_key');
         } catch (err) {
             const errorMsg = err.response?.data?.message || err.response?.data?.error || err.response?.data?.message || "Failed to create project";
             toast.error(typeof errorMsg === 'object' ? "Validation Error" : errorMsg);
