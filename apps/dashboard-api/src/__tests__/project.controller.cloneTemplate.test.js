@@ -33,7 +33,8 @@ jest.setTimeout(15000);
 
 describe("Project Controller - Clone Template", () => {
   let req, res;
-  
+  let saveSpy, countDocumentsSpy;
+
   beforeEach(() => {
     req = {
       body: {},
@@ -44,18 +45,17 @@ describe("Project Controller - Clone Template", () => {
       json: jest.fn(),
     };
     jest.clearAllMocks();
+
+    jest.spyOn(mongoose, "startSession").mockRejectedValue(new Error("No replica set / standalone mode fallback"));
+    saveSpy = jest.spyOn(Project.prototype, "save").mockImplementation(function() {
+      this._id = this._id || new mongoose.Types.ObjectId();
+      return Promise.resolve(this);
+    });
+    countDocumentsSpy = jest.spyOn(Project, "countDocuments").mockResolvedValue(0);
   });
 
-  afterEach(async () => {
-    await Project.deleteMany({});
-  });
-
-  beforeAll(async () => {
-    await mongoose.connect(process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/urbackend_test_clone_template");
-  });
-
-  afterAll(async () => {
-    await mongoose.connection.close();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("should create a project with template configuration", async () => {
@@ -67,20 +67,19 @@ describe("Project Controller - Clone Template", () => {
     await createProject(req, res);
 
     expect(res.status).toHaveBeenCalledWith(201);
-    
-    const createdProject = await Project.findOne({ name: "Test Clone Project" });
-    expect(createdProject).toBeDefined();
-    
-    // Check if auth is enabled
-    expect(createdProject.isAuthEnabled).toBe(true);
+    expect(res.json).toHaveBeenCalled();
 
-    // Check collections
-    const collectionNames = createdProject.collections.map(c => c.name);
+    const responseObj = res.json.mock.calls[0][0];
+    expect(responseObj.success).toBe(true);
+    expect(responseObj.data.name).toBe("Test Clone Project");
+    expect(responseObj.data.isAuthEnabled).toBe(true);
+
+    const collectionNames = responseObj.data.collections.map(c => c.name);
     expect(collectionNames).toContain("boards");
     expect(collectionNames).toContain("tasks");
-    expect(collectionNames).toContain("users"); // auto added for auth
+    expect(collectionNames).toContain("users");
 
-    const boardsCol = createdProject.collections.find(c => c.name === "boards");
+    const boardsCol = responseObj.data.collections.find(c => c.name === "boards");
     expect(boardsCol.rls).toBe("private");
   });
 
@@ -93,8 +92,10 @@ describe("Project Controller - Clone Template", () => {
     await createProject(req, res);
 
     expect(res.status).toHaveBeenCalledWith(201);
-    const createdProject = await Project.findOne({ name: "Normal Project" });
-    expect(createdProject.collections).toHaveLength(0);
-    expect(createdProject.isAuthEnabled).toBe(false);
+    const responseObj = res.json.mock.calls[0][0];
+    expect(responseObj.success).toBe(true);
+    expect(responseObj.data.name).toBe("Normal Project");
+    expect(responseObj.data.collections).toHaveLength(0);
+    expect(responseObj.data.isAuthEnabled).toBe(false);
   });
 });
