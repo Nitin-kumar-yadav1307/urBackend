@@ -115,11 +115,15 @@ async function getStorage(project) {
 
     const key = project._id.toString();
 
+    const currentConfigStr = project.resources?.storage?.config;
+
     // CACHE - REUSE EXISTING CLIENT
     if (storageRegistry.has(key)) {
         const entry = storageRegistry.get(key);
-        entry.lastUsed = Date.now();
-        return entry.client;
+        if (entry.configStr === currentConfigStr) {
+            entry.lastUsed = Date.now();
+            return entry.client;
+        }
     }
 
     let client;
@@ -160,6 +164,7 @@ async function getStorage(project) {
     // REGISTRY - REGISTER CLIENT FOR POOLING
     storageRegistry.set(key, {
         client,
+        configStr: currentConfigStr,
         lastUsed: Date.now(),
         isExternal: !!project.resources?.storage?.isExternal
     });

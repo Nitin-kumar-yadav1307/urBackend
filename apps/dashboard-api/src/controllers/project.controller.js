@@ -780,6 +780,13 @@ module.exports.updateExternalConfig = async (req, res) => {
     if (!project)
       return res.status(404).json({ success: false, data: {}, message: "Project not found or access denied." });
 
+    await deleteProjectById(project._id.toString());
+    await deleteProjectByApiKeyCache(project.publishableKey);
+    await deleteProjectByApiKeyCache(project.secretKey);
+    if (updateData["resources.storage.config"]) {
+      storageRegistry.delete(project._id.toString());
+    }
+
     res.status(200).json({ success: true, data: {}, message: "External configuration updated successfully." });
   } catch (err) {
     if (err instanceof z.ZodError) {
