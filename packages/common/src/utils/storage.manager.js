@@ -36,7 +36,7 @@ function createS3Adapter(config) {
                     upload: async (path, buffer, options = {}) => {
                         try {
                             const command = new PutObjectCommand({
-                                Bucket: activeBucket,
+                                Bucket: config.bucket,
                                 Key: path,
                                 Body: buffer,
                                 ContentType: options.contentType
@@ -51,7 +51,7 @@ function createS3Adapter(config) {
                         try {
                             const objects = paths.map(p => ({ Key: p }));
                             const command = new DeleteObjectsCommand({
-                                Bucket: activeBucket,
+                                Bucket: config.bucket,
                                 Delete: { Objects: objects }
                             });
                             await s3Client.send(command);
@@ -68,7 +68,7 @@ function createS3Adapter(config) {
                                 actualPrefix = prefix + options.search;
                             }
                             const command = new ListObjectsV2Command({
-                                Bucket: activeBucket,
+                                Bucket: config.bucket,
                                 Prefix: actualPrefix,
                                 MaxKeys: options.limit || 100
                             });
@@ -93,14 +93,14 @@ function createS3Adapter(config) {
                             return { 
                                 data: { 
                                     publicUrl: null,
-                                    error: `Cloudflare R2 requires a "Public URL Host" or a custom domain. Current endpoint [${config.endpoint}] for bucket [${activeBucket}] might not be publicly accessible.` 
+                                    error: `Cloudflare R2 requires a "Public URL Host" or a custom domain. Current endpoint [${config.endpoint}] for bucket [${config.bucket}] might not be publicly accessible.` 
                                 } 
                             };
                         }
                         if (config.storageProvider === 'gcs') {
-                            return { data: { publicUrl: `https://storage.googleapis.com/${activeBucket}/${path}` } };
+                            return { data: { publicUrl: `https://storage.googleapis.com/${config.bucket}/${path}` } };
                         }
-                        return { data: { publicUrl: `https://${activeBucket}.s3.${config.region}.amazonaws.com/${path}` } };
+                        return { data: { publicUrl: `https://${config.bucket}.s3.${config.region}.amazonaws.com/${path}` } };
                     }
                 };
             }
