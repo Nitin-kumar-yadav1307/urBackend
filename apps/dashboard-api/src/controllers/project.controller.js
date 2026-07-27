@@ -371,7 +371,15 @@ module.exports.createProject = async (req, res) => {
       session.endSession();
     }
     
-    if (err.message && (err.message.includes("Transaction numbers are only allowed") || err.message.includes("buffering timed out"))) {
+    const isTransactionError = err.message && (
+      err.message.includes("Transaction numbers are only allowed") ||
+      err.message.includes("buffering timed out") ||
+      err.message.includes("standalone") ||
+      err.message.includes("replica set") ||
+      err.message.includes("Session")
+    );
+
+    if (isTransactionError) {
       try {
         const { projectObj, newProject } = await executeOperation(null);
         markDeveloperOnboardingStep(req.user._id, 'projectCreated', { projectId: newProject._id }).catch((err) => {

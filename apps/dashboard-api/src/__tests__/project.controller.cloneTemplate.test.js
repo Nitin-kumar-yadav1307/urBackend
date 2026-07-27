@@ -46,7 +46,7 @@ describe("Project Controller - Clone Template", () => {
     };
     jest.clearAllMocks();
 
-    jest.spyOn(mongoose, "startSession").mockRejectedValue(new Error("No replica set / standalone mode fallback"));
+    jest.spyOn(mongoose, "startSession").mockRejectedValue(new Error("Transaction numbers are only allowed on a replica set member or mongos"));
     saveSpy = jest.spyOn(Project.prototype, "save").mockImplementation(function() {
       this._id = this._id || new mongoose.Types.ObjectId();
       return Promise.resolve(this);
