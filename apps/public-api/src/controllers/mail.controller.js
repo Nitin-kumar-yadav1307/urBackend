@@ -357,7 +357,7 @@ const resolveResendClient = async (req) => {
     resend: new Resend(apiKey), 
     apiKey, 
     usingByok,
-    fromAddress: project?.resendFromEmail?.trim() || process.env.EMAIL_FROM || "urBackend <urbackend@apps.bitbros.in>"
+    fromAddress: project?.resendFromEmail?.trim() || process.env.EMAIL_FROM || `Notification from ${project.name} <urbackend@apps.bitbros.in>`
   };
 };
 
