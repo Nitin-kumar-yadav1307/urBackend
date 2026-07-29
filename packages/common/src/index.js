@@ -70,6 +70,8 @@ const {
   sendReleaseEmail,
   sendAuthOtpEmail,
   sendProRequestConfirmationEmail,
+  formatFromAddress,
+  generateDynamicFromAddress,
 } = require("./utils/emailService");
 const {
   loginSchema,
@@ -161,6 +163,8 @@ module.exports = {
   sendReleaseEmail,
   sendAuthOtpEmail,
   sendProRequestConfirmationEmail,
+  formatFromAddress,
+  generateDynamicFromAddress,
   loginSchema,
   signupSchema,
   changePasswordSchema,

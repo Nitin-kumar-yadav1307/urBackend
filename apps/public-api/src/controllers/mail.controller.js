@@ -13,7 +13,7 @@ const getMailCountKey = (projectId, monthKey) =>
 
 const loadProjectMailConfig = async (projectId) => {
   return Project.findById(projectId)
-    .select("+resendApiKey.encrypted +resendApiKey.iv +resendApiKey.tag resendFromEmail +mailTemplates")
+    .select("+resendApiKey.encrypted +resendApiKey.iv +resendApiKey.tag resendFromEmail +mailTemplates name")
     .lean();
 };
 
@@ -342,7 +342,7 @@ const resolveResendClient = async (req) => {
     throw err;
   }
   
-  const project = await Project.findById(projectId).select("+resendApiKey.encrypted +resendApiKey.iv +resendApiKey.tag resendFromEmail").lean();
+  const project = await Project.findById(projectId).select("+resendApiKey.encrypted +resendApiKey.iv +resendApiKey.tag resendFromEmail name").lean();
   const encryptedByokKey = project?.resendApiKey && Object.keys(project.resendApiKey).length > 0 ? project.resendApiKey : null;
   const decryptedByokKey = encryptedByokKey ? decrypt(encryptedByokKey) : null;
   const usingByok = typeof decryptedByokKey === "string" && decryptedByokKey.trim().length > 0;
@@ -356,8 +356,8 @@ const resolveResendClient = async (req) => {
   
   let fromAddress = project?.resendFromEmail?.trim();
   if (!fromAddress) {
-    const { generateDynamicFromAddress } = require("@urbackend/common/src/utils/emailService");
-    fromAddress = generateDynamicFromAddress(project.name);
+    const { generateDynamicFromAddress } = require("@urbackend/common");
+    fromAddress = generateDynamicFromAddress(project?.name);
   }
 
   return { 
