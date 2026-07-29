@@ -354,7 +354,7 @@ const resolveResendClient = async (req) => {
     throw err;
   }
   
-  let fromAddress = project?.resendFromEmail?.trim() || process.env.EMAIL_FROM;
+  let fromAddress = project?.resendFromEmail?.trim();
   if (!fromAddress) {
     const { generateDynamicFromAddress } = require("@urbackend/common/src/utils/emailService");
     fromAddress = generateDynamicFromAddress(project.name);

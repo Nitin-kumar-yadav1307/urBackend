@@ -226,9 +226,7 @@ async function sendAuthOtpEmail(email, { otp, type, pname, byokKey, byokFrom }) 
 
 
         let mailClient = resend;
-        let fromAddress = process.env.EMAIL_FROM
-            ? formatFromAddress(process.env.EMAIL_FROM)
-            : generateDynamicFromAddress(rawPname);
+        let fromAddress = generateDynamicFromAddress(rawPname);
 
         if (byokKey) {
             mailClient = new Resend(byokKey);

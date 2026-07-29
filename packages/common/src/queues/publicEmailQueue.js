@@ -36,7 +36,7 @@ const initPublicEmailWorker = () => {
         const { projectId, payload, usingByok, consumedQuotaKey, templateUsed, projectName } = job.data;
 
         let clientKey = process.env.RESEND_API_KEY_2 || process.env.RESEND_API_KEY;
-        let fromAddress = process.env.EMAIL_FROM;
+        let fromAddress = null;
 
         try {
             if (projectId) {
@@ -63,7 +63,7 @@ const initPublicEmailWorker = () => {
                 const { generateDynamicFromAddress } = require('../utils/emailService');
                 fromAddress = generateDynamicFromAddress(projectName);
             } else {
-                fromAddress = "urBackend <urbackend@apps.bitbros.in>";
+                fromAddress = process.env.EMAIL_FROM || "urBackend <urbackend@apps.bitbros.in>";
             }
         }
 
