@@ -303,7 +303,8 @@ module.exports.sendMail = async (req, res, next) => {
       payload,
       usingByok,
       consumedQuotaKey,
-      templateUsed
+      templateUsed,
+      projectName: project.name
     }, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 }
@@ -353,11 +354,17 @@ const resolveResendClient = async (req) => {
     throw err;
   }
   
+  let fromAddress = project?.resendFromEmail?.trim() || process.env.EMAIL_FROM;
+  if (!fromAddress) {
+    const { generateDynamicFromAddress } = require("@urbackend/common/src/utils/emailService");
+    fromAddress = generateDynamicFromAddress(project.name);
+  }
+
   return { 
     resend: new Resend(apiKey), 
     apiKey, 
     usingByok,
-    fromAddress: project?.resendFromEmail?.trim() || process.env.EMAIL_FROM || `Notification from ${project.name} <urbackend@apps.bitbros.in>`
+    fromAddress
   };
 };
 

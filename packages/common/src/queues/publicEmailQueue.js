@@ -33,27 +33,38 @@ const initPublicEmailWorker = () => {
 
     // Initialize Worker with Rate Limiting (10 per second to respect Resend limits)
     worker = new Worker('public-email-queue', async (job) => {
-        const { projectId, payload, usingByok, consumedQuotaKey, templateUsed } = job.data;
+        const { projectId, payload, usingByok, consumedQuotaKey, templateUsed, projectName } = job.data;
 
         let clientKey = process.env.RESEND_API_KEY_2 || process.env.RESEND_API_KEY;
-        let fromAddress = process.env.EMAIL_FROM || "urBackend <urbackend@apps.bitbros.in>";
+        let fromAddress = process.env.EMAIL_FROM;
 
         try {
-            if (projectId && usingByok) {
-                const project = await Project.findById(projectId).select('+resendApiKey.encrypted +resendApiKey.iv +resendApiKey.tag resendFromEmail').lean();
-                if (project && project.resendApiKey) {
-                    const decrypted = decrypt(project.resendApiKey);
-                    if (typeof decrypted === 'string' && decrypted.trim().length > 0) {
-                        clientKey = decrypted.trim();
-                        fromAddress = project.resendFromEmail && project.resendFromEmail.trim()
-                            ? project.resendFromEmail.trim()
-                            : "onboarding@resend.dev";
+            if (projectId) {
+                if (usingByok) {
+                    const project = await Project.findById(projectId).select('+resendApiKey.encrypted +resendApiKey.iv +resendApiKey.tag resendFromEmail').lean();
+                    if (project && project.resendApiKey) {
+                        const decrypted = decrypt(project.resendApiKey);
+                        if (typeof decrypted === 'string' && decrypted.trim().length > 0) {
+                            clientKey = decrypted.trim();
+                            fromAddress = project.resendFromEmail && project.resendFromEmail.trim()
+                                ? project.resendFromEmail.trim()
+                                : "onboarding@resend.dev";
+                        }
                     }
                 }
             }
         } catch (err) {
             console.error(`[Queue] Failed to load BYOK config for project ${projectId}:`, err);
             // Fallback to global key
+        }
+
+        if (!fromAddress) {
+            if (projectName) {
+                const { generateDynamicFromAddress } = require('../utils/emailService');
+                fromAddress = generateDynamicFromAddress(projectName);
+            } else {
+                fromAddress = "urBackend <urbackend@apps.bitbros.in>";
+            }
         }
 
         if (!clientKey) {

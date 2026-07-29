@@ -26,6 +26,20 @@ const formatFromAddress = (email_address) => {
 
     return `urBackend <${trimmed}>`;
 };
+
+const generateDynamicFromAddress = (projectName) => {
+    const rawPname = projectName || "urBackend";
+    let safeEmailHandle = rawPname.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    if (safeEmailHandle.length < 3) {
+        safeEmailHandle = "urbackend";
+    }
+    safeEmailHandle = safeEmailHandle.substring(0, 30);
+    const safeDisplayName = rawPname.replace(/[\r\n]/g, '').trim();
+    const finalDisplayName = /^[a-zA-Z0-9 ]+$/.test(safeDisplayName) 
+        ? safeDisplayName 
+        : `"${safeDisplayName.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    return `${finalDisplayName} <${safeEmailHandle}@apps.bitbros.in>`;
+};
  
 const defaultFromAddress = formatFromAddress(process.env.EMAIL_FROM);
 const replyToAddress = process.env.EMAIL_REPLY_TO?.trim() || "urbackend@apps.bitbros.in";
@@ -165,19 +179,7 @@ async function sendReleaseEmail(email, { version, title, content, changelogUrl }
     // FUNCTION - SEND AUTH OTP EMAIL
 async function sendAuthOtpEmail(email, { otp, type, pname, byokKey, byokFrom }) {
     const rawPname = pname || "urBackend";
-
-    let safeEmailHandle = rawPname.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-    if (safeEmailHandle.length < 3) {
-        safeEmailHandle = "urbackend";
-    }
-    safeEmailHandle = safeEmailHandle.substring(0, 30);
-
     const safeProjectNameHtml = escapeHtml(rawPname);
-
-    const safeDisplayName = rawPname.replace(/[\r\n]/g, '').trim();
-    const finalDisplayName = /^[a-zA-Z0-9 ]+$/.test(safeDisplayName) 
-        ? safeDisplayName 
-        : `"${safeDisplayName.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     
     const isVerify = type === 'verification';
     const subject = isVerify ? "Verify your account" : "Reset your password";
@@ -226,7 +228,7 @@ async function sendAuthOtpEmail(email, { otp, type, pname, byokKey, byokFrom }) 
         let mailClient = resend;
         let fromAddress = process.env.EMAIL_FROM
             ? formatFromAddress(process.env.EMAIL_FROM)
-            : `${finalDisplayName} <${safeEmailHandle}.urbackend@apps.bitbros.in>`;
+            : generateDynamicFromAddress(rawPname);
 
         if (byokKey) {
             mailClient = new Resend(byokKey);
@@ -384,4 +386,12 @@ urBackend Team`;
     }
 }
 
-module.exports = { sendOtp, sendReleaseEmail, sendAuthOtpEmail, sendProRequestConfirmationEmail, sendExportReadyEmail };
+module.exports = { 
+    sendOtp, 
+    sendReleaseEmail, 
+    sendAuthOtpEmail, 
+    sendProRequestConfirmationEmail, 
+    sendExportReadyEmail,
+    formatFromAddress,
+    generateDynamicFromAddress
+};
