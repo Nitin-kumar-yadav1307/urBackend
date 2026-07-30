@@ -1,12 +1,45 @@
-const { registry } = require("./registry");
+const { registry, circuitBreakers } = require("./registry");
 const { getPublicIp } = require("./network");
 const Project = require("../models/Project");
 const { decrypt } = require("./encryption");
 const mongoose = require("mongoose");
 const redis = require("../config/redis");
 
+const CB_MAX_FAILURES = 3;
+const CB_TIMEOUT_MS = 30000; // 30 seconds
+
+function recordFailure(key) {
+    const state = circuitBreakers.get(key) || { failures: 0, openUntil: null };
+    state.failures += 1;
+    if (state.failures >= CB_MAX_FAILURES) {
+        console.warn(`[CIRCUIT BREAKER] Tripped OPEN for project ${key} due to ${state.failures} failures.`);
+        state.openUntil = Date.now() + CB_TIMEOUT_MS;
+    }
+    circuitBreakers.set(key, state);
+}
+
+function recordSuccess(key) {
+    if (circuitBreakers.has(key)) {
+        circuitBreakers.delete(key);
+    }
+}
+
 async function getConnection(projectId) {
     const key = projectId.toString();
+
+    // 0. Circuit Breaker Check (Fast Fail)
+    const cbState = circuitBreakers.get(key);
+    if (cbState && cbState.openUntil) {
+        if (Date.now() < cbState.openUntil) {
+            const error = new Error(`Service Unavailable: Database for project ${key} is currently unreachable. Circuit breaker is OPEN.`);
+            error.status = 503;
+            throw error;
+        } else {
+            // Half-open: Timeout expired, allow retry
+            cbState.openUntil = null;
+            circuitBreakers.set(key, cbState);
+        }
+    }
 
     // 1. Instant Cache Hit (Fastest Path for UX)
     if (registry.has(key)) {
@@ -83,8 +116,11 @@ async function getConnection(projectId) {
 
     try {
         await connection.asPromise();
+        recordSuccess(key); // Reset failures on successful connection
     } catch (err) {
         console.error("❌ Initial Connection Failed:", err.message);
+        recordFailure(key); // Increment circuit breaker failures
+        
         if (err.message.includes("Server selection timed out") || err.message.includes("Could not connect")) {
             const serverIp = await getPublicIp();
             throw new Error(`Access Denied: Please whitelist Server IP [${serverIp}] in MongoDB Atlas.`);
@@ -94,6 +130,7 @@ async function getConnection(projectId) {
 
     connection.on("error", (err) => {
         console.error(`❌ DB Connection Error for project ${projectId}:`, err);
+        recordFailure(key);
         registry.delete(key); // Clear bad connections immediately
     });
 
@@ -107,7 +144,7 @@ async function getConnection(projectId) {
         console.log(`🔌 Connection closed: ${key}`);
     });
 
-    // Save back to your central in-memory store
+    // Save back to your central in-memory store (LRU handles the capacity limit internally)
     registry.set(key, connection);
 
     return connection;
