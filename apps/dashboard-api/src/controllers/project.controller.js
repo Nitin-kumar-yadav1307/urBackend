@@ -723,22 +723,62 @@ module.exports.updateExternalConfig = async (req, res) => {
       updateData["resources.db.isExternal"] = true;
 
       console.log("Verifying connection to:", projectId);
+      
+      let dashboardIp = null;
+      let publicApiIp = null;
+
       try {
+        dashboardIp = await getPublicIp();
+        
+        // 1. Test local connection (Dashboard API)
         const tempConn = mongoose.createConnection(dbUri, {
           serverSelectionTimeoutMS: 5000,
         });
         await tempConn.asPromise();
         await tempConn.close();
+
+        // 2. Test remote connection (Public API) if PUBLIC_API_URL is configured
+        if (process.env.PUBLIC_API_URL && process.env.INTERNAL_SECRET) {
+            const publicApiRes = await axios.post(`${process.env.PUBLIC_API_URL}/api/internal/test-db`, 
+                { dbUri },
+                { headers: { 'x-internal-secret': process.env.INTERNAL_SECRET }, timeout: 8000 }
+            );
+            // If it didn't throw, it succeeded.
+        } else {
+            console.warn("Skipping Public API DB verification because PUBLIC_API_URL or INTERNAL_SECRET is missing.");
+        }
+
       } catch (connErr) {
         console.error("Verification Connection Failed:", connErr.message);
         let errorMsg = "Could not connect to the provided MongoDB URI.";
-
-        if (
+        
+        // If the error came from Axios (Public API verification failed)
+        if (connErr.response && connErr.response.data && !connErr.response.data.success) {
+            errorMsg = connErr.response.data.message;
+            if (connErr.response.data.serverIp) {
+                publicApiIp = connErr.response.data.serverIp;
+            }
+        } else if (
           connErr.message.includes("Server selection timed out") ||
           connErr.message.includes("Could not connect")
         ) {
-          const serverIp = await getPublicIp();
-          errorMsg = `Access Denied: Please whitelist Server IP [${serverIp}] in MongoDB Atlas.`;
+          // Local failure
+          errorMsg = `Access Denied: Please whitelist Server IPs in MongoDB Atlas.`;
+        }
+
+        // Fetch Public API IP if we don't have it yet, to show both in the error message
+        if (!publicApiIp && process.env.PUBLIC_API_URL) {
+            try {
+                const ipRes = await axios.get(`${process.env.PUBLIC_API_URL}/api/server-ip`, { timeout: 3000 });
+                if (ipRes.data && ipRes.data.ip) publicApiIp = ipRes.data.ip;
+            } catch (e) {
+                console.error("Failed to fetch public API IP for error message", e.message);
+            }
+        }
+
+        if (dashboardIp || publicApiIp) {
+            const ips = [dashboardIp, publicApiIp].filter(Boolean).join(", ");
+            errorMsg = `Access Denied: Please whitelist Server IPs [${ips}] in MongoDB Atlas.`;
         }
 
         return res.status(400).json({ success: false, data: {}, message: errorMsg });

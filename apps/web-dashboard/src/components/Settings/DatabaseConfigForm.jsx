@@ -20,8 +20,17 @@ export default function DatabaseConfigForm({ project, projectId, onProjectUpdate
         Promise.resolve().then(() => setShowForm(!(project?.resources?.db?.isExternal || false)));
         const fetchIp = async () => {
             try { 
-                const res = await api.get(`/api/server-ip`); 
-                if (isMounted) setServerIp(res.data.ip); 
+                const { PUBLIC_API_URL } = await import('../../config');
+                const [res1, res2] = await Promise.allSettled([
+                    api.get(`/api/server-ip`),
+                    fetch(`${PUBLIC_API_URL}/api/server-ip`).then(r => r.json())
+                ]);
+                
+                const ips = [];
+                if (res1.status === 'fulfilled' && res1.value.data.ip) ips.push(res1.value.data.ip);
+                if (res2.status === 'fulfilled' && res2.value.ip) ips.push(res2.value.ip);
+                
+                if (isMounted) setServerIp(ips.join(', '));
             }
             catch (e) { console.error("Failed to fetch server IP", e); }
         };

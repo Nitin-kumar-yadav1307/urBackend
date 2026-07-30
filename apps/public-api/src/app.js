@@ -79,6 +79,9 @@ app.use('/api/storage', limiter, logger, storageRoute);
 app.use('/api/mail', limiter, logger, mailRoute);
 app.use('/api/health', limiter, logger, healthRoute);
 
+const internalRoute = require('./routes/internal');
+app.use('/api/internal', internalRoute);
+
 app.get('/api/server-ip', async (req, res) => {
     const ip = await getPublicIp();
     res.json({ ip });
