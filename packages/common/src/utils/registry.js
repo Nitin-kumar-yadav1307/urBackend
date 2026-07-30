@@ -40,6 +40,13 @@ class LruConnectionMap {
     delete(key) {
         return this.map.delete(key);
     }
+    
+    deleteIfCurrent(key, expectedValue) {
+        if (this.map.has(key) && this.map.get(key) === expectedValue) {
+            return this.map.delete(key);
+        }
+        return false;
+    }
 
     get size() {
         return this.map.size;
@@ -67,7 +74,7 @@ const storageRegistry = new LruConnectionMap(200, (key, client) => {
     }
 });
 
-// Circuit Breaker State Registry (No eviction needed, small overhead, or we can use another Map)
-const circuitBreakers = new Map();
+// Circuit Breaker State Registry (Capped to prevent memory leak on inactive projects)
+const circuitBreakers = new LruConnectionMap(5000);
 
 module.exports = { registry, storageRegistry, circuitBreakers, LruConnectionMap };

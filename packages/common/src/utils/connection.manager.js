@@ -9,8 +9,9 @@ const CB_MAX_FAILURES = 3;
 const CB_TIMEOUT_MS = 30000; // 30 seconds
 
 function recordFailure(key) {
-    const state = circuitBreakers.get(key) || { failures: 0, openUntil: null };
+    const state = circuitBreakers.get(key) || { failures: 0, openUntil: null, probeInFlight: false };
     state.failures += 1;
+    state.probeInFlight = false;
     if (state.failures >= CB_MAX_FAILURES) {
         console.warn(`[CIRCUIT BREAKER] Tripped OPEN for project ${key} due to ${state.failures} failures.`);
         state.openUntil = Date.now() + CB_TIMEOUT_MS;
@@ -20,6 +21,8 @@ function recordFailure(key) {
 
 function recordSuccess(key) {
     if (circuitBreakers.has(key)) {
+        const state = circuitBreakers.get(key);
+        state.probeInFlight = false;
         circuitBreakers.delete(key);
     }
 }
@@ -29,14 +32,21 @@ async function getConnection(projectId) {
 
     // 0. Circuit Breaker Check (Fast Fail)
     const cbState = circuitBreakers.get(key);
-    if (cbState && cbState.openUntil) {
-        if (Date.now() < cbState.openUntil) {
+    if (cbState) {
+        if (cbState.openUntil && Date.now() < cbState.openUntil) {
             const error = new Error(`Service Unavailable: Database for project ${key} is currently unreachable. Circuit breaker is OPEN.`);
             error.status = 503;
             throw error;
-        } else {
-            // Half-open: Timeout expired, allow retry
+        } else if (cbState.openUntil && Date.now() >= cbState.openUntil) {
+            if (cbState.probeInFlight) {
+                // Reject concurrent callers while the single half-open probe is in flight
+                const error = new Error(`Service Unavailable: Database for project ${key} is currently unreachable. Circuit breaker is probing.`);
+                error.status = 503;
+                throw error;
+            }
+            // Half-open: Timeout expired, allow one retry probe
             cbState.openUntil = null;
+            cbState.probeInFlight = true;
             circuitBreakers.set(key, cbState);
         }
     }
@@ -84,6 +94,7 @@ async function getConnection(projectId) {
             plan = projectDoc.plan || 'free';
         } catch (err) {
             console.error("Decryption Error:", err);
+            // Treat decryption errors as hard failures, don't trip breaker for user config errors, but we can't connect anyway
             throw new Error("Invalid or corrupted external config");
         }
 
@@ -130,18 +141,19 @@ async function getConnection(projectId) {
 
     connection.on("error", (err) => {
         console.error(`❌ DB Connection Error for project ${projectId}:`, err);
-        recordFailure(key);
-        registry.delete(key); // Clear bad connections immediately
+        if (registry.deleteIfCurrent(key, connection)) {
+            recordFailure(key); // Only record failure if it was the active connection
+        }
     });
 
     connection.on("disconnected", () => {
         console.log(`🔌 External DB disconnected: ${projectId}`);
-        registry.delete(key);
+        registry.deleteIfCurrent(key, connection);
     });
 
     connection.on("close", () => {
-        registry.delete(key);
         console.log(`🔌 Connection closed: ${key}`);
+        registry.deleteIfCurrent(key, connection);
     });
 
     // Save back to your central in-memory store (LRU handles the capacity limit internally)
