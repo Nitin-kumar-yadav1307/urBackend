@@ -61,6 +61,8 @@ const { createAdminUser, resetPassword, getUserDetails, updateAdminUser, listAdm
 
 const exportController = require('../controllers/dbExport.controller');
 const { syncSchema } = require('../controllers/syncSchema.controller');
+const { getConfigLogs } = require('../controllers/configLog.controller');
+
 
 // POST REQ FOR CREATE PROJECT
 router.post('/', authMiddleware, planEnforcement.attachDeveloper, planEnforcement.checkProjectLimit, planEnforcement.checkDeveloperCapability('createProject'), createProject);
@@ -180,5 +182,8 @@ router.post('/:projectId/collections/:collectionName/export', authMiddleware, au
 
 // PUT REQ FOR SCHEMA SYNC (CLI)
 router.put('/:projectId/sync-schema', authFlexible, authorizeProject('admin'), planEnforcement.attachDeveloper, syncSchema);
+
+// GET REQ FOR PROJECT CONFIG CHANGE LOGS
+router.get('/:projectId/config-logs', authMiddleware, authorizeProject(), getConfigLogs);
 
 module.exports = router;

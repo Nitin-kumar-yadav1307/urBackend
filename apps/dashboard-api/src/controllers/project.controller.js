@@ -42,6 +42,7 @@ const { clearCompiledModel } = require("@urbackend/common");
 const { createUniqueIndexes, ApiAnalytics, MailLog } = require("@urbackend/common");
 const { getProjectAccessQuery, getProjectRole, Invitation, PROJECT_TEMPLATES } = require("@urbackend/common");
 const { emitEvent } = require('../utils/emitEvent');
+const { logConfigChange } = require('../utils/logConfigChange');
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SAFETY_MAX_BYTES = 100 * 1024 * 1024;
 const CONFIRM_UPLOAD_SIZE_TOLERANCE_BYTES = 64;
@@ -786,6 +787,23 @@ module.exports.updateExternalConfig = async (req, res) => {
     if (updateData["resources.storage.config"]) {
       storageRegistry.delete(project._id.toString());
     }
+
+    // --- Config Audit Log ---
+    const byodChanges = [];
+    if (updateData["resources.db.config"])      byodChanges.push({ field: 'resources.db.uri',        to: '••••••••' });
+    if (updateData["resources.storage.config"]) byodChanges.push({ field: 'resources.storage.config', to: '••••••••' });
+    if (byodChanges.length > 0) {
+      await logConfigChange({
+        projectId,
+        user: req.user,
+        category: updateData["resources.db.config"] ? 'byod_db' : 'byod_storage',
+        label: updateData["resources.db.config"]
+          ? 'External database (BYOD) configuration updated'
+          : 'External storage (BYOD) configuration updated',
+        diff: byodChanges,
+      });
+    }
+    // --- End Config Audit Log ---
 
     res.status(200).json({ success: true, data: {}, message: "External configuration updated successfully." });
   } catch (err) {
@@ -1935,6 +1953,31 @@ module.exports.updateProject = async (req, res) => {
     await deleteProjectByApiKeyCache(project.publishableKey);
     await deleteProjectByApiKeyCache(project.secretKey);
 
+    // --- Config Audit Log ---
+    const changedFields = Object.keys(updateFields).filter(f => f !== 'resendApiKey');
+    if (changedFields.length > 0) {
+      await logConfigChange({
+        projectId: req.params.projectId,
+        user: req.user,
+        category: 'project_info',
+        label: `Project info updated: ${changedFields.join(', ')}`,
+        diff: changedFields.map(field => ({
+          field,
+          to: field === 'resendFromEmail' ? updateFields[field] : updateFields[field],
+        })),
+      });
+    }
+    if (updateFields.resendApiKey) {
+      await logConfigChange({
+        projectId: req.params.projectId,
+        user: req.user,
+        category: 'resend',
+        label: 'Resend API key updated',
+        diff: [{ field: 'resendApiKey', to: '••••••••' }],
+      });
+    }
+    // --- End Config Audit Log ---
+
     res.json(sanitizeProjectResponse(project.toObject()));
 
   } catch (err) {
@@ -2385,6 +2428,16 @@ module.exports.updateAllowedDomains = async (req, res) => {
     await deleteProjectByApiKeyCache(project.publishableKey);
     await deleteProjectByApiKeyCache(project.secretKey);
 
+    // --- Config Audit Log ---
+    await logConfigChange({
+      projectId: req.params.projectId,
+      user: req.user,
+      category: 'allowed_domains',
+      label: `Allowed domains updated (${cleanedDomains.length} domain${cleanedDomains.length !== 1 ? 's' : ''})`,
+      diff: [{ field: 'allowedDomains', to: cleanedDomains }],
+    });
+    // --- End Config Audit Log ---
+
     res.json({
       message: "Allowed domains updated",
       allowedDomains: project.allowedDomains,
@@ -2668,6 +2721,16 @@ module.exports.toggleAuth = async (req, res) => {
     await deleteProjectByApiKeyCache(project.publishableKey);
     await deleteProjectByApiKeyCache(project.secretKey);
 
+    // --- Config Audit Log ---
+    await logConfigChange({
+      projectId,
+      user: req.user,
+      category: 'auth',
+      label: `Authentication ${project.isAuthEnabled ? 'enabled' : 'disabled'}`,
+      diff: [{ field: 'isAuthEnabled', to: project.isAuthEnabled }],
+    });
+    // --- End Config Audit Log ---
+
     const projectObj = sanitizeProjectResponse(project.toObject());
 
     res.json({
@@ -2701,6 +2764,16 @@ module.exports.togglePublicSignup = async (req, res, next) => {
     await deleteProjectById(projectId);
     await deleteProjectByApiKeyCache(project.publishableKey);
     await deleteProjectByApiKeyCache(project.secretKey);
+
+    // --- Config Audit Log ---
+    await logConfigChange({
+      projectId,
+      user: req.user,
+      category: 'public_signup',
+      label: `Public signup ${project.allowPublicSignup ? 'enabled' : 'disabled'}`,
+      diff: [{ field: 'allowPublicSignup', to: project.allowPublicSignup }],
+    });
+    // --- End Config Audit Log ---
 
     const projectObj = sanitizeProjectResponse(project.toObject());
 
@@ -2780,6 +2853,20 @@ module.exports.updateAuthProviders = async (req, res) => {
     await deleteProjectByApiKeyCache(project.publishableKey);
     await deleteProjectByApiKeyCache(project.secretKey);
 
+    // --- Config Audit Log ---
+    const updatedProviders = SOCIAL_PROVIDER_KEYS.filter(p => parsed[p]);
+    await logConfigChange({
+      projectId,
+      user: req.user,
+      category: 'auth_providers',
+      label: `OAuth providers updated: ${updatedProviders.join(', ')}`,
+      diff: updatedProviders.map(provider => ({
+        field: `authProviders.${provider}.enabled`,
+        to: !!parsed[provider]?.enabled,
+      })),
+    });
+    // --- End Config Audit Log ---
+
     return res.json({
       message: "Auth providers updated",
       authProviders: sanitizeAuthProviders(project.toObject().authProviders),
@@ -2850,6 +2937,21 @@ module.exports.updateCollectionRls = async (req, res) => {
         await deleteProjectById(projectId);
         await deleteProjectByApiKeyCache(project.publishableKey);
         await deleteProjectByApiKeyCache(project.secretKey);
+
+        // --- Config Audit Log ---
+        await logConfigChange({
+          projectId,
+          user: req.user,
+          category: 'collection_rls',
+          label: `RLS settings updated for collection '${collectionName}'`,
+          diff: [
+            { field: 'rls.enabled',              to: collection.rls.enabled },
+            { field: 'rls.mode',                 to: collection.rls.mode },
+            { field: 'rls.ownerField',           to: collection.rls.ownerField },
+            { field: 'rls.requireAuthForWrite',  to: collection.rls.requireAuthForWrite },
+          ],
+        });
+        // --- End Config Audit Log ---
 
         res.json({
             message: "Collection RLS updated",
