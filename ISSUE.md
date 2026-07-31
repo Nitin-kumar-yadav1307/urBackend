@@ -65,7 +65,7 @@ Store an audit entry every time a project-level setting is mutated.
 
 ### 2. New API Endpoint
 
-```
+```http
 GET /api/projects/:projectId/config-logs
 ```
 
@@ -102,7 +102,8 @@ GET /api/projects/:projectId/config-logs
       "total": 42,
       "totalPages": 2
     }
-  }
+  },
+  "message": "Configuration change logs retrieved successfully."
 }
 ```
 

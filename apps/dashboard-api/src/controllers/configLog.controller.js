@@ -51,6 +51,7 @@ module.exports.getConfigLogs = async (req, res, next) => {
           totalPages: Math.ceil(total / limit),
         },
       },
+      message: 'Configuration change logs retrieved successfully.',
     });
   } catch (err) {
     next(err);

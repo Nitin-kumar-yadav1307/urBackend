@@ -789,18 +789,22 @@ module.exports.updateExternalConfig = async (req, res) => {
     }
 
     // --- Config Audit Log ---
-    const byodChanges = [];
-    if (updateData["resources.db.config"])      byodChanges.push({ field: 'resources.db.uri',        to: '••••••••' });
-    if (updateData["resources.storage.config"]) byodChanges.push({ field: 'resources.storage.config', to: '••••••••' });
-    if (byodChanges.length > 0) {
+    if (updateData["resources.db.config"]) {
       await logConfigChange({
         projectId,
         user: req.user,
-        category: updateData["resources.db.config"] ? 'byod_db' : 'byod_storage',
-        label: updateData["resources.db.config"]
-          ? 'External database (BYOD) configuration updated'
-          : 'External storage (BYOD) configuration updated',
-        diff: byodChanges,
+        category: 'byod_db',
+        label: 'External database (BYOD) configuration updated',
+        diff: [{ field: 'resources.db.uri', to: '••••••••' }],
+      });
+    }
+    if (updateData["resources.storage.config"]) {
+      await logConfigChange({
+        projectId,
+        user: req.user,
+        category: 'byod_storage',
+        label: 'External storage (BYOD) configuration updated',
+        diff: [{ field: 'resources.storage.config', to: '••••••••' }],
       });
     }
     // --- End Config Audit Log ---
@@ -2862,7 +2866,9 @@ module.exports.updateAuthProviders = async (req, res) => {
       label: `OAuth providers updated: ${updatedProviders.join(', ')}`,
       diff: updatedProviders.map(provider => ({
         field: `authProviders.${provider}.enabled`,
-        to: !!parsed[provider]?.enabled,
+        // Use the persisted value from the saved document; fall back to the
+        // request value only if the provider block was newly written.
+        to: project.authProviders?.[provider]?.enabled ?? !!parsed[provider]?.enabled,
       })),
     });
     // --- End Config Audit Log ---
