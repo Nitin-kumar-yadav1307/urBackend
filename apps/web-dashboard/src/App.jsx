@@ -34,6 +34,7 @@ import AdminProRequests from './pages/AdminProRequests';
 import Onboarding from './pages/Onboarding';
 import AdminMetrics from './pages/AdminMetrics';
 import TeamMembers from './pages/TeamMembers';
+import ConfigHistory from './pages/ConfigHistory';
 
 import { LayoutProvider } from './context/LayoutContext';
 import { PlanProvider } from './context/PlanContext';
@@ -138,6 +139,8 @@ function AppContent() {
         <Route path="/settings" element={<ProtectedRoute allowIncompleteOnboarding allowUnverified><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
 
         <Route path="/project/:projectId/settings" element={<ProtectedRoute><MainLayout><ProjectSettings /></MainLayout></ProtectedRoute>} />
+        
+        <Route path="/project/:projectId/audit-log" element={<ProtectedRoute><MainLayout><ConfigHistory /></MainLayout></ProtectedRoute>} />
 
         <Route path="/project/:projectId/team" element={<ProtectedRoute><MainLayout><TeamMembers /></MainLayout></ProtectedRoute>} />
 
