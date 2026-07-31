@@ -29,6 +29,8 @@ const PlatformEvent = require("./models/PlatformEvent");
 const DeveloperActivity = require("./models/DeveloperActivity");
 const MailLog = require("./models/MailLog");
 const Invitation = require("./models/Invitation");
+const ProjectConfigLog = require("./models/ProjectConfigLog");
+
 
 // Queues
 const { authEmailQueue, initAuthEmailWorker } = require("./queues/authEmailQueue");
@@ -152,6 +154,7 @@ module.exports = {
   DeveloperActivity,
   MailLog,
   Invitation,
+  ProjectConfigLog,
   authEmailQueue,
   exportQueue,
   emailQueue,
