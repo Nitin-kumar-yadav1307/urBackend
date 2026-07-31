@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
     LayoutDashboard, Database, Shield, HardDrive, Settings, BarChart2,
     ArrowLeft, LogOut, X, Rocket, Webhook, Users, Mail, ChevronLeft, ChevronRight,
-    LayoutTemplate
+    LayoutTemplate, History
 } from 'lucide-react';
 import ThemeToggle from '../ThemeToggle';
 
@@ -71,6 +71,9 @@ function Sidebar({ logo, isOpen, onClose, isCollapsed, onToggleCollapse }) {
                         </Link>
                         <Link to={`/project/${projectId}/team`} onClick={handleNavClick} className={`nav-item ${isActive(`/project/${projectId}/team`) ? 'active' : ''}`} {...navA11yProps('Team')}>
                             <Users size={16} /> <span>Team</span>
+                        </Link>
+                        <Link to={`/project/${projectId}/audit-log`} onClick={handleNavClick} className={`nav-item ${isActive(`/project/${projectId}/audit-log`) ? 'active' : ''}`} {...navA11yProps('Audit Log')}>
+                            <History size={16} /> <span>Audit Log</span>
                         </Link>
                         <Link to={`/project/${projectId}/settings`} onClick={handleNavClick} className={`nav-item ${isActive(`/project/${projectId}/settings`) ? 'active' : ''}`} {...navA11yProps('Settings')}>
                             <Settings size={16} /> <span>Settings</span>
