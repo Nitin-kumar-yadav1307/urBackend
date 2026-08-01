@@ -100,9 +100,8 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
-          # Use a PAT if available. This bypasses repos where GITHUB_TOKEN is
-          # restricted from creating PRs via GitHub Actions settings.
-          token: ${{ secrets.CHANGELOG_PR_TOKEN || secrets.GITHUB_TOKEN }}
+          # Using github.token directly to avoid issues with expired PATs causing git to prompt for credentials
+          token: ${{ github.token }}
           branch: changelog/week-of-${{ github.run_id }}
           base: main
           commit-message: 'docs: weekly changelog update'
