@@ -21,9 +21,17 @@ export default function DatabaseConfigForm({ project, projectId, onProjectUpdate
         const fetchIp = async () => {
             try { 
                 const { PUBLIC_API_URL } = await import('../../config');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+
                 const [res1, res2] = await Promise.allSettled([
                     api.get(`/api/server-ip`),
-                    fetch(`${PUBLIC_API_URL}/api/server-ip`).then(r => r.json())
+                    fetch(`${PUBLIC_API_URL}/api/server-ip`, { signal: controller.signal })
+                        .then(r => {
+                            if (!r.ok) throw new Error("Public API unresponsive");
+                            return r.json();
+                        })
+                        .finally(() => clearTimeout(timeoutId))
                 ]);
                 
                 const ips = [];

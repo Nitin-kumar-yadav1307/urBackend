@@ -79,6 +79,9 @@ app.use('/api/storage', limiter, logger, storageRoute);
 app.use('/api/mail', limiter, logger, mailRoute);
 app.use('/api/health', limiter, logger, healthRoute);
 
+// IMPORTANT: Restrict the /api/internal route exposed below to trusted internal network sources 
+// at the infrastructure layer (e.g., VPC, Security Groups, or ingress rules).
+// Ensure this path is unreachable from the public internet.
 const internalRoute = require('./routes/internal');
 app.use('/api/internal', internalRoute);
 

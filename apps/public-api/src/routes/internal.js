@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { getPublicIp } = require('@urbackend/common');
+const crypto = require('crypto');
+const { getPublicIp, isSafeUri } = require('@urbackend/common');
 const router = express.Router();
 
 // Middleware to protect internal routes
@@ -8,12 +9,17 @@ const internalAuth = (req, res, next) => {
     const secret = process.env.INTERNAL_SECRET;
     if (!secret) {
         console.error("INTERNAL_SECRET is not configured on Public API");
-        return res.status(500).json({ success: false, message: "Server misconfiguration" });
+        return res.status(500).json({ success: false, data: {}, message: "Server misconfiguration" });
     }
     
-    const providedSecret = req.headers['x-internal-secret'];
-    if (!providedSecret || providedSecret !== secret) {
-        return res.status(403).json({ success: false, message: "Forbidden: Invalid internal secret" });
+    const providedSecret = req.headers['x-internal-secret'] || '';
+    
+    // Convert both to buffers of the same length to use timingSafeEqual
+    const secretBuffer = Buffer.from(secret, 'utf8');
+    const providedBuffer = Buffer.from(providedSecret, 'utf8');
+    
+    if (secretBuffer.length !== providedBuffer.length || !crypto.timingSafeEqual(secretBuffer, providedBuffer)) {
+        return res.status(403).json({ success: false, data: {}, message: "Forbidden: Invalid internal secret" });
     }
     
     next();
@@ -22,17 +28,25 @@ const internalAuth = (req, res, next) => {
 router.post('/test-db', internalAuth, async (req, res) => {
     const { dbUri } = req.body;
     if (!dbUri) {
-        return res.status(400).json({ success: false, message: "dbUri is required" });
+        return res.status(400).json({ success: false, data: {}, message: "dbUri is required" });
+    }
+    
+    if (!(await isSafeUri(dbUri))) {
+        return res.status(400).json({
+            success: false,
+            data: {},
+            message: "DB URI is pointing to a restricted host, internal network, or unsupported URI format.",
+        });
     }
 
     console.log("[Internal] Verifying connection for external DB...");
+    let tempConn = null;
     try {
-        const tempConn = mongoose.createConnection(dbUri, {
+        tempConn = mongoose.createConnection(dbUri, {
             serverSelectionTimeoutMS: 5000,
         });
         await tempConn.asPromise();
-        await tempConn.close();
-        return res.status(200).json({ success: true, message: "Connection verified" });
+        return res.status(200).json({ success: true, data: {}, message: "Connection verified" });
     } catch (connErr) {
         console.error("[Internal] Verification Connection Failed:", connErr.message);
         let errorMsg = "Could not connect to the provided MongoDB URI.";
@@ -42,11 +56,19 @@ router.post('/test-db', internalAuth, async (req, res) => {
             connErr.message.includes("Server selection timed out") ||
             connErr.message.includes("Could not connect")
         ) {
-            serverIp = await getPublicIp();
-            errorMsg = `Access Denied: Please whitelist Server IP [${serverIp}] in MongoDB Atlas.`;
+            try {
+                serverIp = await getPublicIp();
+                errorMsg = `Access Denied: Please whitelist Server IP [${serverIp}] in MongoDB Atlas.`;
+            } catch (ipErr) {
+                console.error("Failed to fetch Public API IP:", ipErr.message);
+            }
         }
 
-        return res.status(400).json({ success: false, message: errorMsg, serverIp });
+        return res.status(400).json({ success: false, data: { serverIp }, message: errorMsg });
+    } finally {
+        if (tempConn) {
+            await tempConn.close();
+        }
     }
 });
 
