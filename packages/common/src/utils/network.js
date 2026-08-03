@@ -60,6 +60,19 @@ function isRestrictedIPv4(ip) {
   if (n >= ipv4ToInt("169.254.0.0") && n <= ipv4ToInt("169.254.255.255")) return true;
   // Unspecified: 0.0.0.0/8
   if (n >= ipv4ToInt("0.0.0.0") && n <= ipv4ToInt("0.255.255.255")) return true;
+  // CGNAT (Carrier-Grade NAT): 100.64.0.0/10
+  if (n >= ipv4ToInt("100.64.0.0") && n <= ipv4ToInt("100.127.255.255")) return true;
+  // Documentation / TEST-NETs: 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24
+  if (n >= ipv4ToInt("192.0.2.0") && n <= ipv4ToInt("192.0.2.255")) return true;
+  if (n >= ipv4ToInt("198.51.100.0") && n <= ipv4ToInt("198.51.100.255")) return true;
+  if (n >= ipv4ToInt("203.0.113.0") && n <= ipv4ToInt("203.0.113.255")) return true;
+  // Multicast: 224.0.0.0/4
+  if (n >= ipv4ToInt("224.0.0.0") && n <= ipv4ToInt("239.255.255.255")) return true;
+  // Reserved / Future use: 240.0.0.0/4
+  if (n >= ipv4ToInt("240.0.0.0") && n <= ipv4ToInt("255.255.255.255")) return true;
+  // Broadcast: 255.255.255.255
+  if (n === ipv4ToInt("255.255.255.255")) return true;
+
   return false;
 }
 
@@ -76,9 +89,25 @@ function isRestrictedIPv6(ip) {
   if (expanded === "::1" || expanded === "0:0:0:0:0:0:0:1") return true;
   // IPv6 unspecified ::
   if (expanded === "::" || expanded === "0:0:0:0:0:0:0:0") return true;
-  // IPv4-mapped IPv6 addresses (::ffff:x.x.x.x)
-  const mapped = expanded.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped && isRestrictedIPv4(mapped[1])) return true;
+  
+  // IPv4-mapped IPv6 addresses (::ffff:x.x.x.x) or hex format
+  if (expanded.startsWith("::ffff:") || expanded.startsWith("0:0:0:0:0:ffff:")) {
+    const v4Part = expanded.split(':').pop();
+    if (v4Part.includes('.')) {
+      if (isRestrictedIPv4(v4Part)) return true;
+    } else {
+      // Hex representation
+      const hexStr = v4Part.padStart(8, '0');
+      const ip4Str = [
+        parseInt(hexStr.substring(0, 2), 16),
+        parseInt(hexStr.substring(2, 4), 16),
+        parseInt(hexStr.substring(4, 6), 16),
+        parseInt(hexStr.substring(6, 8), 16)
+      ].join('.');
+      if (isRestrictedIPv4(ip4Str)) return true;
+    }
+  }
+
   // IPv6 link-local fe80::/10 (fe80: through febf:)
   if (/^fe[89ab]/.test(expanded)) return true;
   // IPv6 ULA (Unique Local Address) fc00::/7

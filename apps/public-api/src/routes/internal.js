@@ -12,11 +12,12 @@ const internalAuth = (req, res, next) => {
         return res.status(500).json({ success: false, data: {}, message: "Server misconfiguration" });
     }
     
-    const providedSecret = req.headers['x-internal-secret'] || '';
+    const header = req.headers['x-internal-secret'];
+    const providedSecret = Array.isArray(header) ? header[0] : (header || '');
     
     // Convert both to buffers of the same length to use timingSafeEqual
-    const secretBuffer = Buffer.from(secret, 'utf8');
-    const providedBuffer = Buffer.from(providedSecret, 'utf8');
+    const secretBuffer = Buffer.from(String(secret), 'utf8');
+    const providedBuffer = Buffer.from(String(providedSecret), 'utf8');
     
     if (secretBuffer.length !== providedBuffer.length || !crypto.timingSafeEqual(secretBuffer, providedBuffer)) {
         return res.status(403).json({ success: false, data: {}, message: "Forbidden: Invalid internal secret" });

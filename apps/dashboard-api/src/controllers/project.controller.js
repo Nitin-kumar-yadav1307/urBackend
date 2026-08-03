@@ -613,7 +613,7 @@ module.exports.updateExternalConfig = async (req, res) => {
 
       try {
         await Promise.race([
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Overall verification timeout exceeded")), 9500)),
+          new Promise((_, reject) => setTimeout(() => reject(new AppError(408, "Overall verification timeout exceeded")), 9500)),
           (async () => {
             // 1. Test local connection (Dashboard API)
             tempConn = mongoose.createConnection(dbUri, {
@@ -623,7 +623,7 @@ module.exports.updateExternalConfig = async (req, res) => {
 
             // 2. Test remote connection (Public API)
             if (!process.env.PUBLIC_API_URL || !process.env.INTERNAL_SECRET) {
-              throw new Error("Missing PUBLIC_API_URL or INTERNAL_SECRET for DB verification.");
+              throw new AppError(500, "Missing PUBLIC_API_URL or INTERNAL_SECRET for DB verification.");
             }
             
             await axios.post(`${process.env.PUBLIC_API_URL}/api/internal/test-db`, 
@@ -633,7 +633,7 @@ module.exports.updateExternalConfig = async (req, res) => {
           })()
         ]);
       } catch (connErr) {
-        console.error("Verification Connection Failed:", connErr.message);
+        console.error("Verification Connection Failed");
         let errorMsg = "Could not connect to the provided MongoDB URI.";
         
         try {
@@ -642,8 +642,13 @@ module.exports.updateExternalConfig = async (req, res) => {
           console.error("Failed to fetch Dashboard API IP:", ipErr.message);
         }
         
-        // If the error came from Axios (Public API verification failed)
-        if (connErr.response) {
+        if (connErr && connErr.isAxiosError && !connErr.response) {
+            return res.status(502).json({
+                success: false,
+                data: {},
+                message: "Public API verification could not be completed (network/timeout). Please try again later.",
+            });
+        } else if (connErr.response) {
             if (connErr.response.data && connErr.response.data.success === false && connErr.response.status === 400) {
               // It's a database-URI-specific verification failure
               errorMsg = connErr.response.data.message;
@@ -657,13 +662,15 @@ module.exports.updateExternalConfig = async (req, res) => {
               errorMsg = "Public API verification failed.";
             }
         } else if (
-          connErr.message.includes("Server selection timed out") ||
-          connErr.message.includes("Could not connect") ||
-          connErr.message.includes("Overall verification timeout exceeded")
+          connErr.message && (
+            connErr.message.includes("Server selection timed out") ||
+            connErr.message.includes("Could not connect") ||
+            connErr.message.includes("Overall verification timeout exceeded")
+          )
         ) {
           // Local failure
           errorMsg = `Access Denied: Please whitelist Server IPs in MongoDB Atlas.`;
-        } else if (connErr.message.includes("Missing PUBLIC_API_URL")) {
+        } else if (connErr.message && connErr.message.includes("Missing PUBLIC_API_URL")) {
           return res.status(500).json({ success: false, data: {}, message: "Server misconfiguration: DB verification failed." });
         }
 
