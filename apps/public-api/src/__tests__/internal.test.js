@@ -1,6 +1,7 @@
 process.env.INTERNAL_SECRET = "test-secret";
+
+jest.mock("marked", () => ({ marked: { parse: jest.fn() } }));
 jest.mock("@urbackend/common/src/utils/emailService", () => ({}));
-jest.mock("marked", () => ({ marked: jest.fn() }));
 
 jest.mock("@urbackend/common", () => {
   const original = jest.requireActual("@urbackend/common");
