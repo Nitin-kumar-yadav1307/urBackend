@@ -101,4 +101,73 @@ describe("project.controller - BYOD Verification", () => {
             message: expect.stringContaining("Public API verification could not be completed")
         }));
     });
+
+    it("should return 400 with server IP if local mongoose connection fails", async () => {
+        isSafeUri.mockResolvedValue({ isSafe: true, resolvedIps: { "somehost": ["10.0.0.1"] } });
+        
+        const mockConn = { 
+            asPromise: jest.fn().mockRejectedValue(new Error("Server selection timed out")), 
+            close: jest.fn().mockResolvedValue(true) 
+        };
+        mongoose.createConnection.mockReturnValue(mockConn);
+        
+        await updateExternalConfig(req, res);
+        
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: expect.stringContaining("Access Denied"),
+            data: expect.objectContaining({
+                serverIps: expect.arrayContaining(["192.168.1.1"])
+            })
+        }));
+    });
+
+    it("should pass through 400 errors from remote Public API verification", async () => {
+        isSafeUri.mockResolvedValue({ isSafe: true, resolvedIps: { "somehost": ["10.0.0.1"] } });
+        
+        const mockConn = { asPromise: jest.fn().mockResolvedValue(true), close: jest.fn().mockResolvedValue(true) };
+        mongoose.createConnection.mockReturnValue(mockConn);
+        
+        const axiosErr = new Error("Request failed with status code 400");
+        axiosErr.isAxiosError = true;
+        axiosErr.response = {
+            status: 400,
+            data: {
+                message: "Access Denied: Please whitelist Server IP [203.0.113.1] in MongoDB Atlas.",
+                data: { serverIp: "203.0.113.1" }
+            }
+        };
+        axios.post.mockRejectedValue(axiosErr);
+        
+        await updateExternalConfig(req, res);
+        
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: expect.stringContaining("203.0.113.1"),
+            data: expect.objectContaining({
+                serverIps: expect.arrayContaining(["192.168.1.1", "203.0.113.1"])
+            })
+        }));
+    });
+
+    it("should return 504 if overall verification times out", async () => {
+        isSafeUri.mockResolvedValue({ isSafe: true, resolvedIps: { "somehost": ["10.0.0.1"] } });
+        
+        const mockConn = { asPromise: jest.fn().mockReturnValue(new Promise(() => {})), close: jest.fn().mockResolvedValue(true) };
+        mongoose.createConnection.mockReturnValue(mockConn);
+        
+        jest.useFakeTimers();
+        const updatePromise = updateExternalConfig(req, res);
+        
+        // Advance time to trigger the 9.5s timeout
+        jest.advanceTimersByTime(10000);
+        
+        await updatePromise;
+        jest.useRealTimers();
+        
+        expect(res.status).toHaveBeenCalledWith(504);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            message: expect.stringContaining("verification timeout exceeded")
+        }));
+    });
 });
