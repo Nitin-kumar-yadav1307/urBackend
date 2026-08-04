@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-const { getPublicIp, isSafeUri } = require('@urbackend/common');
+const { getPublicIp, isSafeUri, createSafeLookup } = require('@urbackend/common');
 const router = express.Router();
 
 // Middleware to protect internal routes
@@ -32,7 +32,8 @@ router.post('/test-db', internalAuth, async (req, res) => {
         return res.status(400).json({ success: false, data: {}, message: "dbUri is required" });
     }
     
-    if (!(await isSafeUri(dbUri))) {
+    const safeCheck = await isSafeUri(dbUri);
+    if (!safeCheck.isSafe) {
         return res.status(400).json({
             success: false,
             data: {},
@@ -45,6 +46,7 @@ router.post('/test-db', internalAuth, async (req, res) => {
     try {
         tempConn = mongoose.createConnection(dbUri, {
             serverSelectionTimeoutMS: 5000,
+            lookup: createSafeLookup(safeCheck.resolvedIps)
         });
         await tempConn.asPromise();
         return res.status(200).json({ success: true, data: {}, message: "Connection verified" });

@@ -131,49 +131,135 @@ function isRestrictedIP(ip) {
  * Validate a URI to ensure it does not target restricted hosts or IP ranges (SSRF prevention).
  * Performs DNS resolution on hostnames to check both A and AAAA records against restricted ranges.
  * Blocks loopback, RFC-1918 private ranges, cloud metadata endpoints, and other reserved IP ranges.
+ * Parses mongodb:// and mongodb+srv:// URIs properly, extracting all hosts.
  * @async
  * @param {string} uri - The URI to validate
- * @returns {Promise<boolean>} True if the URI is safe to connect to, false if it targets a restricted host
+ * @returns {Promise<{isSafe: boolean, resolvedIps?: Object, reason?: string}>} Object containing safety status and resolved IPs for DNS rebinding protection
  */
 const isSafeUri = async (uri) => {
   try {
-    const parsed = new URL(uri);
-    const host = parsed.hostname.replace(/^\[|\]$/g, "").toLowerCase();
+    let hostsToResolve = [];
+    const lowerUri = uri.toLowerCase();
 
-    // Block well-known loopback and internal hostnames
-    const blockedHostnames = ["localhost", "metadata.google.internal"];
-    if (blockedHostnames.includes(host)) return false;
+    // Custom parsing for mongodb:// and mongodb+srv://
+    if (lowerUri.startsWith("mongodb://") || lowerUri.startsWith("mongodb+srv://")) {
+        const isSrv = lowerUri.startsWith("mongodb+srv://");
+        const withoutScheme = uri.substring(isSrv ? 14 : 10);
+        
+        // Remove auth
+        let withoutAuth = withoutScheme;
+        const atIndex = withoutScheme.indexOf('@');
+        if (atIndex !== -1) {
+            withoutAuth = withoutScheme.substring(atIndex + 1);
+        }
+        
+        // Extract host part (before / or ?)
+        let hostPart = withoutAuth;
+        const slashIndex = withoutAuth.indexOf('/');
+        const questionIndex = withoutAuth.indexOf('?');
+        let endIdx = -1;
+        if (slashIndex !== -1 && questionIndex !== -1) endIdx = Math.min(slashIndex, questionIndex);
+        else if (slashIndex !== -1) endIdx = slashIndex;
+        else if (questionIndex !== -1) endIdx = questionIndex;
+        
+        if (endIdx !== -1) {
+            hostPart = withoutAuth.substring(0, endIdx);
+        }
 
-    // Reject mongodb+srv:// URIs as they perform hidden SRV/TXT discovery
-    // We cannot safely validate all targets without resolving SRV records
-    if (uri.toLowerCase().includes("mongodb+srv://")) return false;
+        const rawHosts = hostPart.split(',');
 
-    // If the host is a bare IPv4 or IPv6 address, check all restricted ranges
-    if (net.isIPv4(host) || net.isIPv6(host)) {
-      return !isRestrictedIP(host);
+        if (isSrv) {
+            // Only one host allowed in SRV
+            if (rawHosts.length > 1) return { isSafe: false, reason: "Multiple hosts in SRV" };
+            let srvHost = rawHosts[0];
+            const portIdx = srvHost.indexOf(':');
+            if (portIdx !== -1) srvHost = srvHost.substring(0, portIdx);
+            
+            // Resolve SRV records to find underlying hosts
+            try {
+                const srvRecords = await dns.resolveSrv(`_mongodb._tcp.${srvHost}`);
+                hostsToResolve = srvRecords.map(r => r.name);
+            } catch (err) {
+                return { isSafe: false, reason: "SRV resolution failed" };
+            }
+        } else {
+            // Multiple hosts for replica sets
+            hostsToResolve = rawHosts.map(h => {
+                let host = h;
+                // Handle IPv6 literal [2001:db8::1]:27017 or just [2001:db8::1]
+                if (host.startsWith('[')) {
+                    const closeIdx = host.indexOf(']');
+                    return host.substring(1, closeIdx);
+                }
+                const portIdx = host.indexOf(':');
+                return portIdx !== -1 ? host.substring(0, portIdx) : host;
+            });
+        }
+    } else {
+        // Standard URL parsing for other schemes
+        const parsed = new URL(uri);
+        hostsToResolve = [parsed.hostname.replace(/^\[|\]$/g, "")];
     }
 
-    // For hostnames, perform DNS resolution to check both A and AAAA records
-    const [ipv4Result, ipv6Result] = await Promise.allSettled([
-      dns.resolve4(host),
-      dns.resolve6(host),
-    ]);
+    const blockedHostnames = ["localhost", "metadata.google.internal"];
+    const resolvedIps = {};
 
-    const resolved = [
-      ...(ipv4Result.status === "fulfilled" ? ipv4Result.value : []),
-      ...(ipv6Result.status === "fulfilled" ? ipv6Result.value : []),
-    ];
+    for (const host of hostsToResolve) {
+        const lowerHost = host.toLowerCase();
+        if (blockedHostnames.includes(lowerHost)) return { isSafe: false, reason: "Blocked hostname" };
 
-    // If no addresses resolved, treat as unsafe
-    if (resolved.length === 0) return false;
+        if (net.isIPv4(lowerHost) || net.isIPv6(lowerHost)) {
+            if (isRestrictedIP(lowerHost)) return { isSafe: false, reason: "Restricted IP" };
+            resolvedIps[lowerHost] = [lowerHost];
+            continue;
+        }
 
-    // Check all resolved addresses for restricted ranges
-    if (resolved.some((addr) => isRestrictedIP(addr))) return false;
+        // For hostnames, perform DNS resolution to check both A and AAAA records
+        const [ipv4Result, ipv6Result] = await Promise.allSettled([
+            dns.resolve4(lowerHost),
+            dns.resolve6(lowerHost),
+        ]);
 
-    return true;
+        const resolved = [
+            ...(ipv4Result.status === "fulfilled" ? ipv4Result.value : []),
+            ...(ipv6Result.status === "fulfilled" ? ipv6Result.value : []),
+        ];
+
+        // If no addresses resolved, treat as unsafe
+        if (resolved.length === 0) return { isSafe: false, reason: "No addresses resolved" };
+
+        // Check all resolved addresses for restricted ranges
+        if (resolved.some((addr) => isRestrictedIP(addr))) return { isSafe: false, reason: "Resolves to restricted IP" };
+
+        resolvedIps[lowerHost] = resolved;
+    }
+
+    return { isSafe: true, resolvedIps };
   } catch (e) {
-    return false;
+    return { isSafe: false, reason: e.message };
   }
 };
 
-module.exports = { getPublicIp, isSafeUri };
+/**
+ * Creates a custom DNS lookup function for Node/Mongoose that strictly enforces
+ * connections only to the pre-validated IP addresses. Prevents DNS Rebinding attacks.
+ * @param {Object} resolvedIps - Dictionary mapping hostnames to arrays of validated IPs
+ * @returns {Function} Custom lookup function compatible with net.Socket/Mongoose
+ */
+const createSafeLookup = (resolvedIps) => {
+    return (hostname, options, callback) => {
+        // options might be just options object or callback if arity varies
+        const cb = typeof options === 'function' ? options : callback;
+        const lowerHost = hostname.toLowerCase();
+        const addrs = resolvedIps[lowerHost];
+        
+        if (addrs && addrs.length > 0) {
+            const ip = addrs[0]; // Pick first validated IP
+            cb(null, ip, net.isIPv6(ip) ? 6 : 4);
+        } else {
+            cb(new Error(`DNS Rebinding Protection: Host ${hostname} was not pre-validated or resolved to an unsafe IP.`));
+        }
+    };
+};
+
+module.exports = { getPublicIp, isSafeUri, createSafeLookup };

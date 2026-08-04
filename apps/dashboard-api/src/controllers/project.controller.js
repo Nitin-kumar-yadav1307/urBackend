@@ -22,7 +22,7 @@ const { encrypt, decrypt } = require("@urbackend/common");
 const { URL } = require("url");
 const path = require("path");
 const axios = require("axios");
-const { getConnection, isSafeUri } = require("@urbackend/common");
+const { getConnection, getPublicIp, isSafeUri, createSafeLookup } = require("@urbackend/common");
 const { getCompiledModel } = require("@urbackend/common");
 const { QueryEngine } = require("@urbackend/common");
 const { storageRegistry } = require("@urbackend/common");
@@ -37,7 +37,7 @@ const {
 const { isProjectStorageExternal, getBucket } = require("@urbackend/common");
 const { getPresignedUploadUrl } = require("@urbackend/common");
 const { verifyUploadedFile } = require("@urbackend/common");
-const { getPublicIp } = require("@urbackend/common");
+
 const { clearCompiledModel } = require("@urbackend/common");
 const { createUniqueIndexes, ApiAnalytics, MailLog } = require("@urbackend/common");
 const { getProjectAccessQuery, getProjectRole, Invitation, PROJECT_TEMPLATES } = require("@urbackend/common");
@@ -595,7 +595,8 @@ module.exports.updateExternalConfig = async (req, res) => {
     const updateData = {};
 
     if (dbUri) {
-      if (!(await isSafeUri(dbUri)))
+      const safeCheck = await isSafeUri(dbUri);
+      if (!safeCheck.isSafe)
         return res.status(400).json({
           success: false,
           data: {},
@@ -618,6 +619,7 @@ module.exports.updateExternalConfig = async (req, res) => {
             // 1. Test local connection (Dashboard API)
             tempConn = mongoose.createConnection(dbUri, {
               serverSelectionTimeoutMS: 5000,
+              lookup: createSafeLookup(safeCheck.resolvedIps)
             });
             await tempConn.asPromise();
 
