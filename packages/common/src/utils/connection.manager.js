@@ -1,5 +1,5 @@
 const { registry, circuitBreakers } = require("./registry");
-const { getPublicIp } = require("./network");
+const { getPublicIp, isSafeUri, createSafeLookup } = require("./network");
 const Project = require("../models/Project");
 const { decrypt } = require("./encryption");
 const mongoose = require("mongoose");
@@ -106,13 +106,19 @@ async function getConnection(projectId) {
     // We dynamically allocate pooling size depending on usage tiers to balance RAM & Throughput
     const isPremiumUser = plan === 'premium';
 
+    const safeCheck = await isSafeUri(dbUri);
+    if (!safeCheck.isSafe) {
+        throw new Error("DB URI targets a restricted internal host (SSRF Prevented).");
+    }
+
     const connectionOptions = {
         maxPoolSize: isPremiumUser ? 50 : 15,    // Cap free/hobby projects at 15 to prevent crashing your server
         minPoolSize: 2,                          // Keeps 2 warm sockets alive for instant response time
         maxIdleTimeMS: 15000,                    // Native driver automatically kills idle sockets after 15 seconds
         connectTimeoutMS: 5000,                  // Fail fast (5s) if user provides a bad/dead connection string
         socketTimeoutMS: 45000,
-        waitQueueTimeoutMS: 5000                 // Prevents requests from stalling forever if pool is exhausted
+        waitQueueTimeoutMS: 5000,                // Prevents requests from stalling forever if pool is exhausted
+        lookup: createSafeLookup(safeCheck.resolvedIps)
     };
 
     // Initialize the pool with custom options

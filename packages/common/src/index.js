@@ -109,7 +109,7 @@ const {
   clearCompiledModel,
   createUniqueIndexes,
 } = require("./utils/injectModel");
-const { getPublicIp } = require("./utils/network");
+const { getPublicIp, isSafeUri, createSafeLookup } = require("./utils/network");
 const {
   isProjectStorageExternal,
   isProjectDbExternal,
@@ -201,6 +201,8 @@ module.exports = {
   clearCompiledModel,
   createUniqueIndexes,
   getPublicIp,
+  isSafeUri,
+  createSafeLookup,
   isProjectStorageExternal,
   isProjectDbExternal,
   getBucket,
