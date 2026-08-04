@@ -115,8 +115,10 @@ describe("project.controller - BYOD Verification", () => {
         
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            success: false,
             message: expect.stringContaining("Access Denied")
         }));
+        expect(mockConn.close).toHaveBeenCalled();
     });
 
     it("should pass through 400 errors from remote Public API verification", async () => {
@@ -141,8 +143,10 @@ describe("project.controller - BYOD Verification", () => {
         
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            success: false,
             message: expect.stringContaining("203.0.113.1")
         }));
+        expect(mockConn.close).toHaveBeenCalled();
     });
 
     it("should return 504 if overall verification times out", async () => {
@@ -152,20 +156,20 @@ describe("project.controller - BYOD Verification", () => {
         mongoose.createConnection.mockReturnValue(mockConn);
         
         jest.useFakeTimers();
-        const updatePromise = updateExternalConfig(req, res);
-        
-        // Wait for promises (like isSafeUri) to resolve and the race condition to start
-        await Promise.resolve();
-        
-        // Advance time to trigger the 9.5s timeout
-        jest.advanceTimersByTime(10000);
-        
-        await updatePromise;
-        jest.useRealTimers();
+        try {
+            const updatePromise = updateExternalConfig(req, res);
+            await jest.advanceTimersByTimeAsync(10000);
+            await updatePromise;
+        } finally {
+            jest.useRealTimers();
+        }
         
         expect(res.status).toHaveBeenCalledWith(400);
         expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+            success: false,
+            data: expect.any(Object),
             message: expect.stringContaining("Access Denied")
         }));
+        expect(mockConn.close).toHaveBeenCalled();
     });
 });

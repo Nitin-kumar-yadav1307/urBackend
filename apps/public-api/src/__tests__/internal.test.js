@@ -80,6 +80,7 @@ describe("Internal Routes /api/internal", () => {
             expect(res.status).toBe(400);
             expect(res.body.message).toMatch(/Access Denied/);
             expect(res.body.message).toMatch(/203\.0\.113\.1/);
+            expect(mockConn.close).toHaveBeenCalled();
         });
 
         it("should return 200 on successful connection verification", async () => {
@@ -97,7 +98,9 @@ describe("Internal Routes /api/internal", () => {
             
             expect(res.status).toBe(200);
             expect(res.body.success).toBe(true);
+            expect(res.body.data).toEqual(expect.any(Object));
             expect(res.body.message).toMatch(/Connection verified/i);
+            expect(mockConn.close).toHaveBeenCalled();
         });
     });
 });
