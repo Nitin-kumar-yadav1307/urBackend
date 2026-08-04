@@ -91,20 +91,30 @@ function isRestrictedIPv6(ip) {
   if (expanded === "::" || expanded === "0:0:0:0:0:0:0:0") return true;
   
   // IPv4-mapped IPv6 addresses (::ffff:x.x.x.x) or hex format
-  if (expanded.startsWith("::ffff:") || expanded.startsWith("0:0:0:0:0:ffff:")) {
-    const v4Part = expanded.split(':').pop();
+  const ffffIndex = expanded.lastIndexOf("ffff:");
+  if (ffffIndex !== -1 && (expanded.startsWith("::ffff:") || expanded.startsWith("0:0:0:0:0:ffff:"))) {
+    const v4Part = expanded.substring(ffffIndex + 5);
     if (v4Part.includes('.')) {
       if (isRestrictedIPv4(v4Part)) return true;
     } else {
       // Hex representation
-      const hexStr = v4Part.padStart(8, '0');
-      const ip4Str = [
-        parseInt(hexStr.substring(0, 2), 16),
-        parseInt(hexStr.substring(2, 4), 16),
-        parseInt(hexStr.substring(4, 6), 16),
-        parseInt(hexStr.substring(6, 8), 16)
-      ].join('.');
-      if (isRestrictedIPv4(ip4Str)) return true;
+      const parts = v4Part.split(':');
+      let hexStr = '';
+      if (parts.length === 2) {
+          hexStr = parts[0].padStart(4, '0') + parts[1].padStart(4, '0');
+      } else if (parts.length === 1) {
+          hexStr = parts[0].padStart(8, '0');
+      }
+      
+      if (hexStr.length === 8) {
+          const ip4Str = [
+            parseInt(hexStr.substring(0, 2), 16),
+            parseInt(hexStr.substring(2, 4), 16),
+            parseInt(hexStr.substring(4, 6), 16),
+            parseInt(hexStr.substring(6, 8), 16)
+          ].join('.');
+          if (isRestrictedIPv4(ip4Str)) return true;
+      }
     }
   }
 
