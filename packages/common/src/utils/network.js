@@ -248,14 +248,43 @@ const isSafeUri = async (uri) => {
  */
 const createSafeLookup = (resolvedIps) => {
     return (hostname, options, callback) => {
-        // options might be just options object or callback if arity varies
         const cb = typeof options === 'function' ? options : callback;
+        const opts = typeof options === 'object' ? options : {};
         const lowerHost = hostname.toLowerCase();
-        const addrs = resolvedIps[lowerHost];
+        
+        if (net.isIP(lowerHost)) {
+            if (isRestrictedIP(lowerHost)) {
+                return cb(new Error(`DNS Rebinding Protection: IP literal ${hostname} is restricted.`));
+            }
+            if (opts.all) {
+                return cb(null, [{ address: lowerHost, family: net.isIPv6(lowerHost) ? 6 : 4 }]);
+            }
+            return cb(null, lowerHost, net.isIPv6(lowerHost) ? 6 : 4);
+        }
+
+        let addrs = resolvedIps[lowerHost];
         
         if (addrs && addrs.length > 0) {
-            const ip = addrs[0]; // Pick first validated IP
-            cb(null, ip, net.isIPv6(ip) ? 6 : 4);
+            if (opts.family === 4) {
+                addrs = addrs.filter(ip => net.isIPv4(ip));
+            } else if (opts.family === 6) {
+                addrs = addrs.filter(ip => net.isIPv6(ip));
+            }
+
+            if (addrs.length === 0) {
+                return cb(new Error(`DNS Rebinding Protection: No addresses match requested family ${opts.family} for ${hostname}`));
+            }
+
+            if (opts.all) {
+                const formatted = addrs.map(ip => ({
+                    address: ip,
+                    family: net.isIPv6(ip) ? 6 : 4
+                }));
+                return cb(null, formatted);
+            }
+            
+            const ip = addrs[0];
+            return cb(null, ip, net.isIPv6(ip) ? 6 : 4);
         } else {
             cb(new Error(`DNS Rebinding Protection: Host ${hostname} was not pre-validated or resolved to an unsafe IP.`));
         }

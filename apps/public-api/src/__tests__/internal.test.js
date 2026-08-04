@@ -1,4 +1,5 @@
 process.env.INTERNAL_SECRET = "test-secret";
+process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379/0";
 
 jest.mock("marked", () => ({ marked: { parse: jest.fn() } }));
 jest.mock("@urbackend/common/src/utils/emailService", () => ({}));
