@@ -81,5 +81,23 @@ describe("Internal Routes /api/internal", () => {
             expect(res.body.message).toMatch(/Access Denied/);
             expect(res.body.message).toMatch(/203\.0\.113\.1/);
         });
+
+        it("should return 200 on successful connection verification", async () => {
+            isSafeUri.mockResolvedValueOnce({ isSafe: true, resolvedIps: { "fake-host": ["93.184.216.34"] } });
+            
+            const mockConn = {
+                asPromise: jest.fn().mockResolvedValue(true),
+                close: jest.fn().mockResolvedValue(true)
+            };
+            mongoose.createConnection.mockReturnValueOnce(mockConn);
+
+            const res = await request(app).post("/api/internal/test-db")
+                .set("x-internal-secret", validSecret)
+                .send({ dbUri: "mongodb://fake-host:27017/test" });
+            
+            expect(res.status).toBe(200);
+            expect(res.body.success).toBe(true);
+            expect(res.body.message).toMatch(/Connection verified/i);
+        });
     });
 });
