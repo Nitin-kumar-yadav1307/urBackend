@@ -1,6 +1,8 @@
-const { Project } = require('@urbackend/common/src/models');
+const { Project, Developer } = require('@urbackend/common/src/models');
 const { forwardToPythonService } = require('../utils/internalPythonClient');
 const { AppError, ApiResponse, getProjectAccessQuery } = require('@urbackend/common');
+const { decrypt } = require('@urbackend/common/src/utils/encryption');
+const { encryptForTransit } = require('../utils/transitEncryption');
 
 /**
  * Controller to handle AI Query Builder requests.
@@ -65,10 +67,36 @@ const queryBuilder = async (req, res, next) => {
             { key: "updatedAt", type: "DATE" }
         );
 
+        // ── Hierarchical BYOK Resolution ──
+        let resolvedKey = null;
+
+        // 1. Check project-level BYOK
+        const projectByok = await Project.findById(projectId)
+            .select('+byok.groqKey.encrypted +byok.groqKey.iv +byok.groqKey.tag');
+        if (projectByok?.byok?.groqKey?.encrypted) {
+            resolvedKey = decrypt(projectByok.byok.groqKey);
+        }
+
+        // 2. Fallback to developer-level BYOK
+        if (!resolvedKey) {
+            const dev = await Developer.findById(req.user._id).select('+byok');
+            if (dev?.byok?.groqKey?.encrypted) {
+                resolvedKey = decrypt(dev.byok.groqKey);
+            }
+        }
+
+        // 3. Encrypt for secure transit to Python
+        const encryptedByok = resolvedKey
+            ? { groqKey: encryptForTransit(resolvedKey) }
+            : null;
+
         // 3. Forward request to Python Service
         const aiResponse = await forwardToPythonService('/ai/query-builder', {
             prompt: safePrompt,
-            schema_fields: schemaFields
+            schema_fields: schemaFields,
+            developer_id: req.user._id.toString(),
+            plan: req.user.plan || 'free',
+            encrypted_byok: encryptedByok
         });
 
         // 4. Return the structured JSON to the frontend

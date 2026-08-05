@@ -54,7 +54,8 @@ const {
     inviteMember,
     updateMemberRole,
     removeMember,
-    updateCollection
+    updateCollection,
+    updateProjectByok
 } = require("../controllers/project.controller");
 
 const { createAdminUser, resetPassword, getUserDetails, updateAdminUser, listAdminUsers, deleteAdminUser, listUserSessions, revokeUserSession } = require('../controllers/userAuth.controller');
@@ -107,6 +108,9 @@ router.delete('/:projectId', authMiddleware, authorizeProject('owner'), verifyEm
 
 // PATCH REQ FOR UPDATE PROJECT
 router.patch('/:projectId', authMiddleware, authorizeProject('admin'), planEnforcement.attachDeveloper, planEnforcement.checkByokGate, updateProject);
+
+// BYOK Project Save Endpoint
+router.put('/:projectId/byok', authMiddleware, authorizeProject('admin'), planEnforcement.attachDeveloper, updateProjectByok);
 
 // MAIL TEMPLATES (Phase 2)
 router.get('/:projectId/mail/templates', authMiddleware, authorizeProject(), listMailTemplates);

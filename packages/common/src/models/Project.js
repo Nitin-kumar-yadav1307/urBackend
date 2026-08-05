@@ -160,6 +160,11 @@ const projectSchema = new mongoose.Schema(
       maxCollections: { type: Number, default: null }
     },
 
+    // BYOK — Bring Your Own Key for AI
+    byok: {
+        groqKey: { type: resourceConfigSchema, default: null },
+    },
+
     // Team Members
     members: {
       type: [

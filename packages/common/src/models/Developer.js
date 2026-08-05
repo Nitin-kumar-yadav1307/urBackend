@@ -106,6 +106,17 @@ const developerSchema = new mongoose.Schema({
     onboarding: {
         type: onboardingSchema,
         default: () => ({})
+    },
+    byok: {
+        type: new mongoose.Schema({
+            groqKey: {
+                iv:        { type: String, default: null },
+                encrypted: { type: String, default: null },
+                tag:       { type: String, default: null },
+            }
+        }, { _id: false }),
+        select: false,
+        default: null
     }
 }, { timestamps: true });
 
