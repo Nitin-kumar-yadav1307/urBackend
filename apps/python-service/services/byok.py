@@ -15,6 +15,16 @@ logger = logging.getLogger(__name__)
 FREE_TIER_LIMIT = 5
 PRO_TIER_LIMIT = 100
 
+LUA_RATE_LIMIT = """
+local count = redis.call('INCR', KEYS[1])
+local ttl = redis.call('TTL', KEYS[1])
+if count == 1 or ttl == -1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+    ttl = tonumber(ARGV[1])
+end
+return {count, ttl}
+"""
+
 
 async def resolve_ai_client(
     developer_id: str | None,
@@ -72,15 +82,8 @@ async def resolve_ai_client(
     month = datetime.datetime.now(datetime.UTC).strftime("%Y-%m")
     key = f"ai:gen:count:{developer_id}:{month}"
 
-    # Atomic pipeline: INCR + TTL check
-    pipe = redis_client.pipeline()
-    pipe.incr(key)
-    pipe.ttl(key)
-    count, ttl = await pipe.execute()
-
-    # First usage this month → set 32-day expiry
-    if count == 1 or ttl == -1:
-        await redis_client.expire(key, 32 * 86400)
+    # Atomic script execution: INCR + EXPIRE (if new key)
+    count, ttl = await redis_client.eval(LUA_RATE_LIMIT, 1, key, 32 * 86400)
 
     if count > limit:
         tier_name = "Pro" if plan == "pro" else "Free"
