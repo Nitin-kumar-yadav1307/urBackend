@@ -1,6 +1,6 @@
 const { Project, Developer } = require('@urbackend/common/src/models');
 const { forwardToPythonService } = require('../utils/internalPythonClient');
-const { AppError, ApiResponse, getProjectAccessQuery } = require('@urbackend/common');
+const { AppError, ApiResponse, getProjectAccessQuery, resolveEffectivePlan } = require('@urbackend/common');
 const { decrypt } = require('@urbackend/common/src/utils/encryption');
 const { encryptForTransit } = require('../utils/transitEncryption');
 
@@ -35,18 +35,26 @@ const queryBuilder = async (req, res, next) => {
             throw new AppError(403, "Cannot query the users collection via AI");
         }
 
-        // 1. Fetch the project and specifically the requested collection schema
-        const project = await Project.findOne(
-            { ...getProjectAccessQuery(req.user._id), _id: projectId, "collections.name": safeCollectionName },
-            { "collections.$": 1 }
-        );
+        // 1. Load collection and project details
+        const project = await Project.findOne({
+            _id: projectId,
+            ...getProjectAccessQuery(req.user._id)
+        });
 
-        if (!project || !project.collections || project.collections.length === 0) {
-            throw new AppError(404, "Collection not found or access denied");
+        if (!project) {
+            throw new AppError(404, "Project not found or access denied");
         }
 
-        const collection = project.collections[0];
-        const allowedFields = new Set([
+        const collection = project.collections.find(
+            col => col.name.toLowerCase() === safeCollectionName.toLowerCase()
+        );
+
+        if (!collection) {
+            throw new AppError(404, `Collection '${safeCollectionName}' not found in this project`);
+        }
+
+        // Add index checking fields
+        const schemaFieldsCheck = new Set([
             ...collection.model.map(field => field.key),
             '_id',
             'createdAt',
@@ -79,11 +87,9 @@ const queryBuilder = async (req, res, next) => {
         }
 
         // 2. Fallback to developer-level BYOK
-        if (!resolvedKey) {
-            const dev = await Developer.findById(req.user._id).select('+byok');
-            if (dev?.byok?.groqKey?.encrypted) {
-                resolvedKey = decrypt(dev.byok.groqKey);
-            }
+        const dev = await Developer.findById(req.user._id).select('+byok');
+        if (!resolvedKey && dev?.byok?.groqKey?.encrypted) {
+            resolvedKey = decrypt(dev.byok.groqKey);
         }
 
         // 3. Encrypt for secure transit to Python
@@ -91,12 +97,15 @@ const queryBuilder = async (req, res, next) => {
             ? { groqKey: encryptForTransit(resolvedKey) }
             : null;
 
+        // Resolve effective plan dynamically based on DB (handling subscription expiry safely)
+        const effectivePlan = dev ? resolveEffectivePlan(dev) : 'free';
+
         // 3. Forward request to Python Service
         const aiResponse = await forwardToPythonService('/ai/query-builder', {
             prompt: safePrompt,
             schema_fields: schemaFields,
             developer_id: req.user._id.toString(),
-            plan: req.user.plan || 'free',
+            plan: effectivePlan,
             encrypted_byok: encryptedByok
         });
 
