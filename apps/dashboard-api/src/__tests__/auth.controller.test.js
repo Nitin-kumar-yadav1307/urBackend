@@ -516,7 +516,7 @@ describe('auth.controller', () => {
             await authController.getMe(req, res, next);
 
             expect(Developer.findById).toHaveBeenCalledWith('dev_id_1');
-            expect(mockSelect).toHaveBeenCalledWith('-password -refreshToken');
+            expect(mockSelect).toHaveBeenCalledWith('-password -refreshToken +byok');
             expect(res.json).toHaveBeenCalledWith(
                 expect.objectContaining({ success: true })
             );

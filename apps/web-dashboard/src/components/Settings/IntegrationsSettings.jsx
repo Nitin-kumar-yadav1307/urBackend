@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Shield, Database, Mail, HardDrive, Check, Copy, Search, X, Eye, EyeOff,
-    CheckCircle, Info, Server
+    CheckCircle, Info, Server, Cpu
 } from 'lucide-react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
@@ -96,6 +96,11 @@ export default function IntegrationsSettings({
     const [showSecret, setShowSecret] = useState(false);
     const [copiedUrl, setCopiedUrl] = useState(false);
 
+    // BYOK State
+    const [projectGroqKey, setProjectGroqKey] = useState('');
+    const [showProjectGroqKey, setShowProjectGroqKey] = useState(false);
+    const [savingProjectByok, setSavingProjectByok] = useState(false);
+
     const closeButtonRef = useRef(null);
 
     const githubCallbackUrl = `${PUBLIC_API_URL}/api/userAuth/social/github/callback`;
@@ -107,6 +112,33 @@ export default function IntegrationsSettings({
             Promise.resolve().then(() => setAuthProviders(normalized));
         }
     }, [project?.authProviders]);
+
+    const handleProjectByokUpdate = async (clear = false) => {
+        const payloadKey = clear ? null : projectGroqKey.trim();
+        if (!clear && (!payloadKey || !payloadKey.startsWith('gsk_'))) {
+            toast.error("Invalid Groq API key format. Key must start with 'gsk_'.");
+            return;
+        }
+
+        setSavingProjectByok(true);
+        try {
+            const res = await api.put(`/api/projects/${projectId}/byok`, { groqKey: payloadKey });
+            if (res.data?.success) {
+                onProjectUpdate();
+                if (clear) {
+                    setProjectGroqKey('');
+                    toast.success("Project BYOK key cleared.");
+                } else {
+                    setProjectGroqKey('');
+                    toast.success("Project BYOK key saved securely.");
+                }
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || err.response?.data?.error || "Failed to update project BYOK settings");
+        } finally {
+            setSavingProjectByok(false);
+        }
+    };
 
     useEffect(() => {
         if (!selectedProviderModal) return;
@@ -371,6 +403,76 @@ export default function IntegrationsSettings({
             {/* 4. STORAGE ENGINES */}
             <div>
                 <StorageConfigForm project={project} projectId={projectId} onProjectUpdate={onProjectUpdate} role={role} />
+            </div>
+
+            {/* 5. AI SERVICES (BYOK) */}
+            <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 4px 0' }}>AI Services</h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '0 0 1rem 0' }}>
+                    Project-level overrides for AI capabilities.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(168,85,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a855f7' }}>
+                                    <Cpu size={20} />
+                                </div>
+                                <div>
+                                    <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600 }}>Groq API (BYOK)</h4>
+                                    <span style={{ fontSize: '0.7rem', color: project?.hasGroqKey ? '#22c55e' : 'var(--color-text-muted)' }}>
+                                        {project?.hasGroqKey ? '• Configured (Encrypted at rest)' : '• Not configured'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                            <FormField label="Groq API Key" hint="This key overrides your developer-level key for this project only.">
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showProjectGroqKey ? "text" : "password"}
+                                        className="input-field"
+                                        placeholder={project?.hasGroqKey ? "gsk_••••••••••••••••" : "Enter your Groq API key"}
+                                        value={projectGroqKey}
+                                        onChange={(e) => setProjectGroqKey(e.target.value)}
+                                        style={{ ...inputStyle, fontFamily: 'monospace', paddingRight: '40px' }}
+                                        disabled={isViewer}
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setShowProjectGroqKey(!showProjectGroqKey)}
+                                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                    >
+                                        {showProjectGroqKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </FormField>
+                        </div>
+                        {!isViewer && (
+                            <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                {project?.hasGroqKey && (
+                                    <button
+                                        onClick={() => handleProjectByokUpdate(true)}
+                                        className="btn"
+                                        disabled={savingProjectByok}
+                                        style={{ height: '32px', fontSize: '0.75rem', padding: '0 14px', background: 'rgba(234, 84, 85, 0.1)', color: '#ea5455', border: '1px solid rgba(234, 84, 85, 0.2)' }}
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => handleProjectByokUpdate(false)}
+                                    className="btn btn-primary"
+                                    disabled={savingProjectByok || !projectGroqKey}
+                                    style={{ height: '32px', fontSize: '0.75rem', padding: '0 14px' }}
+                                >
+                                    {savingProjectByok ? "Saving..." : "Save Key"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* ─── APPWRITE STYLE OAUTH2 PROVIDER SETTINGS MODAL ─── */}

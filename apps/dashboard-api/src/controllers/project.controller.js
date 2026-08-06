@@ -183,6 +183,14 @@ const sanitizeProjectResponse = (projectObj) => {
     Object.keys(resendConfig).length > 0;
   delete projectObj.resendApiKey;
 
+  // BYOK AI key — expose boolean, strip encrypted payload
+  const byokConfig = projectObj.byok?.groqKey;
+  projectObj.hasGroqKey =
+    byokConfig != null &&
+    typeof byokConfig === "object" &&
+    !!byokConfig.encrypted;
+  delete projectObj.byok;
+
   projectObj.authProviders = sanitizeAuthProviders(projectObj.authProviders);
 
   if (projectObj.collections && Array.isArray(projectObj.collections)) {
@@ -504,7 +512,10 @@ module.exports.getSingleProject = async (req, res) => {
           "+authProviders.google.clientSecret.tag " +
           "+resendApiKey.encrypted " +
           "+resendApiKey.iv " +
-          "+resendApiKey.tag",
+          "+resendApiKey.tag " +
+          "+byok.groqKey.encrypted " +
+          "+byok.groqKey.iv " +
+          "+byok.groqKey.tag",
       );
       if (!project) return res.status(404).json({ success: false, data: {}, message: "Project not found." });
       projectObj = project.toObject();
