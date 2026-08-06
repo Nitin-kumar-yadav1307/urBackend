@@ -12,7 +12,8 @@ from unittest.mock import AsyncMock, patch
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 if str(SERVICE_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVICE_ROOT))
-os.environ.setdefault("INTERNAL_SECRET", "test-internal-secret")
+os.environ.setdefault("INTERNAL_SECRET", "a" * 32)
+os.environ.setdefault("INTERNAL_PAYLOAD_KEY", "a" * 64)
 
 from dependencies import verify_signature
 from config import settings

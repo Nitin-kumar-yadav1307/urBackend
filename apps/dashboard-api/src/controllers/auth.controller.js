@@ -672,3 +672,44 @@ module.exports.updateOnboarding = async (req, res, next) => {
         next(err);
     }
 };
+
+const { encrypt, resolveEffectivePlan, getPlanLimits } = require("@urbackend/common");
+
+module.exports.updateByok = async (req, res, next) => {
+    try {
+        const { groqKey } = req.body;
+
+        // Allow null to clear the key
+        if (groqKey === null) {
+            await Developer.findByIdAndUpdate(req.user._id, { $set: { byok: null } });
+            return new ApiResponse({ hasGroqKey: false }, "BYOK key cleared").send(res);
+        }
+
+        const effectivePlan = resolveEffectivePlan(req.user);
+        const limits = getPlanLimits({ plan: effectivePlan });
+        if (!limits.aiByokEnabled) {
+            throw new AppError(403, "Bring Your Own AI Key (Groq) is a Pro feature. Please upgrade to continue.");
+        }
+
+        if (typeof groqKey !== 'string' || !groqKey.startsWith('gsk_') || groqKey.length > 200) {
+            throw new AppError(400, "Invalid Groq API key format. Key must start with 'gsk_'.");
+        }
+
+        const encryptedKey = encrypt(groqKey);
+
+        await Developer.findByIdAndUpdate(req.user._id, {
+            $set: {
+                'byok.groqKey': {
+                    iv: encryptedKey.iv,
+                    encrypted: encryptedKey.encrypted,
+                    tag: encryptedKey.tag
+                }
+            }
+        });
+
+        return new ApiResponse({ hasGroqKey: true }, "BYOK key saved successfully").send(res);
+    } catch (err) {
+        if (err instanceof AppError) return next(err);
+        next(new AppError(500, "Internal server error during BYOK configuration"));
+    }
+};

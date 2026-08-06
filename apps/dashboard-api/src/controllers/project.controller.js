@@ -3427,4 +3427,71 @@ module.exports.removeMember = async (req, res, next) => {
   }
 };
 
+module.exports.updateProjectByok = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { groqKey } = req.body;
+
+    const mongoose = require('mongoose');
+    if (!mongoose.Types.ObjectId.isValid(projectId)) {
+      return next(new AppError(400, "Invalid project ID"));
+    }
+
+    const projectCheck = await Project.findOne({
+      _id: projectId,
+      ...getProjectAccessQuery(req.user._id)
+    });
+
+    if (!projectCheck) {
+      return next(new AppError(404, "Project not found or access denied"));
+    }
+
+    // Clearing the key should always be allowed (even if plan downgraded)
+    if (groqKey === null) {
+      await Project.findByIdAndUpdate(projectId, { $set: { 'byok.groqKey': null } });
+      await deleteProjectById(projectId);
+      return res.json({
+        success: true,
+        data: { hasGroqKey: false },
+        message: "Project BYOK key cleared"
+      });
+    }
+
+    // Enforce plan gate for saving a key (supports enterprise customLimits overrides)
+    const { resolveEffectivePlan, getPlanLimits } = require('@urbackend/common');
+    const effectivePlan = resolveEffectivePlan(req.developer || req.user);
+    const limits = getPlanLimits({ plan: effectivePlan, customLimits: projectCheck.customLimits || null });
+    if (!limits.aiByokEnabled) {
+      return next(new AppError(403, 'Bring Your Own AI Key (Groq) is a Pro feature. Please upgrade to continue.'));
+    }
+    if (typeof groqKey !== 'string' || !groqKey.startsWith('gsk_') || groqKey.length > 200) {
+      return next(new AppError(400, "Invalid Groq API key format. Key must start with 'gsk_'."));
+    }
+
+    const encryptedKey = encrypt(groqKey);
+
+    await Project.findByIdAndUpdate(projectId, {
+      $set: {
+        'byok.groqKey': {
+          encrypted: encryptedKey.encrypted,
+          iv: encryptedKey.iv,
+          tag: encryptedKey.tag
+        }
+      }
+    });
+
+    await deleteProjectById(projectId);
+
+    return res.json({
+      success: true,
+      data: { hasGroqKey: true },
+      message: "Project BYOK key saved successfully"
+    });
+  } catch (err) {
+    if (err instanceof AppError) return next(err);
+    next(new AppError(500, "Internal server error during BYOK configuration"));
+  }
+};
+
+
 
