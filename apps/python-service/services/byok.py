@@ -13,6 +13,7 @@ from services.transit_crypto import decrypt_transit
 logger = logging.getLogger(__name__)
 
 FREE_TIER_LIMIT = 5
+PRO_TIER_LIMIT = 100
 
 
 async def resolve_ai_client(
@@ -24,8 +25,8 @@ async def resolve_ai_client(
 
     Resolution order:
         1. BYOK key present → decrypt, use developer's key, no rate limit
-        2. Pro plan, no BYOK → platform key, no rate limit
-        3. Free plan, no BYOK → platform key, 5 generations/month
+        2. Pro plan, no BYOK → platform key, 100 generations/month limit
+        3. Free plan, no BYOK → platform key, 5 generations/month limit
 
     Args:
         developer_id: The developer's MongoDB ObjectId string.
@@ -60,10 +61,14 @@ async def resolve_ai_client(
             status_code=500, detail="Platform AI key not configured"
         )
 
-    # ── 3. Free-tier atomic rate limit ──
-    if plan != "pro":
-        if not developer_id:
-            raise HTTPException(status_code=400, detail="developer_id is required for free-tier rate limiting")
+    # ── 3. Platform key atomic rate limit ──
+    if not developer_id:
+        raise HTTPException(
+            status_code=400,
+            detail="developer_id is required for platform key rate limiting"
+        )
+
+    limit = PRO_TIER_LIMIT if plan == "pro" else FREE_TIER_LIMIT
         month = datetime.datetime.now(datetime.UTC).strftime("%Y-%m")
         key = f"ai:gen:count:{developer_id}:{month}"
 
@@ -77,13 +82,16 @@ async def resolve_ai_client(
         if count == 1 or ttl == -1:
             await redis_client.expire(key, 32 * 86400)
 
-        if count > FREE_TIER_LIMIT:
+        if count > limit:
+            tier_name = "Pro" if plan == "pro" else "Free"
+            upgrade_msg = (
+                "Add your own Groq key in Settings to get unlimited usage."
+                if plan == "pro"
+                else "Upgrade to Pro or add your own Groq key in Settings."
+            )
             raise HTTPException(
                 status_code=403,
-                detail=(
-                    f"Free tier AI limit reached ({FREE_TIER_LIMIT}/month). "
-                    f"Upgrade to Pro or add your own Groq key in Settings."
-                ),
+                detail=f"{tier_name} tier AI limit reached ({limit}/month). {upgrade_msg}",
             )
 
     # ── 4. Return platform client ──

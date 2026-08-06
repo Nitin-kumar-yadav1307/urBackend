@@ -100,14 +100,29 @@ async def test_free_tier_limit_enforced(mock_redis):
 
 
 @pytest.mark.asyncio
-async def test_pro_tier_no_limit(mock_redis):
-    """Pro tier should skip Redis rate limiting entirely."""
+async def test_pro_tier_under_limit(mock_redis):
+    """Pro tier under limit should use platform key."""
     mock_rc, mock_pipe = mock_redis
+    mock_pipe.execute = AsyncMock(return_value=[99, 100000])
 
     with patch('services.byok.ChatGroq') as MockGroq:
         MockGroq.return_value = MagicMock()
         client = await resolve_ai_client("dev123", "pro", None)
 
-        # Redis pipeline should NOT have been used
-        mock_rc.pipeline.assert_not_called()
-        MockGroq.assert_called_once()
+        MockGroq.assert_called_once_with(
+            api_key=settings.GROQ_API_KEY,
+            model_name="llama-3.1-8b-instant",
+            temperature=0,
+        )
+
+
+@pytest.mark.asyncio
+async def test_pro_tier_limit_enforced(mock_redis):
+    """Pro tier over limit should raise 403."""
+    mock_rc, mock_pipe = mock_redis
+    mock_pipe.execute = AsyncMock(return_value=[101, 100000])
+
+    with pytest.raises(Exception) as exc_info:
+        await resolve_ai_client("dev123", "pro", None)
+    assert exc_info.value.status_code == 403
+
