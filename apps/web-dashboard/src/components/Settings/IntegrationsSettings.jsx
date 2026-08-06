@@ -132,6 +132,8 @@ export default function IntegrationsSettings({
                     setProjectGroqKey('');
                     toast.success("Project BYOK key saved securely.");
                 }
+            } else {
+                toast.error(res.data?.message || "Failed to update project BYOK settings");
             }
         } catch (err) {
             toast.error(err.response?.data?.message || err.response?.data?.error || "Failed to update project BYOK settings");

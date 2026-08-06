@@ -82,6 +82,8 @@ export default function Settings() {
                     setGroqKeyValue('');
                     toast.success("BYOK key saved securely.");
                 }
+            } else {
+                toast.error(res.data?.message || "Failed to update BYOK settings");
             }
         } catch (err) {
             toast.error(err.response?.data?.message || err.response?.data?.error || "Failed to update BYOK settings");
