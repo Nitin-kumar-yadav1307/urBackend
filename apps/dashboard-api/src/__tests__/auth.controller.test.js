@@ -503,10 +503,11 @@ describe('auth.controller', () => {
 
     // -----------------------------------------------------------------------
     describe('getMe', () => {
-        test('returns the user object without sensitive fields', async () => {
+        test('returns the user object with unconfigured BYOK', async () => {
             const mockSelect = jest.fn().mockResolvedValue({
                 _id: 'dev_id_1',
                 email: 'test@example.com',
+                toObject: function() { return this; }
             });
             Developer.findById.mockReturnValue({ select: mockSelect });
 
@@ -518,8 +519,49 @@ describe('auth.controller', () => {
             expect(Developer.findById).toHaveBeenCalledWith('dev_id_1');
             expect(mockSelect).toHaveBeenCalledWith('-password -refreshToken +byok');
             expect(res.json).toHaveBeenCalledWith(
-                expect.objectContaining({ success: true })
+                expect.objectContaining({ 
+                    success: true,
+                    data: expect.objectContaining({
+                        user: expect.objectContaining({
+                            email: 'test@example.com',
+                            hasGroqKey: false
+                        })
+                    })
+                })
             );
+            
+            const passedUser = res.json.mock.calls[0][0].data.user;
+            expect(passedUser.byok).toBeUndefined();
+        });
+
+        test('returns the user object with configured BYOK', async () => {
+            const mockSelect = jest.fn().mockResolvedValue({
+                _id: 'dev_id_1',
+                email: 'test@example.com',
+                byok: { groqKey: { encrypted: 'abc', iv: 'def', tag: 'ghi' } },
+                toObject: function() { return { ...this }; }
+            });
+            Developer.findById.mockReturnValue({ select: mockSelect });
+
+            const req = makeReq({}, { _id: 'dev_id_1' });
+            const res = makeRes();
+
+            await authController.getMe(req, res, next);
+
+            expect(res.json).toHaveBeenCalledWith(
+                expect.objectContaining({ 
+                    success: true,
+                    data: expect.objectContaining({
+                        user: expect.objectContaining({
+                            email: 'test@example.com',
+                            hasGroqKey: true
+                        })
+                    })
+                })
+            );
+            
+            const passedUser = res.json.mock.calls[0][0].data.user;
+            expect(passedUser.byok).toBeUndefined();
         });
 
         test('returns default onboarding state for users without stored onboarding', async () => {

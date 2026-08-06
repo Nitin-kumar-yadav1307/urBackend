@@ -265,6 +265,8 @@ if (pageLoading) return <SettingsSkeleton />;
                                 <button 
                                     type="button" 
                                     onClick={() => setShowGroqKey(!showGroqKey)}
+                                    aria-label={showGroqKey ? "Hide Groq API key" : "Show Groq API key"}
+                                    aria-pressed={showGroqKey}
                                     style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
                                 >
                                     {showGroqKey ? <EyeOff size={16} /> : <Eye size={16} />}

@@ -442,6 +442,8 @@ export default function IntegrationsSettings({
                                     <button 
                                         type="button" 
                                         onClick={() => setShowProjectGroqKey(!showProjectGroqKey)}
+                                        aria-label={showProjectGroqKey ? "Hide Groq API key" : "Show Groq API key"}
+                                        aria-pressed={showProjectGroqKey}
                                         style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
                                     >
                                         {showProjectGroqKey ? <EyeOff size={16} /> : <Eye size={16} />}
