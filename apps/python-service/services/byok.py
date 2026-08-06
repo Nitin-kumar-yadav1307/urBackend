@@ -50,9 +50,9 @@ async def resolve_ai_client(
             )
         except Exception as e:
             logger.warning("BYOK decryption/init failed: %s", e)
-            raise HTTPException(
-                status_code=401, detail="Invalid BYOK Groq key provided"
-            ) from e
+            if isinstance(e, ValueError) and "INTERNAL_PAYLOAD_KEY" in str(e):
+                raise HTTPException(status_code=500, detail=str(e)) from e
+            raise HTTPException(status_code=401, detail="Invalid BYOK Groq key provided") from e
 
     # ── 2. Platform key guard ──
     if not settings.GROQ_API_KEY:
@@ -61,7 +61,9 @@ async def resolve_ai_client(
         )
 
     # ── 3. Free-tier atomic rate limit ──
-    if plan != "pro" and developer_id:
+    if plan != "pro":
+        if not developer_id:
+            raise HTTPException(status_code=400, detail="developer_id is required for free-tier rate limiting")
         month = datetime.datetime.now(datetime.UTC).strftime("%Y-%m")
         key = f"ai:gen:count:{developer_id}:{month}"
 

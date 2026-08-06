@@ -32,8 +32,8 @@ class EncryptedByok(BaseModel):
 class QueryBuilderRequest(BaseModel):
     prompt: str
     schema_fields: List[dict]
-    developer_id: str | None = None
-    plan: str | None = None
+    developer_id: str
+    plan: str = "free"
     encrypted_byok: EncryptedByok | None = None
 
 @router.post("/query-builder", response_model=QueryResult)

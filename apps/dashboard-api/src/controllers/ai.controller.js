@@ -72,7 +72,8 @@ const queryBuilder = async (req, res, next) => {
 
         // 1. Check project-level BYOK
         const projectByok = await Project.findById(projectId)
-            .select('+byok.groqKey.encrypted +byok.groqKey.iv +byok.groqKey.tag');
+            .select('+byok.groqKey.encrypted +byok.groqKey.iv +byok.groqKey.tag')
+            .lean();
         if (projectByok?.byok?.groqKey?.encrypted) {
             resolvedKey = decrypt(projectByok.byok.groqKey);
         }

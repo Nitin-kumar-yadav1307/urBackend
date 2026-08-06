@@ -673,7 +673,7 @@ module.exports.updateOnboarding = async (req, res, next) => {
     }
 };
 
-const { encrypt } = require("@urbackend/common");
+const { encrypt, resolveEffectivePlan, getPlanLimits } = require("@urbackend/common");
 
 module.exports.updateByok = async (req, res, next) => {
     try {
@@ -683,6 +683,12 @@ module.exports.updateByok = async (req, res, next) => {
         if (groqKey === null) {
             await Developer.findByIdAndUpdate(req.user._id, { $set: { byok: null } });
             return new ApiResponse({ hasGroqKey: false }, "BYOK key cleared").send(res);
+        }
+
+        const effectivePlan = resolveEffectivePlan(req.user);
+        const limits = getPlanLimits({ plan: effectivePlan });
+        if (!limits.aiByokEnabled) {
+            throw new AppError(403, "Bring Your Own AI Key (Groq) is a Pro feature. Please upgrade to continue.");
         }
 
         if (typeof groqKey !== 'string' || !groqKey.startsWith('gsk_') || groqKey.length > 200) {
