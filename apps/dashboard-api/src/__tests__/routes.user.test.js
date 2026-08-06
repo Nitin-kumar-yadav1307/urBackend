@@ -40,7 +40,7 @@ jest.mock('../controllers/auth.controller', () => ({
         },
         message: 'Onboarding updated successfully',
     })),
-    updateByok: jest.fn((_req, res) => res.json({ success: true, data: { hasGroqKey: true } })),
+    updateByok: jest.fn((_req, res) => res.json({ success: true, data: { hasGroqKey: true }, message: '' })),
 }));
 
 jest.mock('../controllers/pat.controller', () => ({

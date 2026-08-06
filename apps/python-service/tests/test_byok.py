@@ -74,7 +74,7 @@ async def test_invalid_byok_returns_401():
 @pytest.mark.asyncio
 async def test_free_tier_under_limit(mock_redis):
     """Free tier under limit should use platform key."""
-    mock_rc, mock_pipe = mock_redis
+    _, mock_pipe = mock_redis
     mock_pipe.execute = AsyncMock(return_value=[3, 100000])
 
     with patch('services.byok.ChatGroq') as MockGroq:
@@ -91,7 +91,7 @@ async def test_free_tier_under_limit(mock_redis):
 @pytest.mark.asyncio
 async def test_free_tier_limit_enforced(mock_redis):
     """Free tier over limit should raise 403."""
-    mock_rc, mock_pipe = mock_redis
+    _, mock_pipe = mock_redis
     mock_pipe.execute = AsyncMock(return_value=[6, 100000])
 
     with pytest.raises(Exception) as exc_info:
@@ -102,7 +102,7 @@ async def test_free_tier_limit_enforced(mock_redis):
 @pytest.mark.asyncio
 async def test_pro_tier_under_limit(mock_redis):
     """Pro tier under limit should use platform key."""
-    mock_rc, mock_pipe = mock_redis
+    _, mock_pipe = mock_redis
     mock_pipe.execute = AsyncMock(return_value=[99, 100000])
 
     with patch('services.byok.ChatGroq') as MockGroq:
@@ -119,7 +119,7 @@ async def test_pro_tier_under_limit(mock_redis):
 @pytest.mark.asyncio
 async def test_pro_tier_limit_enforced(mock_redis):
     """Pro tier over limit should raise 403."""
-    mock_rc, mock_pipe = mock_redis
+    _, mock_pipe = mock_redis
     mock_pipe.execute = AsyncMock(return_value=[101, 100000])
 
     with pytest.raises(Exception) as exc_info:

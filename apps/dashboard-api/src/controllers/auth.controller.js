@@ -710,6 +710,6 @@ module.exports.updateByok = async (req, res, next) => {
         return new ApiResponse({ hasGroqKey: true }, "BYOK key saved successfully").send(res);
     } catch (err) {
         if (err instanceof AppError) return next(err);
-        next(err);
+        next(new AppError(500, "Internal server error during BYOK configuration"));
     }
 };

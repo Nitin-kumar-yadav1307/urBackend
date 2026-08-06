@@ -3,7 +3,6 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List, Union
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from config import settings
 from dependencies import verify_signature

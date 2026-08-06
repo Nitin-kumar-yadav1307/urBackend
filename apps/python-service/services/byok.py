@@ -69,30 +69,30 @@ async def resolve_ai_client(
         )
 
     limit = PRO_TIER_LIMIT if plan == "pro" else FREE_TIER_LIMIT
-        month = datetime.datetime.now(datetime.UTC).strftime("%Y-%m")
-        key = f"ai:gen:count:{developer_id}:{month}"
+    month = datetime.datetime.now(datetime.UTC).strftime("%Y-%m")
+    key = f"ai:gen:count:{developer_id}:{month}"
 
-        # Atomic pipeline: INCR + TTL check
-        pipe = redis_client.pipeline()
-        pipe.incr(key)
-        pipe.ttl(key)
-        count, ttl = await pipe.execute()
+    # Atomic pipeline: INCR + TTL check
+    pipe = redis_client.pipeline()
+    pipe.incr(key)
+    pipe.ttl(key)
+    count, ttl = await pipe.execute()
 
-        # First usage this month → set 32-day expiry
-        if count == 1 or ttl == -1:
-            await redis_client.expire(key, 32 * 86400)
+    # First usage this month → set 32-day expiry
+    if count == 1 or ttl == -1:
+        await redis_client.expire(key, 32 * 86400)
 
-        if count > limit:
-            tier_name = "Pro" if plan == "pro" else "Free"
-            upgrade_msg = (
-                "Add your own Groq key in Settings to get unlimited usage."
-                if plan == "pro"
-                else "Upgrade to Pro or add your own Groq key in Settings."
-            )
-            raise HTTPException(
-                status_code=403,
-                detail=f"{tier_name} tier AI limit reached ({limit}/month). {upgrade_msg}",
-            )
+    if count > limit:
+        tier_name = "Pro" if plan == "pro" else "Free"
+        upgrade_msg = (
+            "Add your own Groq key in Settings to get unlimited usage."
+            if plan == "pro"
+            else "Upgrade to Pro or add your own Groq key in Settings."
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=f"{tier_name} tier AI limit reached ({limit}/month). {upgrade_msg}",
+        )
 
     # ── 4. Return platform client ──
     return ChatGroq(

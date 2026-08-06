@@ -3488,7 +3488,8 @@ module.exports.updateProjectByok = async (req, res, next) => {
       message: "Project BYOK key saved successfully"
     });
   } catch (err) {
-    next(err);
+    if (err instanceof AppError) return next(err);
+    next(new AppError(500, "Internal server error during BYOK configuration"));
   }
 };
 
