@@ -91,23 +91,34 @@ async def test_free_tier_limit_enforced(mock_redis):
 @pytest.mark.asyncio
 async def test_pro_tier_under_limit(mock_redis):
     """Pro tier under limit should use platform key."""
-    mock_redis.eval = AsyncMock(return_value=[99, 100000])
+    # Test boundary 19
+    mock_redis.eval = AsyncMock(return_value=[19, 100000])
 
     with patch('services.byok.ChatGroq') as MockGroq:
         MockGroq.return_value = MagicMock()
         client = await resolve_ai_client("dev123", "pro", None)
 
-        MockGroq.assert_called_once_with(
+        MockGroq.assert_called_with(
             api_key=settings.GROQ_API_KEY,
             model_name="llama-3.1-8b-instant",
             temperature=0,
         )
 
+    # Test boundary exactly 20
+    mock_redis.eval = AsyncMock(return_value=[20, 100000])
+    with patch('services.byok.ChatGroq') as MockGroq:
+        MockGroq.return_value = MagicMock()
+        client = await resolve_ai_client("dev123", "pro", None)
+        MockGroq.assert_called_with(
+            api_key=settings.GROQ_API_KEY,
+            model_name="llama-3.1-8b-instant",
+            temperature=0,
+        )
 
 @pytest.mark.asyncio
 async def test_pro_tier_limit_enforced(mock_redis):
     """Pro tier over limit should raise 403."""
-    mock_redis.eval = AsyncMock(return_value=[101, 100000])
+    mock_redis.eval = AsyncMock(return_value=[21, 100000])
 
     with pytest.raises(Exception) as exc_info:
         await resolve_ai_client("dev123", "pro", None)

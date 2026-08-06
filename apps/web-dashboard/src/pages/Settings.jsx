@@ -3,12 +3,12 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Lock, Trash2, AlertTriangle, Save, CheckCircle } from 'lucide-react';
+import { Lock, Trash2, AlertTriangle, Save, CheckCircle, Cpu, Eye, EyeOff } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import PATManager from '../components/PATManager';
 
 export default function Settings() {
-    const { logout, user, isLoading } = useAuth();
+    const { logout, user, isLoading, updateUser } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const highlightVerification = new URLSearchParams(location.search).get('verify') === 'email';
@@ -22,6 +22,11 @@ export default function Settings() {
     const [loadingDelete, setLoadingDelete] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const pageLoading = isLoading;
+
+    // BYOK State
+    const [groqKeyValue, setGroqKeyValue] = useState('');
+    const [showGroqKey, setShowGroqKey] = useState(false);
+    const [loadingByok, setLoadingByok] = useState(false);
 
     // Handle Password Change
     const handlePasswordChange = async (e) => {
@@ -54,6 +59,36 @@ export default function Settings() {
             setShowDeleteModal(false); // Close modal on error so user can retry
         } finally {
             setLoadingDelete(false);
+        }
+    };
+
+    // Handle BYOK Update
+    const handleByokUpdate = async (clear = false) => {
+        const payloadKey = clear ? null : groqKeyValue.trim();
+        if (!clear && (!payloadKey || !payloadKey.startsWith('gsk_'))) {
+            toast.error("Invalid Groq API key format. Key must start with 'gsk_'.");
+            return;
+        }
+
+        setLoadingByok(true);
+        try {
+            const res = await api.put('/api/auth/me/byok', { groqKey: payloadKey });
+            if (res.data?.success) {
+                updateUser((curr) => ({ ...curr, hasGroqKey: res.data.data.hasGroqKey }));
+                if (clear) {
+                    setGroqKeyValue('');
+                    toast.success("BYOK key cleared.");
+                } else {
+                    setGroqKeyValue('');
+                    toast.success("BYOK key saved securely.");
+                }
+            } else {
+                toast.error(res.data?.message || "Failed to update BYOK settings");
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || err.response?.data?.error || "Failed to update BYOK settings");
+        } finally {
+            setLoadingByok(false);
         }
     };
 
@@ -192,6 +227,74 @@ if (pageLoading) return <SettingsSkeleton />;
                         </button>
                     </div>
                 </form>
+            </div>
+
+            {/* AI Integration (BYOK) */}
+            <div className="card" style={{ marginBottom: '2.5rem' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ padding: '10px', background: 'rgba(168, 85, 247, 0.1)', borderRadius: '10px', color: '#a855f7' }}>
+                        <Cpu size={20} />
+                    </div>
+                    <div>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '2px' }}>AI Integration (BYOK)</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Bring Your Own Key to bypass platform rate limits for AI queries.</p>
+                    </div>
+                </div>
+
+                <div style={{ maxWidth: '100%' }}>
+                    <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: '1.6' }}>
+                        Your Groq API key is encrypted at rest. When set, all your AI queries use your key directly.
+                    </p>
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="form-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+                            Groq API Key
+                            {user?.hasGroqKey && (
+                                <span style={{ fontSize: '0.75rem', background: 'rgba(62, 207, 142, 0.1)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                                    • Configured
+                                </span>
+                            )}
+                        </label>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <div style={{ position: 'relative', flex: 1 }}>
+                                <input
+                                    type={showGroqKey ? "text" : "password"}
+                                    className="input-field"
+                                    placeholder={user?.hasGroqKey ? "gsk_••••••••••••••••" : "Enter your Groq API key"}
+                                    value={groqKeyValue}
+                                    onChange={(e) => setGroqKeyValue(e.target.value)}
+                                    style={{ width: '100%', padding: '12px', paddingRight: '40px', background: 'var(--color-bg-input)', border: '1px solid var(--color-border)', borderRadius: '8px', color: '#fff', fontFamily: 'monospace' }}
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowGroqKey(!showGroqKey)}
+                                    aria-label={showGroqKey ? "Hide Groq API key" : "Show Groq API key"}
+                                    aria-pressed={showGroqKey}
+                                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                                >
+                                    {showGroqKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                            <button 
+                                onClick={() => handleByokUpdate(false)}
+                                className="btn btn-primary" 
+                                disabled={loadingByok || !groqKeyValue} 
+                                style={{ padding: '0 20px', whiteSpace: 'nowrap' }}
+                            >
+                                {loadingByok ? 'Saving...' : 'Save Key'}
+                            </button>
+                            {user?.hasGroqKey && (
+                                <button 
+                                    onClick={() => handleByokUpdate(true)}
+                                    className="btn" 
+                                    disabled={loadingByok} 
+                                    style={{ padding: '0 20px', background: 'rgba(234, 84, 85, 0.1)', color: '#ea5455', border: '1px solid rgba(234, 84, 85, 0.2)' }}
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* PAT Visual */}

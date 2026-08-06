@@ -27,7 +27,7 @@ const PLAN_LIMITS = {
     byomEnabled: true,       
     byosEnabled: false,      
     byokEnabled: false,      
-    aiByokEnabled: false,
+    aiByokEnabled: true,
 
     // Features
     analyticsProEnabled: false,

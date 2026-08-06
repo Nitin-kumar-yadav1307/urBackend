@@ -649,9 +649,13 @@ module.exports.refreshToken = async (req, res, next) => {
 // GET ME
 module.exports.getMe = async (req, res, next) => {
     try {
-        const user = await Developer.findById(req.user._id).select("-password -refreshToken");
+        const user = await Developer.findById(req.user._id).select("-password -refreshToken +byok.groqKey.encrypted");
         if (!user) return next(new AppError(404, "User not found"));
         const userData = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+        
+        userData.hasGroqKey = !!(userData.byok?.groqKey?.encrypted);
+        delete userData.byok;
+        
         userData.onboarding = normalizeOnboarding(userData.onboarding);
         userData.isAdmin = userData.email === process.env.ADMIN_EMAIL;
         return new ApiResponse({ user: userData }).send(res);

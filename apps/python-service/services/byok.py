@@ -13,7 +13,7 @@ from services.transit_crypto import decrypt_transit
 logger = logging.getLogger(__name__)
 
 FREE_TIER_LIMIT = 5
-PRO_TIER_LIMIT = 100
+PRO_TIER_LIMIT = 20
 
 LUA_RATE_LIMIT = """
 local count = redis.call('INCR', KEYS[1])
@@ -35,8 +35,8 @@ async def resolve_ai_client(
 
     Resolution order:
         1. BYOK key present → decrypt, use developer's key, no rate limit
-        2. Pro plan, no BYOK → platform key, 100 generations/month limit
-        3. Free plan, no BYOK → platform key, 5 generations/month limit
+        2. Pro plan, no BYOK → platform key, 20 sessions/month limit
+        3. Free plan, no BYOK → platform key, 5 sessions/month limit
 
     Args:
         developer_id: The developer's MongoDB ObjectId string.
