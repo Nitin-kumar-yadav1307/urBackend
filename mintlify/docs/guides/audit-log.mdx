@@ -1,0 +1,103 @@
+---
+title: "Audit log"
+description: "Review a chronological record of who changed your project's configuration and when."
+---
+
+Every project has an audit log that records changes to its configuration. Use it to see who toggled a setting, when a change happened, and what changed. Entries are read-only and sensitive values are masked where applicable.
+
+## When to use it
+
+- Investigate why a setting suddenly changed (for example, authentication was disabled, or an allowed domain was removed).
+- Confirm which team member enabled or updated an OAuth provider.
+- Track updates to external database or storage credentials without exposing the credentials themselves.
+- Review recent changes before rolling back a setting.
+
+## Access the audit log
+
+1. Open your project in the urBackend dashboard.
+2. In the project sidebar, click **Audit Log**.
+3. The Config History page lists changes newest-first, showing the actor's email, the change label, the category, and the timestamp.
+
+## What gets logged
+
+urBackend writes a log entry after any successful configuration mutation on a project. Each entry captures:
+
+- The project the change applies to.
+- The developer who performed the action, plus their email at the time (kept even if the account is later deleted).
+- A category, such as `auth` or `allowed_domains`.
+- A human-readable label describing the change, such as `Authentication toggled ON` or `Allowed domains updated (3 domains)`.
+- An optional structured diff showing which fields changed.
+- The exact timestamp of the change.
+
+### Categories
+
+Filter the log by category to narrow the view to one type of setting.
+
+| Category | Covers |
+| --- | --- |
+| `project_info` | Project name and other top-level project fields |
+| `api_key` | Publishable and secret key rotations |
+| `auth` | Turning authentication on or off |
+| `public_signup` | Turning public signup on or off |
+| `auth_providers` | Enabling, disabling, or updating OAuth providers |
+| `allowed_domains` | Adding or removing allowed origins |
+| `byod_db` | External MongoDB (BYOD) connection updates |
+| `byod_storage` | External storage (BYOD) configuration updates |
+| `collection_schema` | Collection schema edits |
+| `collection_rls` | Row-level security rule changes |
+| `mail_template` | Mail template edits |
+| `resend` | Resend API key or sender email updates |
+| `member` | Team member invitations and role changes |
+
+## Sensitive value masking
+
+Secrets never appear in the log. Fields like external database URIs, storage credentials, and third-party API keys are replaced with a mask (`••••••••`) before the entry is written. The log records that the field changed and who changed it, not the value itself.
+
+## Fetch the log programmatically
+
+The audit log is served from the dashboard API and is authenticated with your dashboard session cookie. It is not part of the public API and does not accept `pk_live` or `sk_live` keys.
+
+```http
+GET /api/projects/:projectId/config-logs
+```
+
+**Query parameters**
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `page` | integer | `1` | 1-indexed page number. |
+| `limit` | integer | `30` | Items per page. Maximum `100`. |
+| `category` | string | — | Optional filter. Must be one of the categories listed above. |
+
+**Response**
+
+```json
+{
+  "success": true,
+  "data": {
+    "logs": [
+      {
+        "_id": "…",
+        "projectId": "…",
+        "changedBy": "…",
+        "changedByEmail": "alex@example.com",
+        "category": "auth_providers",
+        "label": "Enabled GitHub OAuth provider",
+        "diff": [{ "field": "authProviders.github.enabled", "from": false, "to": true }],
+        "changedAt": "2026-08-01T12:34:56.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 30,
+      "total": 128,
+      "totalPages": 5
+    }
+  },
+  "message": "Configuration change logs retrieved successfully."
+}
+```
+
+Passing a `category` value that is not in the list above returns `400 Bad Request`.
+
+Any project member (admin or viewer) can read the log. Entries cannot be edited or deleted from the API or the dashboard.
