@@ -50,13 +50,14 @@ const makeRes = () => {
   return res;
 };
 
-/** Chainable Mongoose query stub: find().sort().skip().limit().select().lean() */
+/** Chainable Mongoose query stub: find().sort().skip().limit().populate().select().lean() */
 const makeQueryChain = (resolvedValue) => ({
-  sort:   jest.fn().mockReturnThis(),
-  skip:   jest.fn().mockReturnThis(),
-  limit:  jest.fn().mockReturnThis(),
-  select: jest.fn().mockReturnThis(),
-  lean:   jest.fn().mockResolvedValue(resolvedValue),
+  sort:     jest.fn().mockReturnThis(),
+  skip:     jest.fn().mockReturnThis(),
+  limit:    jest.fn().mockReturnThis(),
+  populate: jest.fn().mockReturnThis(),
+  select:   jest.fn().mockReturnThis(),
+  lean:     jest.fn().mockResolvedValue(resolvedValue),
 });
 
 // -----------------------------------------------------------------------------
@@ -256,11 +257,12 @@ describe('configLog.controller — getConfigLogs', () => {
   it('forwards a DB error to next() without swallowing it', async () => {
     const dbError = new Error('MongoDB timeout');
     mockFind.mockReturnValue({
-      sort:   jest.fn().mockReturnThis(),
-      skip:   jest.fn().mockReturnThis(),
-      limit:  jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      lean:   jest.fn().mockRejectedValue(dbError),
+      sort:     jest.fn().mockReturnThis(),
+      skip:     jest.fn().mockReturnThis(),
+      limit:    jest.fn().mockReturnThis(),
+      populate: jest.fn().mockReturnThis(),
+      select:   jest.fn().mockReturnThis(),
+      lean:     jest.fn().mockRejectedValue(dbError),
     });
     mockCountDocuments.mockResolvedValue(0);
 

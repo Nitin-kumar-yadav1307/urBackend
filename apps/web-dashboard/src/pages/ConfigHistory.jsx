@@ -156,7 +156,7 @@ function LogRow({ log }) {
 
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px", flexWrap: "wrap" }}>
                         <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>
-                            by <strong style={{ color: "var(--color-text-main)" }}>{log.changedByEmail || "Unknown"}</strong>
+                            by <strong style={{ color: "var(--color-text-main)" }}>{log.changedByEmail || (typeof log.changedBy === 'object' && log.changedBy?.email) || "Unknown"}</strong>
                         </span>
                         <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)" }}>·</span>
                         <span

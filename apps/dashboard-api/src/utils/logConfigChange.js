@@ -19,7 +19,7 @@
  * primary API response.
  */
 
-const ProjectConfigLog = require('@urbackend/common').ProjectConfigLog;
+const { ProjectConfigLog, Developer } = require('@urbackend/common');
 
 /**
  * @param {Object} opts
@@ -32,10 +32,20 @@ const ProjectConfigLog = require('@urbackend/common').ProjectConfigLog;
  */
 async function logConfigChange({ projectId, user, category, label, diff = null }) {
   try {
+    let email = user?.email;
+    if (!email && user?._id) {
+      try {
+        const dev = await Developer.findById(user._id).select('email').lean();
+        email = dev?.email || '';
+      } catch (lookupErr) {
+        email = '';
+      }
+    }
+
     await ProjectConfigLog.create({
       projectId,
-      changedBy: user._id,
-      changedByEmail: user.email || '',
+      changedBy: user?._id,
+      changedByEmail: email || '',
       category,
       label,
       diff,

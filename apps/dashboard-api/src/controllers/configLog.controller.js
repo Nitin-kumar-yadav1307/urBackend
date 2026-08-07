@@ -62,6 +62,7 @@ module.exports.getConfigLogs = async (req, res, next) => {
         .sort({ changedAt: -1 })
         .skip(skip)
         .limit(limit)
+        .populate('changedBy', 'email')
         .select('-__v')
         .lean(),
       ProjectConfigLog.countDocuments(filter),
