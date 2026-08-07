@@ -26,7 +26,8 @@ function Header({ onToggleSidebar, showToggle = true, isSidebarCollapsed = false
         }
         api.get(`/api/projects/${projectId}`)
             .then(res => {
-                if (isMounted) setProjectName(res.data.name);
+                const projectData = res.data?.data || res.data;
+                if (isMounted && projectData) setProjectName(projectData.name || '');
             })
             .catch(err => console.error("Failed to fetch project name for header:", err));
         return () => { isMounted = false; };

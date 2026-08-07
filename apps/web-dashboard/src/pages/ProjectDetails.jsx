@@ -44,7 +44,7 @@ function ProjectDetails() {
                     api.get(`/api/projects/${projectId}/analytics`)
                 ]);
                 if (isMounted) {
-                    setProject(projectRes.data);
+                    setProject(projectRes.data?.data || projectRes.data);
                     setAnalytics(analyticsRes.data.success ? analyticsRes.data.data : analyticsRes.data);
                 }
             } catch (err){

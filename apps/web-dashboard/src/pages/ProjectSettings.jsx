@@ -54,7 +54,7 @@ export default function ProjectSettings() {
         const fetchProject = async () => {
             try {
                 const res = await api.get(`/api/projects/${projectId}`);
-                const projectData = res.data;
+                const projectData = res.data?.data || res.data;
                 const myMember = projectData?.members?.find(m => {
                     const memberId = typeof m.user === 'object' ? m.user?._id : m.user;
                     return memberId?.toString() === user?._id?.toString() || m.email === user?.email;

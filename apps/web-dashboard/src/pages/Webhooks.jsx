@@ -65,7 +65,7 @@ export default function Webhooks() {
         api.get(`/api/projects/${projectId}`),
         api.get(`/api/projects/${projectId}/webhooks`)
       ]);
-      setProject(projRes.data);
+      setProject(projRes.data?.data || projRes.data);
       setWebhooks(webhooksRes.data.data || []);
     } catch (err) {
       console.error(err);
