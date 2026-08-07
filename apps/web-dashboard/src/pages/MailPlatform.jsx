@@ -62,7 +62,7 @@ export default function MailPlatform() {
                 api.get(`/api/projects/${projectId}`),
                 api.get(`/api/projects/${projectId}/mail/logs`)
             ]);
-            setProject(projRes.data);
+            setProject(projRes.data?.data || projRes.data);
             if (logsRes.data?.success) {
                 setLogs(logsRes.data.data.logs || []);
             }

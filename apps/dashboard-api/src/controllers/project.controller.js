@@ -522,11 +522,7 @@ module.exports.getSingleProject = async (req, res) => {
       await setProjectById(req.params.projectId, projectObj);
     }
 
-    res.json({
-      success: true,
-      data: sanitizeProjectResponse(projectObj),
-      message: ""
-    });
+    res.json(sanitizeProjectResponse(projectObj));
   } catch (err) {
     if (err instanceof AppError) {
       return res.status(err.statusCode).json({

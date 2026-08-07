@@ -63,7 +63,8 @@ export default function Database() {
       const fetchProject = async () => {
         try {
           const res = await api.get(`/api/projects/${projectId}`);
-          const withRlsDefaults = (res.data.collections || []).map(c => ({
+          const projectData = res.data?.data || res.data;
+          const withRlsDefaults = (projectData?.collections || []).map(c => ({
               ...c,
               rls: {
                 enabled: typeof c.rls?.enabled === 'boolean' ? c.rls.enabled : false,
@@ -73,7 +74,7 @@ export default function Database() {
               }
           }));
           if (isMounted) {
-            setProject(res.data);
+            setProject(projectData);
             setCollections(withRlsDefaults);
             const queryCol = searchParams.get("collection");
             if (queryCol) {

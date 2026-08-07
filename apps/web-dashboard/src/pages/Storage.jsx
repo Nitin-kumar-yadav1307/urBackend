@@ -24,7 +24,7 @@ export default function Storage() {
                 api.get(`/api/projects/${projectId}`),
                 api.get(`/api/projects/${projectId}/storage/files`)
             ]);
-            setProject(projRes.data);
+            setProject(projRes.data?.data || projRes.data);
             setFiles(filesRes.data);
         } catch {
             toast.error("Failed to load files");
