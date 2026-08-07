@@ -649,7 +649,7 @@ module.exports.refreshToken = async (req, res, next) => {
 // GET ME
 module.exports.getMe = async (req, res, next) => {
     try {
-        const user = await Developer.findById(req.user._id).select("-password -refreshToken +byok.groqKey.encrypted");
+        const user = await Developer.findById(req.user._id).select("+byok.groqKey.encrypted");
         if (!user) return next(new AppError(404, "User not found"));
         const userData = typeof user.toObject === 'function' ? user.toObject() : { ...user };
         

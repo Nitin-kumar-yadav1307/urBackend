@@ -517,7 +517,7 @@ describe('auth.controller', () => {
             await authController.getMe(req, res, next);
 
             expect(Developer.findById).toHaveBeenCalledWith('dev_id_1');
-            expect(mockSelect).toHaveBeenCalledWith('-password -refreshToken +byok.groqKey.encrypted');
+            expect(mockSelect).toHaveBeenCalledWith('+byok.groqKey.encrypted');
             expect(res.json).toHaveBeenCalledWith(
                 expect.objectContaining({ 
                     success: true,
