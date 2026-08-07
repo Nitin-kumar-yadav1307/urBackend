@@ -200,6 +200,54 @@ If a request fails validation, urBackend returns a `400 Bad Request` with a mess
 }
 ```
 
+## Connect your own MongoDB (BYOD)
+
+By default, your project runs on urBackend's managed MongoDB. You can switch to your own cluster (for example, MongoDB Atlas) at any time from **Dashboard → Project Settings → Database (MongoDB)**. Your data stays in your cluster; urBackend only holds the encrypted connection string.
+
+### Add a connection string
+
+1. Open **Project Settings → Database (MongoDB)**.
+2. Paste a standard MongoDB connection URI (for example, `mongodb+srv://user:pass@cluster.mongodb.net/dbname`).
+3. Click **Connect Database**.
+
+Before saving, urBackend verifies the URI from both the dashboard-api and public-api microservices. Both connections must succeed for the change to be accepted. If either connection fails, the dashboard returns a `400 Bad Request` and the configuration is not stored.
+
+### Whitelist the server IPs
+
+MongoDB Atlas and most self-hosted clusters block inbound connections by default. Because urBackend validates the URI from two separate services, you must whitelist **both** server IPs in your cluster's network access list (Atlas: **Network Access → IP Access List**).
+
+The dashboard shows both public IPs directly under the connection URI field ("Public IP:"). Copy them into your Atlas allowlist before clicking **Connect Database**. If either IP is not whitelisted, you'll see:
+
+```
+Access Denied: Please whitelist Server IPs [<dashboard-api-ip>, <public-api-ip>] in MongoDB Atlas.
+```
+
+### URI restrictions
+
+urBackend rejects connection strings that point at internal or unreachable hosts. The following are blocked and return `400 Bad Request` with the message `DB URI is pointing to a restricted host, internal network, or unsupported URI format.`:
+
+- `localhost` and the `metadata.google.internal` cloud metadata endpoint
+- Loopback addresses (`127.0.0.0/8`, `::1`)
+- RFC-1918 private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`)
+- Link-local, unique local, and unspecified IPv6 addresses
+- IPv4-mapped IPv6 addresses (`::ffff:x.x.x.x`) that resolve to any of the above
+- Hostnames whose DNS records resolve to any restricted range
+
+Use a publicly reachable hostname or IP. For Atlas, the `mongodb+srv://<cluster>.mongodb.net` hostname provided in the Atlas UI is the right value to paste.
+
+### Timeouts and connection errors
+
+Each verification connection uses a 5-second server-selection timeout, and the overall check across both services is capped at ~9.5 seconds. Common outcomes:
+
+| Message | Meaning |
+| --- | --- |
+| `Access Denied: Please whitelist Server IPs [...] in MongoDB Atlas.` | The cluster is reachable but rejected one or both server IPs. Add them to your Atlas IP Access List and retry. |
+| `Public API verification could not be completed (network/timeout). Please try again later.` | The dashboard could not reach the public-api service to run the second check. Retry the request. |
+| `Could not connect to the provided MongoDB URI.` | The URI is well-formed but the driver could not open a connection (wrong credentials, wrong host, cluster paused). |
+| `DB URI is pointing to a restricted host, internal network, or unsupported URI format.` | The URI failed the safety checks listed above. |
+
+Once verification passes, the dashboard shows **Connected to external MongoDB** and all `/api/data/*` traffic for the project routes to your cluster. Use **Update URI** to rotate the connection string, or **Remove** to switch back to urBackend's managed database.
+
 ## Common failure cases
 
 | Status | Cause | Fix |
