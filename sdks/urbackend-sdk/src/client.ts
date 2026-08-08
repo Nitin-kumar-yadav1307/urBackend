@@ -111,11 +111,12 @@ export class UrBackendClient {
     }
 
     try {
+      const credentialsMode = options.credentials || (typeof window !== 'undefined' ? 'include' : undefined);
       let response = await fetch(url, {
         method,
         headers,
         body: requestBody,
-        credentials: options.credentials,
+        credentials: credentialsMode,
       });
 
       if (response.status === 401 && path !== '/api/userAuth/refresh-token' && !options.token) {
@@ -124,14 +125,11 @@ export class UrBackendClient {
           const newToken = refreshRes.token || (refreshRes as { accessToken?: string }).accessToken;
           if (newToken) {
             headers['Authorization'] = `Bearer ${newToken}`;
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('ur_auth_token', newToken);
-            }
             response = await fetch(url, {
               method,
               headers,
               body: requestBody,
-              credentials: options.credentials,
+              credentials: credentialsMode,
             });
           }
         } catch {

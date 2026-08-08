@@ -101,7 +101,10 @@ export class AuthModule {
    * }
    */
   public async signUp(payload: SignUpPayload): Promise<AuthUser> {
-    return this.client.request<AuthUser>('POST', '/api/userAuth/signup', { body: payload });
+    return this.client.request<AuthUser>('POST', '/api/userAuth/signup', {
+      body: payload,
+      credentials: 'include',
+    });
   }
 
   /**
@@ -139,6 +142,7 @@ export class AuthModule {
   public async login(payload: LoginPayload): Promise<AuthResponse> {
     const response = await this.client.request<AuthResponse>('POST', '/api/userAuth/login', {
       body: payload,
+      credentials: 'include',
     });
 
     this.sessionToken = response.accessToken || response.token;
@@ -516,6 +520,7 @@ export class AuthModule {
   public async socialExchange(payload: SocialExchangePayload): Promise<SocialExchangeResponse> {
     return this.client.request<SocialExchangeResponse>('POST', '/api/userAuth/social/exchange', {
       body: payload,
+      credentials: 'include',
     });
   }
 

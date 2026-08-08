@@ -45,12 +45,6 @@ export const UrProvider: React.FC<UrProviderProps> = ({ apiKey, baseUrl, childre
 
     const initAuth = async () => {
       try {
-        // Hydrate from localStorage first as a fallback for environments without cookies
-        if (typeof window !== 'undefined') {
-          const savedToken = localStorage.getItem('ur_auth_token');
-          if (savedToken) auth.setToken(savedToken);
-        }
-
         // Check for social auth callback params
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -65,14 +59,16 @@ export const UrProvider: React.FC<UrProviderProps> = ({ apiKey, baseUrl, childre
         } else if (token) {
           // Social auth succeeded, establish session immediately
           auth.setToken(token);
-          if (typeof window !== 'undefined') localStorage.setItem('ur_auth_token', token);
           
           if (rtCode) {
             // Exchange for long-lived refresh token
             try {
               const exRes = await auth.socialExchange({ token, rtCode });
-              const exToken = (exRes as any).accessToken || (exRes as any).token;
-              if (exToken && typeof window !== 'undefined') localStorage.setItem('ur_auth_token', exToken);
+              if (exRes?.refreshToken) {
+                const refreshed = await auth.refreshToken(exRes.refreshToken);
+                const newAcc = refreshed?.accessToken || (refreshed as any)?.token;
+                if (newAcc) auth.setToken(newAcc);
+              }
             } catch (err: any) {
               console.error('Failed to exchange refresh token', err);
               if (mounted) setError(err.message || 'Failed to complete social login');
@@ -84,10 +80,10 @@ export const UrProvider: React.FC<UrProviderProps> = ({ apiKey, baseUrl, childre
           // Attempt to silently refresh session using the HTTP-only cookie
           try {
             const res = await auth.refreshToken();
-            const newToken = res.accessToken || (res as any).token;
-            if (newToken && typeof window !== 'undefined') localStorage.setItem('ur_auth_token', newToken);
+            const newToken = res?.accessToken || (res as any)?.token;
+            if (newToken) auth.setToken(newToken);
           } catch (e) {
-            // If refresh fails, me() will catch it
+            // If refresh fails, user is not logged in / session expired
           }
         }
         
@@ -96,7 +92,6 @@ export const UrProvider: React.FC<UrProviderProps> = ({ apiKey, baseUrl, childre
           setUser(currentUser);
         }
       } catch (error: any) {
-        console.error("InitAuth Error:", error);
         if (mounted) {
           setUser(null);
           // Don't set global error for initial me() check failure (usually just means not logged in)

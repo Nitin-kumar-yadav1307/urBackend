@@ -21,10 +21,6 @@ var UrProvider = ({ apiKey, baseUrl, children }) => {
     let mounted = true;
     const initAuth = async () => {
       try {
-        if (typeof window !== "undefined") {
-          const savedToken = localStorage.getItem("ur_auth_token");
-          if (savedToken) auth.setToken(savedToken);
-        }
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const token = hashParams.get("token");
@@ -36,12 +32,14 @@ var UrProvider = ({ apiKey, baseUrl, children }) => {
           window.history.replaceState({}, document.title, window.location.pathname);
         } else if (token) {
           auth.setToken(token);
-          if (typeof window !== "undefined") localStorage.setItem("ur_auth_token", token);
           if (rtCode) {
             try {
               const exRes = await auth.socialExchange({ token, rtCode });
-              const exToken = exRes.accessToken || exRes.token;
-              if (exToken && typeof window !== "undefined") localStorage.setItem("ur_auth_token", exToken);
+              if (exRes?.refreshToken) {
+                const refreshed = await auth.refreshToken(exRes.refreshToken);
+                const newAcc = refreshed?.accessToken || refreshed?.token;
+                if (newAcc) auth.setToken(newAcc);
+              }
             } catch (err) {
               console.error("Failed to exchange refresh token", err);
               if (mounted) setError(err.message || "Failed to complete social login");
@@ -52,8 +50,8 @@ var UrProvider = ({ apiKey, baseUrl, children }) => {
         } else {
           try {
             const res = await auth.refreshToken();
-            const newToken = res.accessToken || res.token;
-            if (newToken && typeof window !== "undefined") localStorage.setItem("ur_auth_token", newToken);
+            const newToken = res?.accessToken || res?.token;
+            if (newToken) auth.setToken(newToken);
           } catch (e) {
           }
         }
@@ -62,7 +60,6 @@ var UrProvider = ({ apiKey, baseUrl, children }) => {
           setUser(currentUser);
         }
       } catch (error2) {
-        console.error("InitAuth Error:", error2);
         if (mounted) {
           setUser(null);
         }
@@ -111,9 +108,7 @@ var useAuth = () => {
     try {
       setError(null);
       setIsLoading(true);
-      const res = await auth.login(payload);
-      const token = res.accessToken || res.token;
-      if (token && typeof window !== "undefined") localStorage.setItem("ur_auth_token", token);
+      await auth.login(payload);
       const currentUser = await auth.me();
       setUser(currentUser);
     } catch (err) {
@@ -141,7 +136,6 @@ var useAuth = () => {
       setError(null);
       setIsLoading(true);
       await auth.logout();
-      if (typeof window !== "undefined") localStorage.removeItem("ur_auth_token");
       setUser(null);
     } catch (err) {
       setError(err.message || "Logout failed");
